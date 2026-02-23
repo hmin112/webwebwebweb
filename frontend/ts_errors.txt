@@ -1,0 +1,75 @@
+﻿src/App.tsx(44,22): error TS6133: 'setUserStatus' is declared but its value is never read.
+src/components/Board.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/components/Board.tsx(3,10): error TS6133: 'MessageSquare' is declared but its value is never read.
+src/components/layout/Footer.tsx(1,1): error TS6133: 'motion' is declared but its value is never read.
+src/components/ui/button.tsx(4,20): error TS2307: Cannot find module '../../lib/utils' or its corresponding type declarations.
+src/pages/admin/AdminPage.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(4,10): error TS6133: 'ClipboardList' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(5,34): error TS6133: 'ListFilter' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(6,3): error TS6133: 'ArrowDownWideNarrow' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(6,24): error TS6133: 'ArrowUpNarrowWide' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(6,43): error TS6133: 'CaseSensitive' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(7,13): error TS6133: 'Save' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(7,22): error TS6133: 'UserMinus' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(7,33): error TS6133: 'UserCheck' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(7,44): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(8,24): error TS6133: 'Lock' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(9,66): error TS6133: 'AlertTriangle' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(10,3): error TS6133: 'Phone' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(10,10): error TS6133: 'Hash' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(10,16): error TS6133: 'BadgeCheck' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(10,28): error TS6133: 'Info' is declared but its value is never read.
+src/pages/admin/AdminPage.tsx(17,6): error TS6196: 'ExportScope' is declared but never used.
+src/pages/admin/AdminPage.tsx(54,18): error TS6133: 'setSortBy' is declared but its value is never read.
+src/pages/assembly/AssemblyPage.tsx(1,20): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/assembly/AssemblyPage.tsx(9,27): error TS2307: Cannot find module './tabs/MyPageTab' or its corresponding type declarations.
+src/pages/assembly/AssemblyPage.tsx(10,30): error TS2307: Cannot find module './tabs/CommunityTab' or its corresponding type declarations.
+src/pages/assembly/AssemblyPage.tsx(11,32): error TS2307: Cannot find module './tabs/AdminPeriodTab' or its corresponding type declarations.
+src/pages/assembly/AssemblyPage.tsx(12,33): error TS2307: Cannot find module './tabs/MemberDetailTab' or its corresponding type declarations.
+src/pages/assembly/AssemblyPage.tsx(134,28): error TS7006: Parameter '_page' implicitly has an 'any' type.
+src/pages/assembly/AssemblyPage.tsx(134,35): error TS7006: Parameter 'identifier' implicitly has an 'any' type.
+src/pages/auth/Login.tsx(3,45): error TS6133: 'ShieldAlert' is declared but its value is never read.
+src/pages/auth/Signup.tsx(5,33): error TS6133: 'ShieldCheck' is declared but its value is never read.
+src/pages/auth/Signup.tsx(48,16): error TS2503: Cannot find namespace 'NodeJS'.
+src/pages/board/BoardDetail.tsx(5,45): error TS6133: 'ChevronDown' is declared but its value is never read.
+src/pages/board/BoardDetail.tsx(251,3): error TS6133: 'postId' is declared but its value is never read.
+src/pages/board/BoardWrite.tsx(4,3): error TS6133: 'X' is declared but its value is never read.
+src/pages/board/BoardWrite.tsx(11,51): error TS6133: 'user' is declared but its value is never read.
+src/pages/event/EventDetail.tsx(2,1): error TS6133: 'motion' is declared but its value is never read.
+src/pages/event/EventPage.tsx(1,1): error TS6192: All imports in import declaration are unused.
+src/pages/event/EventPage.tsx(8,70): error TS6133: 'user' is declared but its value is never read.
+src/pages/event/EventWrite.tsx(3,21): error TS6133: 'Save' is declared but its value is never read.
+src/pages/event/EventWrite.tsx(3,27): error TS6133: 'Type' is declared but its value is never read.
+src/pages/event/EventWrite.tsx(3,42): error TS6133: 'ImageIcon' is declared but its value is never read.
+src/pages/event/EventWrite.tsx(8,42): error TS6133: 'onSave' is declared but its value is never read.
+src/pages/event/EventWrite.tsx(8,70): error TS6133: 'user' is declared but its value is never read.
+src/pages/home/components/About.tsx(3,3): error TS6133: 'Lock' is declared but its value is never read.
+src/pages/home/components/About.tsx(3,9): error TS6133: 'Wind' is declared but its value is never read.
+src/pages/home/components/About.tsx(3,22): error TS6133: 'Circle' is declared but its value is never read.
+src/pages/home/Home.tsx(28,29): error TS6133: 'path' is declared but its value is never read.
+src/pages/home/Home.tsx(28,43): error TS6133: 'id' is declared but its value is never read.
+src/pages/home/Home.tsx(38,81): error TS2322: Type '{ onNavigate: (path: string, id?: any) => void; events: any[]; isAdmin: boolean; isLoggedIn: boolean; }' is not assignable to type 'IntrinsicAttributes & { onNavigate: (page: string, id?: number | undefined) => void; events: any[]; }'.
+  Property 'isAdmin' does not exist on type 'IntrinsicAttributes & { onNavigate: (page: string, id?: number | undefined) => void; events: any[]; }'.
+src/pages/notice/NoticeDetail.tsx(1,10): error TS6133: 'useState' is declared but its value is never read.
+src/pages/notice/NoticeDetail.tsx(8,83): error TS6133: 'user' is declared but its value is never read.
+src/pages/notice/NoticePage.tsx(15,3): error TS6133: 'user' is declared but its value is never read.
+src/pages/notice/NoticeWrite.tsx(4,3): error TS6133: 'X' is declared but its value is never read.
+src/pages/notice/NoticeWrite.tsx(4,31): error TS6133: 'AlertCircle' is declared but its value is never read.
+src/pages/notice/NoticeWrite.tsx(5,22): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/pages/notice/NoticeWrite.tsx(11,51): error TS6133: 'user' is declared but its value is never read.
+src/pages/profile/ProfilePage.tsx(4,3): error TS6133: 'User' is declared but its value is never read.
+src/pages/profile/ProfilePage.tsx(4,9): error TS6133: 'Hash' is declared but its value is never read.
+src/pages/profile/ProfilePage.tsx(6,14): error TS6133: 'Check' is declared but its value is never read.
+src/pages/profile/ProfilePage.tsx(6,21): error TS6133: 'X' is declared but its value is never read.
+src/pages/profile/tabs/AdminAttendanceTab.tsx(1,20): error TS6133: 'useEffect' is declared but its value is never read.
+src/pages/profile/tabs/AdminAttendanceTab.tsx(3,75): error TS6133: 'User' is declared but its value is never read.
+src/pages/profile/tabs/AdminAttendanceTab.tsx(4,24): error TS2307: Cannot find module '../../../../components/ui/button' or its corresponding type declarations.
+src/pages/profile/tabs/AdminPeriodTab.tsx(1,8): error TS6133: 'React' is declared but its value is never read.
+src/pages/profile/tabs/AdminPeriodTab.tsx(4,24): error TS6133: 'Clock' is declared but its value is never read.
+src/pages/profile/tabs/AdminPeriodTab.tsx(5,3): error TS6133: 'CheckCircle2' is declared but its value is never read.
+src/pages/profile/tabs/AdminPeriodTab.tsx(6,10): error TS6133: 'Download' is declared but its value is never read.
+src/pages/profile/tabs/AdminPeriodTab.tsx(6,43): error TS6133: 'Search' is declared but its value is never read.
+src/pages/profile/tabs/AdminPeriodTab.tsx(8,24): error TS2307: Cannot find module '../../../../components/ui/button' or its corresponding type declarations.
+src/pages/profile/tabs/AttendanceTab.tsx(4,24): error TS2307: Cannot find module '../../../../components/ui/button' or its corresponding type declarations.
+src/pages/profile/tabs/MyPageTab.tsx(7,3): error TS6133: 'AlertCircle' is declared but its value is never read.
+tsconfig.app.json(23,5): error TS5023: Unknown compiler option 'erasableSyntaxOnly'.
