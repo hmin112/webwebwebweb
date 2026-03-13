@@ -13,5 +13,5 @@ RUN npm ci
 EXPOSE 5173
 #포트 명시 5173
 
-CMD ["npm", "run", "dev", "--", "--host", "0.0.0.0"]
+CMD ["npm", "run", "dev"]
 #실행 명령어

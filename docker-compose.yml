@@ -2,7 +2,7 @@ services:
   caddy:
     image: caddy:latest
     restart: always
-    container_name: devsign-reverse-proxy
+    container_name: devsign-caddy
     ports:
       - "80:80"
       - "443:443"
