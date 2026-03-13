@@ -1,8 +1,25 @@
 services:
+  caddy:
+    image: caddy:latest
+    restart: always
+    container_name: devsign-reverse-proxy
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - global_network
+    depends_on:
+      - frontend
+      - backend
+
   backend:
-    restart: always # 꺼지면 재시작
+    restart: always
     container_name: devsign-backend
-    build: ./backend # devsign/backend 경로에 있는 Dockerfile로 이미지 빌드
+    build: ./backend
     networks:
       - global_network
 
@@ -14,14 +31,14 @@ services:
       - global_network
 
   db:
-    restart: always
+    restart: always #재시작
     container_name: devsign-database
     image: mysql:latest
     environment:
-      MYSQL_ROOT_PASSWORD: devsign4122! #모든 권한을 가진 비밀번호
-      MYSQL_DATABASE: devsigndb #자동으로 생성될 DB 이름
-      MYSQL_USER: devsignuser #일반 사용자 이름
-      MYSQL_PASSWORD: devsign4122 #일반 사용자의 비밀번호입니다.
+      MYSQL_ROOT_PASSWORD: devsign4122!
+      MYSQL_DATABASE: devsigndb 
+      MYSQL_USER: devsignuser
+      MYSQL_PASSWORD: devsign4122
     volumes:
       - db_data:/var/lib/mysql
     networks:
@@ -29,6 +46,8 @@ services:
 
 volumes:
   db_data:
+  caddy_data:
+  caddy_config:
 
 networks:
   global_network:
