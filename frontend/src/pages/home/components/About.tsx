@@ -7,9 +7,9 @@ export const About = () => {
   return (
     <div className="bg-[#fdfeff]">
       {/* 1. 기존 동아리 소개 섹션 */}
-      <section id="about" className="py-24 overflow-hidden border-b border-slate-50">
+      <section id="about" className="py-16 md:py-24 overflow-hidden border-b border-slate-50">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-          <div className="flex flex-col lg:flex-row items-center gap-12 lg:gap-20">
+          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-20">
             
             {/* 왼쪽: 이미지 영역 */}
             <motion.div 
@@ -19,11 +19,11 @@ export const About = () => {
               transition={{ duration: 0.8 }}
               className="w-full lg:w-[60%] relative"
             >
-              <div className="relative rounded-[2.5rem] overflow-hidden shadow-2xl shadow-indigo-100/50 border border-slate-100">
+              <div className="relative rounded-[1.5rem] lg:rounded-[2.5rem] overflow-hidden shadow-2xl shadow-indigo-100/50 border border-slate-100">
                 <img 
                   src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=2000" 
                   alt="Coding Community" 
-                  className="w-full h-[500px] object-cover transform hover:scale-105 transition-transform duration-1000"
+                  className="w-full h-[200px] md:h-[500px] object-cover transform hover:scale-105 transition-transform duration-1000"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/20 to-transparent" />
               </div>
@@ -38,17 +38,17 @@ export const About = () => {
               transition={{ duration: 0.8 }}
               className="w-full lg:w-[40%]"
             >
-              <span className="text-indigo-600 font-extrabold text-lg mb-4 block tracking-wider">
+              <span className="text-indigo-600 font-extrabold text-sm md:text-lg mb-2 md:mb-4 block tracking-wider">
                 동아리 소개
               </span>
               
-              <h2 className="text-3xl md:text-4xl font-[900] text-slate-900 mb-8 leading-tight tracking-tight">
+              <h2 className="text-2xl md:text-4xl font-[900] text-slate-900 mb-4 md:mb-8 leading-tight tracking-tight">
                 개발자를 향해<br /> 
                 <span className="text-indigo-600">모두 함께 성장하는</span><br />
                 동아리입니다
               </h2>
 
-              <div className="space-y-6 text-slate-600 text-[15px] md:text-[16px] leading-relaxed font-medium text-justify">
+              <div className="space-y-4 md:space-y-6 text-slate-600 text-[13px] md:text-[16px] leading-relaxed font-medium text-justify">
                 <p>
                   2010년에 창단된 <span className="text-indigo-600 font-bold">DEVSIGN</span>은 조선대학교 IT융합대학을 대표하는 코딩 학술 동아리로, 지난 10여 년간 수많은 IT 인재를 배출하며 그 전통을 이어오고 있습니다. 저희는 프로그래밍의 근간이 되는 기술적 기초를 다지는 데 주력하며 학술적 역량을 쌓아가는 데 매진하고 있습니다.
                 </p>
@@ -60,14 +60,14 @@ export const About = () => {
                 </p>
               </div>
 
-              <div className="grid grid-cols-2 gap-8 mt-12 pt-10 border-t border-slate-100">
+              <div className="grid grid-cols-2 gap-4 md:gap-8 mt-8 md:mt-12 pt-6 md:pt-10 border-t border-slate-100">
                 <div>
-                  <div className="text-4xl font-black text-indigo-600 mb-1">60+</div>
-                  <div className="text-slate-500 font-bold text-sm">활동 부원</div>
+                  <div className="text-2xl md:text-4xl font-black text-indigo-600 mb-0.5 md:mb-1">60+</div>
+                  <div className="text-slate-500 font-bold text-[11px] md:text-sm">활동 부원</div>
                 </div>
                 <div>
-                  <div className="text-4xl font-black text-pink-500 mb-1">17th</div>
-                  <div className="text-slate-500 font-bold text-sm">동아리 기수</div>
+                  <div className="text-2xl md:text-4xl font-black text-pink-500 mb-0.5 md:mb-1">17th</div>
+                  <div className="text-slate-500 font-bold text-[11px] md:text-sm">동아리 기수</div>
                 </div>
               </div>
             </motion.div>
@@ -76,73 +76,73 @@ export const About = () => {
       </section>
 
       {/* 2. 스마트 시스템 소개 섹션 */}
-      <section className="py-32 bg-white overflow-hidden">
+      <section className="py-16 md:py-32 bg-white overflow-hidden">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-          <div className="mb-20">
+          <div className="mb-12 md:mb-20">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
-              className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-indigo-50 text-indigo-600 font-bold text-sm mb-6"
+              className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs md:text-sm mb-4 md:mb-6"
             >
-              <Cpu size={16} /> IoT & Discord 프로젝트
+              <Cpu className="w-4 h-4 md:w-5 md:h-5" /> IoT & Discord 프로젝트
             </motion.div>
-            <h2 className="text-4xl md:text-5xl font-black text-slate-900 tracking-tight mb-6 leading-tight">
+            <h2 className="text-2xl md:text-5xl font-black text-slate-900 tracking-tight mb-4 md:mb-6 leading-tight">
               손끝에서 시작되는<br />스마트 워크스페이스
             </h2>
-            <p className="text-slate-500 font-medium text-lg max-w-2xl leading-relaxed">
+            <p className="text-slate-500 font-medium text-sm md:text-lg max-w-2xl leading-relaxed">
               DEVSIGN은 직접 구축한 디스코드 봇 시스템을 통해 동아리방의 모든 환경을 관리합니다.
             </p>
           </div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 items-stretch">
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 md:gap-10 items-stretch">
             
             {/* 💡 WINDEV: 냉난방 제어 */}
             <motion.div 
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               whileHover={{ y: -10 }}
-              className="bg-slate-50 rounded-[3rem] p-10 md:p-14 border border-slate-100 group transition-all flex flex-col h-full"
+              className="bg-slate-50 rounded-[2rem] md:rounded-[3rem] p-5 md:p-14 border border-slate-100 group transition-all flex flex-col h-full"
             >
-              <div className="flex items-center justify-between mb-12">
-                <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-[2rem] overflow-hidden shadow-lg border-2 border-white relative group-hover:scale-110 transition-transform">
-                    {/* ✅ 수정됨: scale-150, -translate-y-2 제거하여 딱 맞게 조정 */}
+              <div className="flex items-center justify-between mb-5 md:mb-12">
+                <div className="flex items-center gap-3 md:gap-5">
+                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-lg border-2 border-white relative group-hover:scale-110 transition-transform">
                     <img src="/images/windev_profile.jpeg" alt="WINDEV" className="w-full h-full object-cover" />
-                    <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-slate-50 rounded-full animate-pulse" />
+                    <div className="absolute bottom-1 right-1 w-3 h-3 md:w-5 md:h-5 bg-green-500 border-2 md:border-4 border-slate-50 rounded-full animate-pulse" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                      WINDEV <span className="px-2 py-0.5 rounded-lg bg-indigo-600 text-[10px] text-white uppercase tracking-widest">APP</span>
+                    <h3 className="text-lg md:text-2xl font-black text-slate-900 flex items-center gap-2">
+                      WINDEV <span className="px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg bg-indigo-600 text-[8px] md:text-[10px] text-white uppercase tracking-widest">APP</span>
                     </h3>
-                    <p className="text-slate-400 font-bold text-sm uppercase tracking-wider">냉난방기 제어 봇</p>
+                    <p className="text-slate-400 font-bold text-xs md:text-sm uppercase tracking-wider">냉난방기 제어 봇</p>
                   </div>
                 </div>
               </div>
 
-              <p className="text-slate-600 font-bold text-lg mb-10 leading-relaxed text-justify flex-1">
+              <p className="text-slate-600 font-bold text-[13px] md:text-lg mb-4 md:mb-10 leading-relaxed text-justify flex-1">
                 언제 어디서나 디스코드로 동아리방 온도를 조절하세요. 외부에서도 냉난방기를 원격 제어하여 입실 전 최적의 환경을 조성할 수 있습니다.
               </p>
 
-              <div className="bg-slate-900 rounded-[2.5rem] p-6 md:p-8 shadow-2xl border border-slate-800 flex flex-col justify-between min-h-[340px]">
-                <div className="flex justify-between items-center mb-8 border-b border-slate-800 pb-5">
-                  <span className="text-slate-400 text-xs font-black uppercase tracking-widest">[냉난방기 제어]</span>
-                  <div className="px-3 py-1 rounded-full bg-green-500/10 text-green-500 text-[10px] font-black tracking-widest animate-pulse">연결됨</div>
+              {/* ✨ 내부 제어 박스 최소 높이(200px) 및 패딩 대폭 축소 */}
+              <div className="bg-slate-900 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 shadow-2xl border border-slate-800 flex flex-col justify-between min-h-[200px] md:min-h-[340px]">
+                <div className="flex justify-between items-center mb-4 md:mb-8 border-b border-slate-800 pb-3 md:pb-5">
+                  <span className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest">[냉난방기 제어]</span>
+                  <div className="px-2 py-1 md:px-3 md:py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] md:text-[10px] font-black tracking-widest animate-pulse">연결됨</div>
                 </div>
-                <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50">
-                    <p className="text-green-400 font-black text-[11px] mb-2 uppercase">냉방</p>
-                    <p className="text-white font-black text-xl tracking-tight">18°C ~ 27°C</p>
+                <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-8">
+                  <div className="bg-slate-800/50 p-4 md:p-5 rounded-xl md:rounded-2xl border border-slate-700/50">
+                    <p className="text-green-400 font-black text-[10px] md:text-[11px] mb-1 md:mb-2 uppercase">냉방</p>
+                    <p className="text-white font-black text-sm md:text-xl tracking-tight">18°C ~ 27°C</p>
                   </div>
-                  <div className="bg-slate-800/50 p-5 rounded-2xl border border-slate-700/50">
-                    <p className="text-red-400 font-black text-[11px] mb-2 uppercase">난방</p>
-                    <p className="text-white font-black text-xl tracking-tight">23°C ~ 30°C</p>
+                  <div className="bg-slate-800/50 p-4 md:p-5 rounded-xl md:rounded-2xl border border-slate-700/50">
+                    <p className="text-red-400 font-black text-[10px] md:text-[11px] mb-1 md:mb-2 uppercase">난방</p>
+                    <p className="text-white font-black text-sm md:text-xl tracking-tight">23°C ~ 30°C</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-3">
-                  <div className="bg-[#22c55e] text-white px-5 py-3 rounded-xl text-[11px] font-black shadow-lg shadow-green-500/20 active:scale-95 transition-all cursor-default">에어컨 켜기</div>
-                  <div className="bg-[#ef4444] text-white px-5 py-3 rounded-xl text-[11px] font-black shadow-lg shadow-red-500/20 active:scale-95 transition-all cursor-default">히터 켜기</div>
-                  <div className="bg-slate-700 text-white px-5 py-3 rounded-xl text-[11px] font-black hover:bg-slate-600 active:scale-95 transition-all flex items-center gap-2 cursor-default">
-                    <Power size={14} /> 전원 끄기
+                <div className="flex flex-wrap gap-2 md:gap-3">
+                  <div className="bg-[#22c55e] text-white px-3 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black shadow-lg shadow-green-500/20 active:scale-95 transition-all cursor-default">에어컨 켜기</div>
+                  <div className="bg-[#ef4444] text-white px-3 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black shadow-lg shadow-red-500/20 active:scale-95 transition-all cursor-default">히터 켜기</div>
+                  <div className="bg-slate-700 text-white px-3 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black hover:bg-slate-600 active:scale-95 transition-all flex items-center gap-1.5 md:gap-2 cursor-default">
+                    <Power className="w-3 h-3 md:w-3.5 md:h-3.5" /> 전원 끄기
                   </div>
                 </div>
               </div>
@@ -153,46 +153,46 @@ export const About = () => {
               initial={{ opacity: 0, y: 30 }}
               whileInView={{ opacity: 1, y: 0 }}
               whileHover={{ y: -10 }}
-              className="bg-slate-50 rounded-[3rem] p-10 md:p-14 border border-slate-100 group transition-all flex flex-col h-full"
+              className="bg-slate-50 rounded-[2rem] md:rounded-[3rem] p-5 md:p-14 border border-slate-100 group transition-all flex flex-col h-full"
             >
-              <div className="flex items-center justify-between mb-12">
-                <div className="flex items-center gap-5">
-                  <div className="w-20 h-20 rounded-[2rem] overflow-hidden shadow-lg border-2 border-white relative group-hover:scale-110 transition-transform">
-                    {/* ✅ 수정됨: scale-150, translate-y-8 제거하여 딱 맞게 조정 */}
+              <div className="flex items-center justify-between mb-5 md:mb-12">
+                <div className="flex items-center gap-3 md:gap-5">
+                  <div className="w-14 h-14 md:w-20 md:h-20 rounded-2xl md:rounded-[2rem] overflow-hidden shadow-lg border-2 border-white relative group-hover:scale-110 transition-transform">
                     <img src="/images/ksante_profile.jpeg" alt="크산테" className="w-full h-full object-cover" />
-                    <div className="absolute bottom-1 right-1 w-5 h-5 bg-green-500 border-4 border-slate-50 rounded-full animate-pulse" />
+                    <div className="absolute bottom-1 right-1 w-3 h-3 md:w-5 md:h-5 bg-green-500 border-2 md:border-4 border-slate-50 rounded-full animate-pulse" />
                   </div>
                   <div>
-                    <h3 className="text-2xl font-black text-slate-900 flex items-center gap-2">
-                      크산테 <span className="px-2 py-0.5 rounded-lg bg-indigo-600 text-[10px] text-white uppercase tracking-widest">APP</span>
+                    <h3 className="text-lg md:text-2xl font-black text-slate-900 flex items-center gap-2">
+                      크산테 <span className="px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg bg-indigo-600 text-[8px] md:text-[10px] text-white uppercase tracking-widest">APP</span>
                     </h3>
-                    <p className="text-slate-400 font-bold text-sm uppercase tracking-wider">도어락 제어 봇</p>
+                    <p className="text-slate-400 font-bold text-xs md:text-sm uppercase tracking-wider">도어락 제어 봇</p>
                   </div>
                 </div>
               </div>
 
-              <p className="text-slate-600 font-bold text-lg mb-10 leading-relaxed text-justify flex-1">
+              <p className="text-slate-600 font-bold text-[13px] md:text-lg mb-4 md:mb-10 leading-relaxed text-justify flex-1">
                 24시간 여러분들의 자유로운 학습을 지원합니다. 물리적인 열쇠 필요없이 디스코드를 사용해 학번을 인증하고 도어락을 제어하여 동아리방에 자유롭게 출입 가능합니다.
               </p>
 
-              <div className="space-y-4 bg-white/50 p-6 rounded-[2.5rem] border border-slate-200 shadow-inner min-h-[340px] flex flex-col">
-                <div className="px-4 py-2 text-[10px] font-black text-slate-300 uppercase tracking-widest">[도어락 제어]</div>
+              {/* ✨ 내부 제어 박스 최소 높이(200px) 및 패딩 대폭 축소 */}
+              <div className="space-y-2 md:space-y-4 bg-white/50 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 shadow-inner min-h-[200px] md:min-h-[340px] flex flex-col">
+                <div className="px-2 md:px-4 py-1 md:py-2 text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-widest">[도어락 제어]</div>
                 <div className="flex-1 flex flex-col justify-around">
                   {[
                     { name: "김유찬", time: "오전 09:38", color: "indigo" },
                     { name: "최승원", time: "오후 12:44", color: "amber" },
                     { name: "김아현", time: "오후 01:08", color: "pink" }
                   ].map((log, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white p-5 rounded-2xl shadow-sm border border-slate-100 group-hover:translate-x-1 transition-transform">
-                      <div className="flex items-center gap-4">
-                        <div className={`w-10 h-10 bg-${log.color}-50 text-${log.color}-500 rounded-xl flex items-center justify-center text-xs font-black border border-${log.color}-100/50`}>
+                    <div key={i} className="flex items-center justify-between bg-white p-2.5 md:p-5 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 group-hover:translate-x-1 transition-transform">
+                      <div className="flex items-center gap-3 md:gap-4">
+                        <div className={`w-8 h-8 md:w-10 md:h-10 bg-${log.color}-50 text-${log.color}-500 rounded-lg md:rounded-xl flex items-center justify-center text-[10px] md:text-xs font-black border border-${log.color}-100/50`}>
                           {log.name[0]}
                         </div>
-                        <p className="text-sm font-bold text-slate-700">
-                          <span className="text-indigo-600 font-black">{log.name}</span> 님이 동아리방 문을 열었습니다
+                        <p className="text-xs md:text-sm font-bold text-slate-700">
+                          <span className="text-indigo-600 font-black">{log.name}</span> 님이 문을 열었습니다
                         </p>
                       </div>
-                      <span className="text-[10px] font-black text-slate-300">{log.time}</span>
+                      <span className="text-[9px] md:text-[10px] font-black text-slate-300">{log.time}</span>
                     </div>
                   ))}
                 </div>

@@ -7,7 +7,6 @@ import {
   FileArchive, ExternalLink, Loader2, ChevronDown, Eye
 } from "lucide-react";
 
-
 // 부모 컴포넌트(AssemblyPage)로부터 전달받는 프롭스 정의
 interface MemberDetailProps {
   loginId: string;
@@ -62,11 +61,8 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       setIsLoading(true);
       try {
         // 1. 전체 부원 목록 조회 (MemberController: /api/members/all)
-        // 커뮤니티 탭에서는 일반 사용자도 접근하므로 관리자 전용 API를 사용하지 않습니다.
         const memberRes = await api.get(`/members/all`);
 
-        // 고유 식별자인 loginId를 통해 해당 부원 정보를 찾습니다.
-        // 기존 데이터/라우팅 호환을 위해 id 문자열 매칭도 보조로 허용합니다.
         const targetMember = memberRes.data.find(
           (m: any) => String(m.loginId) === String(loginId) || String(m.id) === String(loginId)
         );
@@ -89,7 +85,6 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         // 3. 화면 표시 데이터 설정
         setMemberInfo({
           ...targetMember,
-          // ✨ 수정된 학번 포맷팅 적용
           displayStudentId: formatStudentId(targetMember.studentId),
           projectTitle: submissionRes.data.projectTitle
         });
@@ -192,60 +187,62 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-40 gap-4">
-        <Loader2 className="animate-spin text-indigo-600" size={40} />
-        <p className="text-slate-400 font-bold tracking-tight">부원 상세 정보를 동기화하고 있습니다...</p>
+      <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
+        <Loader2 className="animate-spin text-indigo-600" size={32} />
+        <p className="text-slate-400 font-bold tracking-tight text-sm">부원 상세 정보를 동기화하고 있습니다...</p>
       </div>
     );
   }
 
   if (!memberInfo) {
     return (
-      <div className="flex flex-col items-center justify-center py-40 gap-6">
-        <div className="p-6 bg-slate-100 rounded-[2rem] text-slate-400"><X size={48} /></div>
+      <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-6">
+        <div className="p-4 md:p-6 bg-slate-100 rounded-2xl md:rounded-[2rem] text-slate-400"><X size={32} /></div>
         <div className="text-center px-6">
-          <p className="text-slate-900 font-black text-xl mb-1">부원 정보를 찾을 수 없습니다.</p>
-          <p className="text-slate-400 font-bold text-sm">아이디({loginId}) 정보를 다시 확인해주세요.</p>
+          <p className="text-slate-900 font-black text-lg md:text-xl mb-1">부원 정보를 찾을 수 없습니다.</p>
+          <p className="text-slate-400 font-bold text-xs md:text-sm">아이디({loginId}) 정보를 다시 확인해주세요.</p>
         </div>
-        <button onClick={onBack} className="px-8 py-4 bg-slate-900 text-white rounded-2xl font-black text-sm">목록으로 돌아가기</button>
+        <button onClick={onBack} className="px-6 py-3 bg-slate-900 text-white rounded-xl font-black text-xs md:text-sm">목록으로 돌아가기</button>
       </div>
     );
   }
 
   return (
-    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="pb-20">
+    <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="pb-16 md:pb-20">
 
       {/* 🔙 헤더 영역 (이름 + 학번) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-12 gap-6">
-        <div className="flex items-center gap-6">
-          <button onClick={onBack} className="p-4 bg-white border border-slate-100 rounded-2xl text-slate-400 hover:text-indigo-600 transition-all group">
-            <ArrowLeft size={20} className="group-hover:-translate-x-1 transition-transform" />
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-4 md:gap-6">
+        <div className="flex items-center gap-3 md:gap-6">
+          <button onClick={onBack} className="p-3 md:p-4 bg-white border border-slate-100 rounded-xl md:rounded-2xl text-slate-400 hover:text-indigo-600 transition-all group shrink-0">
+            <ArrowLeft className="w-5 h-5 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
           </button>
-          <div>
-            <div className="flex items-center gap-3 mb-1">
-              <h1 className="text-3xl font-[900] text-slate-900 tracking-tight">{memberInfo.name}</h1>
-              <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg uppercase border border-indigo-100/50">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2 md:gap-3 mb-0.5 md:mb-1">
+              <h1 className="text-xl md:text-3xl font-[900] text-slate-900 tracking-tight truncate">{memberInfo.name}</h1>
+              <span className="px-2 py-0.5 md:px-3 md:py-1 bg-indigo-50 text-indigo-600 text-[8px] md:text-[10px] font-black rounded-md md:rounded-lg uppercase border border-indigo-100/50 shrink-0">
                 {memberInfo.displayStudentId}
               </span>
             </div>
-            <p className="text-slate-400 font-bold flex items-center gap-2 text-sm">
-              <ExternalLink size={14} className="text-indigo-400" /> {memberInfo.projectTitle || "프로젝트 제목 미등록"}
+            <p className="text-slate-400 font-bold flex items-center gap-1.5 md:gap-2 text-[11px] md:text-sm truncate">
+              <ExternalLink className="text-indigo-400 w-3 h-3 md:w-3.5 md:h-3.5" /> {memberInfo.projectTitle || "프로젝트 제목 미등록"}
             </p>
           </div>
         </div>
 
         {/* 학기 선택 버튼 */}
-        <div className="relative" ref={termMenuRef}>
-          <button onClick={() => setIsTermMenuOpen(!isTermMenuOpen)} className="flex items-center gap-4 bg-white px-6 py-4 rounded-[1.5rem] border border-slate-100 shadow-sm transition-all active:scale-95">
-            <CalendarDays className="text-indigo-600" size={18} />
-            <span className="font-black text-slate-900 text-sm">{selectedTerm.year}학년도 {selectedTerm.semester}학기</span>
-            <ChevronDown size={16} />
+        <div className="relative w-full md:w-auto" ref={termMenuRef}>
+          <button onClick={() => setIsTermMenuOpen(!isTermMenuOpen)} className="w-full md:w-auto flex items-center justify-between md:justify-start gap-4 bg-white px-4 py-3 md:px-6 md:py-4 rounded-xl md:rounded-[1.5rem] border border-slate-100 shadow-sm transition-all active:scale-95">
+            <div className="flex items-center gap-2 md:gap-4">
+              <CalendarDays className="text-indigo-600 w-4 h-4 md:w-[18px] md:h-[18px]" />
+              <span className="font-black text-slate-900 text-xs md:text-sm">{selectedTerm.year}년도 {selectedTerm.semester}학기</span>
+            </div>
+            <ChevronDown className="w-4 h-4 md:w-4 md:h-4 text-slate-400" />
           </button>
           <AnimatePresence>
             {isTermMenuOpen && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-3 w-56 bg-white border border-slate-100 rounded-[1.5rem] shadow-2xl z-50 p-2 overflow-hidden">
+              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 md:mt-3 w-full md:w-56 bg-white border border-slate-100 rounded-xl md:rounded-[1.5rem] shadow-2xl z-50 p-1.5 md:p-2 overflow-hidden">
                 {termOptions.map((option) => (
-                  <button key={`${option.year}-${option.semester}`} onClick={() => { setSelectedTerm({ year: option.year, semester: option.semester }); setIsTermMenuOpen(false); }} className={`w-full text-left px-5 py-3 rounded-xl text-sm font-bold ${selectedTerm.semester === option.semester ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-50"}`}>
+                  <button key={`${option.year}-${option.semester}`} onClick={() => { setSelectedTerm({ year: option.year, semester: option.semester }); setIsTermMenuOpen(false); }} className={`w-full text-left px-4 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-xs md:text-sm font-bold ${selectedTerm.semester === option.semester ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-50"}`}>
                     {option.label}
                   </button>
                 ))}
@@ -256,34 +253,34 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       </div>
 
       {/* 📋 리포트 타임라인 목록 */}
-      <div className="space-y-6">
-        <h3 className="text-xl font-black text-slate-900 uppercase tracking-wider px-2 mb-8">프로젝트 타임라인</h3>
+      <div className="space-y-4 md:space-y-6">
+        <h3 className="text-sm md:text-xl font-black text-slate-900 uppercase tracking-wider px-1 md:px-2 mb-4 md:mb-8">프로젝트 타임라인</h3>
         {reports.length === 0 ? (
-          <div className="text-center py-20 bg-white rounded-[2.5rem] border border-dashed border-slate-200 text-slate-400 font-bold">해당 학기에 생성된 리포트가 없습니다.</div>
+          <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200 text-slate-400 font-bold text-xs md:text-base">해당 학기에 생성된 리포트가 없습니다.</div>
         ) : (
           reports.map((report) => (
             <motion.div
               key={report.id}
               whileHover={isSubmittedStatus(report.status) ? { scale: 1.01, y: -2 } : {}}
               onClick={() => isSubmittedStatus(report.status) && setSelectedReport(report)}
-              className={`bg-white p-8 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between transition-all group ${isSubmittedStatus(report.status) ? "hover:shadow-xl cursor-pointer" : "opacity-40 cursor-not-allowed"}`}
+              className={`bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between transition-all group ${isSubmittedStatus(report.status) ? "hover:shadow-xl cursor-pointer" : "opacity-40 cursor-not-allowed"}`}
             >
-              <div className="flex items-center gap-6">
-                <span className={`text-2xl font-[900] tracking-tight shrink-0 ${isSubmittedStatus(report.status) ? "text-indigo-600" : "text-slate-400"}`}>{report.month}월</span>
-                <div className="h-10 w-px bg-slate-200"></div>
-                <div>
-                  <div className="flex items-center gap-3 mb-1.5">
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase ${isSubmittedStatus(report.status) ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{report.type}</span>
-                    <h4 className="font-bold text-slate-900 text-lg">
+              <div className="flex items-center gap-3 md:gap-6 min-w-0">
+                <span className={`text-lg md:text-2xl font-[900] tracking-tight shrink-0 ${isSubmittedStatus(report.status) ? "text-indigo-600" : "text-slate-400"}`}>{report.month}월</span>
+                <div className="h-8 md:h-10 w-px bg-slate-200 shrink-0"></div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-1.5 md:gap-3 mb-0.5 md:mb-1.5">
+                    <span className={`px-1.5 py-0.5 rounded-md text-[8px] md:text-[10px] font-black uppercase shrink-0 ${isSubmittedStatus(report.status) ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{report.type}</span>
+                    <h4 className="font-bold text-slate-900 text-sm md:text-lg truncate">
                       {report.title || (isSubmittedStatus(report.status) ? `${report.month}월 제출 자료` : `${report.month}월 자료 미제출`)}
                     </h4>
                   </div>
-                  <div className="text-[11px] text-slate-400 font-black flex items-center gap-1.5 uppercase">
-                    {isSubmittedStatus(report.status) ? <><Check size={14} className="text-indigo-500" /> {report.date} 제출됨</> : <><Clock size={14} /> 기록이 없습니다</>}
+                  <div className="text-[9px] md:text-[11px] text-slate-400 font-black flex items-center gap-1.5 uppercase truncate">
+                    {isSubmittedStatus(report.status) ? <><Check className="text-indigo-500 w-3 h-3 md:w-3.5 md:h-3.5" /> {report.date} 제출됨</> : <><Clock className="w-3 h-3 md:w-3.5 md:h-3.5" /> 기록이 없습니다</>}
                   </div>
                 </div>
               </div>
-              {isSubmittedStatus(report.status) && <div className="p-4 bg-slate-50 text-slate-300 rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-all"><Download size={20} /></div>}
+              {isSubmittedStatus(report.status) && <div className="p-2.5 md:p-4 bg-slate-50 text-slate-300 rounded-xl md:rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0"><Download className="w-4 h-4 md:w-5 md:h-5" /></div>}
             </motion.div>
           ))
         )}
@@ -292,32 +289,32 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       {/* 🔮 상세 정보 모달 */}
       <AnimatePresence>
         {selectedReport && (
-          <div className="fixed inset-0 z-[300] flex items-center justify-center px-6">
+          <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedReport(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-white rounded-[3rem] p-10 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
-              <div className="flex justify-between items-start mb-8">
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-white rounded-2xl md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+              <div className="flex justify-between items-start mb-6 md:mb-8">
                 <div>
-                  <span className="px-3 py-1 bg-indigo-50 text-indigo-600 text-[10px] font-black rounded-lg uppercase border border-indigo-100">{memberInfo.name} 부원의 {selectedReport.month}월 자료 조회</span>
-                  <h3 className="text-3xl font-[900] text-slate-900 tracking-tighter mt-2">{selectedReport.title || "제목 없음"}</h3>
+                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] md:text-[10px] font-black rounded-md uppercase border border-indigo-100">{memberInfo.name} 부원 · {selectedReport.month}월 자료</span>
+                  <h3 className="text-xl md:text-3xl font-[900] text-slate-900 tracking-tighter mt-1 md:mt-2">{selectedReport.title || "제목 없음"}</h3>
                 </div>
-                <button onClick={() => setSelectedReport(null)} className="p-3 bg-slate-50 text-slate-400 rounded-2xl hover:bg-slate-100 transition-all"><X size={20} /></button>
+                <button onClick={() => setSelectedReport(null)} className="p-2 md:p-3 bg-slate-50 text-slate-400 rounded-xl md:rounded-2xl hover:bg-slate-100 transition-all shrink-0"><X className="w-4 h-4 md:w-5 md:h-5" /></button>
               </div>
-              <div className="mb-8">
-                <div className="flex items-center gap-2 mb-3 ml-1">
-                  <MessageCircle size={16} className="text-indigo-500" />
-                  <p className="text-xs font-black text-slate-400 uppercase tracking-widest">활동 요약 내용</p>
+              <div className="mb-6 md:mb-8">
+                <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3 ml-0.5 md:ml-1">
+                  <MessageCircle className="text-indigo-500 w-3.5 h-3.5 md:w-4 md:h-4" />
+                  <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">활동 요약 내용</p>
                 </div>
-                <div className="w-full p-6 bg-slate-50 rounded-3xl font-bold text-slate-700 text-sm border border-slate-100/50 whitespace-pre-wrap">{selectedReport.memo || "작성된 요약 내용이 없습니다."}</div>
+                <div className="w-full p-4 md:p-6 bg-slate-50 rounded-2xl md:rounded-3xl font-bold text-slate-700 text-xs md:text-sm border border-slate-100/50 whitespace-pre-wrap leading-relaxed">{selectedReport.memo || "작성된 요약 내용이 없습니다."}</div>
               </div>
-              <div className="space-y-4 mb-10">
-                <p className="text-xs font-black text-slate-400 uppercase tracking-widest ml-1">첨부 파일 (확인 및 다운로드)</p>
-                <div className="grid grid-cols-1 gap-3">
+              <div className="space-y-3 md:space-y-4 mb-8 md:mb-10">
+                <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-0.5 md:ml-1">첨부 파일</p>
+                <div className="grid grid-cols-1 gap-2.5 md:gap-3">
                   <DownloadSlot label="발표자료 (PPT)" path={selectedReport.presentationPath} onDownload={() => handleDownload(selectedReport.presentationPath)} />
                   <DownloadSlot label="PDF 보고서" path={selectedReport.pdfPath} onDownload={() => handleDownload(selectedReport.pdfPath)} onPreview={() => handlePreviewPdf(selectedReport.pdfPath)} />
                   <DownloadSlot label="기타 부속 자료" path={selectedReport.otherPath} onDownload={() => handleDownload(selectedReport.otherPath)} />
                 </div>
               </div>
-              <button onClick={() => setSelectedReport(null)} className="w-full py-5 bg-slate-900 text-white rounded-2xl font-black shadow-xl hover:bg-black transition-all">닫기</button>
+              <button onClick={() => setSelectedReport(null)} className="w-full py-4 md:py-5 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-sm md:text-base shadow-xl hover:bg-black transition-all">닫기</button>
             </motion.div>
           </div>
         )}
@@ -326,15 +323,15 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       {/* 🖼️ PDF 미리보기 */}
       <AnimatePresence>
         {previewPdfUrl && (
-          <div className="fixed inset-0 z-[400] flex items-center justify-center p-4 md:p-10">
+          <div className="fixed inset-0 z-[400] flex items-center justify-center p-2 md:p-10">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-xl" onClick={closePreviewPdf} />
-            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-5xl bg-white h-full rounded-[2rem] overflow-hidden flex flex-col shadow-2xl">
-              <div className="p-6 border-b border-slate-100 flex justify-between items-center bg-white">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-indigo-50 text-indigo-600 rounded-lg"><FileText size={20} /></div>
-                  <span className="font-black text-slate-900">PDF 미리보기</span>
+            <motion.div initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.95 }} className="relative w-full max-w-5xl bg-white h-full rounded-2xl md:rounded-[2rem] overflow-hidden flex flex-col shadow-2xl">
+              <div className="p-4 md:p-6 border-b border-slate-100 flex justify-between items-center bg-white shrink-0">
+                <div className="flex items-center gap-2 md:gap-3">
+                  <div className="p-1.5 md:p-2 bg-indigo-50 text-indigo-600 rounded-lg"><FileText className="w-4 h-4 md:w-5 md:h-5" /></div>
+                  <span className="font-black text-slate-900 text-sm md:text-base">PDF 미리보기</span>
                 </div>
-                <button onClick={closePreviewPdf} className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 transition-all"><X size={20} /></button>
+                <button onClick={closePreviewPdf} className="p-2 md:p-3 bg-slate-50 text-slate-400 rounded-lg md:rounded-xl hover:bg-slate-100 transition-all"><X className="w-4 h-4 md:w-5 md:h-5" /></button>
               </div>
               <div className="flex-1 bg-slate-100 relative">
                 <iframe src={`${previewPdfUrl}#toolbar=0`} className="w-full h-full border-none" title="PDF Preview" />
@@ -347,27 +344,27 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   );
 };
 
-// 📥 하위 컴포넌트: 파일 슬롯
+// 📥 하위 컴포넌트: 파일 슬롯 (모바일 최적화)
 const DownloadSlot = ({ label, path, onDownload, onPreview }: any) => (
-  <div className={`flex items-center justify-between p-5 rounded-2xl border transition-all ${path ? "bg-white border-slate-100 hover:border-indigo-200 group" : "bg-slate-50 border-transparent opacity-30 cursor-not-allowed"}`}>
-    <div className="flex items-center gap-4">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${path ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-300"}`}>
-        {label.includes("PPT") ? <Presentation size={20} /> : label.includes("PDF") ? <FileText size={20} /> : <FileArchive size={20} />}
+  <div className={`flex items-center justify-between p-3.5 md:p-5 rounded-xl md:rounded-2xl border transition-all ${path ? "bg-white border-slate-100 hover:border-indigo-200 group" : "bg-slate-50 border-transparent opacity-30 cursor-not-allowed"}`}>
+    <div className="flex items-center gap-3 md:gap-4 min-w-0">
+      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${path ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-300"}`}>
+        {label.includes("PPT") ? <Presentation className="w-4 h-4 md:w-5 md:h-5" /> : label.includes("PDF") ? <FileText className="w-4 h-4 md:w-5 md:h-5" /> : <FileArchive className="w-4 h-4 md:w-5 md:h-5" />}
       </div>
-      <div className="text-left">
-        <p className="text-sm font-black text-slate-800">{label}</p>
-        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">{path ? "확인 및 다운로드" : "첨부 파일 없음"}</p>
+      <div className="text-left min-w-0">
+        <p className="text-[12px] md:text-sm font-black text-slate-800 truncate">{label}</p>
+        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight">{path ? "확인 및 다운로드" : "첨부 파일 없음"}</p>
       </div>
     </div>
-    <div className="flex items-center gap-2">
+    <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
       {path && onPreview && (
-        <button onClick={onPreview} className="p-3 bg-indigo-50 text-indigo-600 rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-2 text-xs font-black">
-          <Eye size={16} /> 미리보기
+        <button onClick={onPreview} className="p-2 md:p-3 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 text-[10px] md:text-xs font-black">
+          <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden sm:inline">미리보기</span>
         </button>
       )}
       {path && (
-        <button onClick={onDownload} className="p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
-          <Download size={18} />
+        <button onClick={onDownload} className="p-2 md:p-3 bg-slate-50 text-slate-400 rounded-lg md:rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
+          <Download className="w-4 h-4 md:w-4.5 md:h-4.5" />
         </button>
       )}
     </div>

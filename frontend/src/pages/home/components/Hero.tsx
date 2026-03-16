@@ -7,7 +7,6 @@ import {
   Layers, Monitor, Smartphone, Zap, Braces
 } from "lucide-react"; 
 import { Button } from "../../../components/ui/button";
- // ✨ axios 추가
 
 export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
   // 💡 기존 모집 문구 및 링크 상태 (로컬 스토리지 연동)
@@ -86,7 +85,7 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
   };
 
   return (
-    <section id="home" className="relative pt-24 pb-16 md:pt-32 md:pb-24 overflow-hidden bg-gradient-to-b from-[#f8faff] to-white">
+    <section id="home" className="relative pt-24 pb-4 md:pt-32 md:pb-8 overflow-hidden bg-gradient-to-b from-[#f8faff] to-white">
       
       {/* 배경 플로팅 아이콘 레이어 (원본 보존) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -172,7 +171,7 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
         </div>
 
         {/* 💡 ✨ 버튼 및 링크 편집 영역: 모바일에서 버튼 크기(px-6 py-4), 연필 아이콘 축소 */}
-        <div className="flex flex-col items-center gap-4 md:gap-6 mb-16 md:mb-28">
+        <div className="flex flex-col items-center gap-4 md:gap-6 mb-4 md:mb-8">
           <div className="flex items-center gap-3 md:gap-4">
             <Button 
               onClick={handleApply}
@@ -218,50 +217,7 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
           </AnimatePresence>
         </div>
 
-        {/* ✨ 하단 카드 영역: 모바일에서 카드가 차지하는 세로 공간 대폭 축소 (gap-4) */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
-          <FeatureCard 
-            icon={<Code2 className="text-indigo-500 w-6 h-6 md:w-[30px] md:h-[30px]" />}
-            title="개발 (Development)"
-            desc="기초 문법부터 구조를 파악하여 다양한 언어들에 익숙해질 수 있게 C언어 교육을 제공합니다."
-            color="bg-indigo-50"
-          />
-          <FeatureCard 
-            icon={<Sparkles className="text-purple-500 w-6 h-6 md:w-[30px] md:h-[30px]" />}
-            title="다양한 활동"
-            desc="회식, 야유회, 공모전 등 다양한 활동을 할 수 있습니다."
-            color="bg-purple-50"
-          />
-          <FeatureCard 
-            icon={<Users2 className="text-pink-500 w-6 h-6 md:w-[30px] md:h-[30px]" />}
-            title="함께의 가치"
-            desc="서로의 지식을 나누는 총회를 통해 어제보다 더 나은 우리를 만들어 갑니다."
-            color="bg-pink-50"
-          />
-        </div>
       </div>
     </section>
   );
 };
-
-// ✨ 카드 컴포넌트 수정: 모바일에서는 아이콘이 왼쪽(flex-row), 데스크탑은 위쪽(md:block)
-const FeatureCard = ({ icon, title, desc, color }: { icon: React.ReactNode, title: string, desc: string, color: string }) => (
-  <motion.div 
-    whileHover={{ y: -12 }}
-    className="p-5 md:p-10 rounded-[24px] md:rounded-[40px] bg-white border border-slate-50 shadow-sm hover:shadow-2xl hover:shadow-indigo-100/50 transition-all duration-500 group flex items-center md:block text-left"
-  >
-    {/* 모바일: 우측 여백(mr-4) 및 크기 축소 / 데스크탑: 하단 여백(md:mb-8) 및 원래 크기 */}
-    <div className={`shrink-0 w-12 h-12 md:w-16 md:h-16 ${color} rounded-xl md:rounded-2xl flex items-center justify-center mr-4 mb-0 md:mr-0 md:mb-8 transition-transform group-hover:scale-110 group-hover:rotate-3`}>
-      {icon}
-    </div>
-    
-    <div>
-      <h3 className="text-[15px] sm:text-lg md:text-2xl font-bold text-slate-900 mb-1 md:mb-4 tracking-tight">
-        {title}
-      </h3>
-      <p className="text-[11px] md:text-base text-slate-500 leading-snug md:leading-relaxed font-medium">
-        {desc}
-      </p>
-    </div>
-  </motion.div>
-);

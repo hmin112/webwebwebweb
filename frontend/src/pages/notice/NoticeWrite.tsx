@@ -4,30 +4,25 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, PencilLine, AlertCircle,
   ImagePlus, Trash2, CheckCircle2
-} from "lucide-react"; // ✨ lucide-react로 정상 수정
+} from "lucide-react";
 import { Button } from "../../components/ui/button";
 
-
-// ✨ user(로그인 정보)와 fetchNotices(상태 갱신 함수)를 props로 받아 로그 연동 및 목록 갱신을 처리합니다.
 export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
   const [tag, setTag] = useState("공지");
-  const [images, setImages] = useState<string[]>([]); // 이미지 리스트 상태
+  const [images, setImages] = useState<string[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // 💡 수정 모드일 경우 기존 데이터 불러오기
   useEffect(() => {
     if (notice) {
       setTitle(notice.title);
       setContent(notice.content);
-      // 백엔드 필드명 category와 프론트 필드명 tag 대응
       setTag(notice.category || notice.tag || "공지");
       setImages(notice.images || []);
     }
   }, [notice]);
 
-  // 로컬 파일 선택 및 Base64 변환 핸들러
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
@@ -45,7 +40,6 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
     setImages(prev => prev.filter((_, i) => i !== index));
   };
 
-  // ✨ [백엔드 연동 저장 핸들러]
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim() || !content.trim()) {
@@ -54,7 +48,6 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
     }
 
     try {
-      // 통합 로그 기록 및 엔티티 필드 매칭을 위해 payload 구성
       const payload = {
         title,
         content,
@@ -65,17 +58,14 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
 
       let response;
       if (notice && notice.id) {
-        // ✨ 수정 모드 (PUT)
         response = await api.put(`/notices/${notice.id}`, payload);
       } else {
-        // ✨ 등록 모드 (POST)
         response = await api.post("/notices", payload);
       }
 
       if (response.status === 200 || response.status === 201) {
         alert(notice ? "공지사항이 수정되었습니다! ✨" : "새로운 공지가 등록되었습니다! 🎊");
 
-        // 부모 컴포넌트(App.tsx)의 데이터를 최신화하여 목록에 즉시 반영
         if (fetchNotices) await fetchNotices();
 
         onNavigate("notice-page");
@@ -87,64 +77,61 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-32 pb-20 font-sans">
-      <div className="max-w-4xl mx-auto px-6">
+    <div className="min-h-screen bg-slate-50 pt-24 md:pt-32 pb-16 md:pb-20 font-sans">
+      <div className="max-w-4xl mx-auto px-4 md:px-6">
 
-        {/* 상단 헤더 및 액션 버튼 */}
-        <div className="flex items-center justify-between mb-12">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between mb-8 md:mb-12">
+          <div className="flex items-center gap-2 md:gap-4">
             <button
               onClick={() => onNavigate("notice-page")}
-              className="w-12 h-12 bg-white rounded-2xl flex items-center justify-center text-slate-400 border border-slate-100 shadow-sm transition-all hover:text-indigo-600"
+              className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 border border-slate-100 shadow-sm transition-all hover:text-indigo-600 shrink-0"
             >
-              <ChevronLeft size={24} />
+              <ChevronLeft className="w-5 h-5 md:w-6 md:h-6" />
             </button>
-            <div>
-              <div className="flex items-center gap-2 text-indigo-600 mb-1">
-                <PencilLine size={16} />
-                <span className="text-[10px] font-black uppercase tracking-widest">
+            <div className="min-w-0">
+              <div className="flex items-center gap-1.5 md:gap-2 text-indigo-600 mb-0.5 md:mb-1">
+                <PencilLine className="w-3.5 h-3.5 md:w-4 md:h-4 shrink-0" />
+                <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
                   {notice ? "Edit Notice" : "New Notice"}
                 </span>
               </div>
-              <h1 className="text-3xl font-[900] text-slate-900 tracking-tighter uppercase">
+              <h1 className="text-[17px] sm:text-2xl md:text-3xl font-[900] text-slate-900 tracking-tighter uppercase whitespace-nowrap truncate">
                 {notice ? "공지 수정" : "새 공지 작성"}
               </h1>
             </div>
           </div>
-          <div className="flex gap-3">
+          <div className="flex gap-1.5 md:gap-3 shrink-0">
             <Button
               variant="ghost"
               onClick={() => onNavigate("notice-page")}
-              className="px-8 py-6 rounded-2xl font-black text-slate-400 hover:bg-slate-100"
+              className="px-3 py-2 md:px-8 md:py-6 rounded-lg md:rounded-2xl font-black text-slate-400 hover:bg-slate-100 text-[11px] md:text-sm h-auto"
             >
               취소
             </Button>
             <Button
               onClick={handlePublish}
-              className="bg-indigo-600 text-white px-10 py-6 rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all active:scale-95"
+              className="bg-indigo-600 text-white px-3 py-2 md:px-10 md:py-6 rounded-lg md:rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all active:scale-95 text-[11px] md:text-sm h-auto"
             >
               {notice ? "수정 완료" : "등록 완료"}
             </Button>
           </div>
         </div>
 
-        {/* 작성 폼 카드 */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[3rem] p-10 md:p-14 shadow-sm border border-slate-100"
+          className="bg-white rounded-[1.5rem] md:rounded-[3rem] p-5 md:p-14 shadow-sm border border-slate-100"
         >
-          <form className="space-y-10" onSubmit={handlePublish}>
-            {/* 태그 선택 섹션 */}
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">태그 선택</label>
-              <div className="flex gap-3">
+          <form className="space-y-6 md:space-y-10" onSubmit={handlePublish}>
+            <div className="space-y-2 md:space-y-4">
+              <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">태그 선택</label>
+              <div className="flex flex-nowrap gap-2 md:gap-3 w-full">
                 {["공지", "행사", "모집"].map(t => (
                   <button
                     key={t}
                     type="button"
                     onClick={() => setTag(t)}
-                    className={`px-8 py-4 rounded-2xl font-black text-sm border transition-all ${tag === t ? "bg-slate-900 border-slate-900 text-white shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:border-slate-300"
+                    className={`flex-1 py-2.5 md:px-8 md:py-4 rounded-xl md:rounded-2xl font-black text-[11px] md:text-sm border transition-all ${tag === t ? "bg-slate-900 border-slate-900 text-white shadow-lg" : "bg-white border-slate-100 text-slate-400 hover:border-slate-300"
                       }`}
                   >
                     {t}
@@ -153,35 +140,32 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
               </div>
             </div>
 
-            {/* 제목 입력 섹션 */}
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">공지 제목</label>
+            <div className="space-y-2 md:space-y-4">
+              <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">공지 제목</label>
               <input
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
                 placeholder="제목을 입력하세요"
-                className="w-full px-8 py-6 bg-slate-50 rounded-[2rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-black text-xl text-slate-900 transition-all placeholder:text-slate-300"
+                className="w-full px-5 py-4 md:px-8 md:py-6 bg-slate-50 rounded-[1.25rem] md:rounded-[2rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm md:text-xl text-slate-900 transition-all placeholder:text-slate-300"
               />
             </div>
 
-            {/* 내용 입력 섹션 */}
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">상세 내용</label>
+            <div className="space-y-2 md:space-y-4">
+              <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">상세 내용</label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
                 placeholder="내용을 입력하세요"
-                className="w-full px-8 py-8 bg-slate-50 rounded-[2.5rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-700 min-h-[300px] resize-none leading-relaxed transition-all placeholder:text-slate-300"
+                className="w-full px-5 py-5 md:px-8 md:py-8 bg-slate-50 rounded-[1.25rem] md:rounded-[2.5rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-base text-slate-700 min-h-[200px] md:min-h-[300px] resize-none leading-relaxed transition-all placeholder:text-slate-300"
               />
             </div>
 
-            {/* 이미지 첨부 섹션 */}
-            <div className="space-y-4">
-              <label className="text-xs font-black text-slate-400 uppercase ml-1 tracking-widest flex items-center gap-2">
-                <ImagePlus size={14} /> 사진 첨부
+            <div className="space-y-2 md:space-y-4">
+              <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest flex items-center gap-1.5 md:gap-2">
+                <ImagePlus className="w-3.5 h-3.5 md:w-4 md:h-4" /> 사진 첨부
               </label>
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 md:gap-4">
                 <AnimatePresence>
                   {images.map((img, index) => (
                     <motion.div
@@ -189,7 +173,7 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
-                      className="relative aspect-square rounded-[1.5rem] overflow-hidden border border-slate-100 group"
+                      className="relative aspect-square rounded-xl md:rounded-[1.5rem] overflow-hidden border border-slate-100 group"
                     >
                       <img src={img} alt="preview" className="w-full h-full object-cover" />
                       <button
@@ -197,7 +181,7 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
                         onClick={() => removeImage(index)}
                         className="absolute inset-0 bg-black/40 flex items-center justify-center text-white opacity-0 group-hover:opacity-100 transition-opacity"
                       >
-                        <Trash2 size={20} />
+                        <Trash2 className="w-5 h-5 md:w-6 md:h-6" />
                       </button>
                     </motion.div>
                   ))}
@@ -205,10 +189,10 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
                 <button
                   type="button"
                   onClick={() => fileInputRef.current?.click()}
-                  className="aspect-square rounded-[1.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 hover:border-indigo-300 hover:text-indigo-400 hover:bg-indigo-50/30 transition-all"
+                  className="aspect-square rounded-xl md:rounded-[1.5rem] border-2 border-dashed border-slate-200 flex flex-col items-center justify-center text-slate-300 hover:border-indigo-300 hover:text-indigo-400 hover:bg-indigo-50/30 transition-all"
                 >
-                  <ImagePlus size={28} className="mb-2" />
-                  <span className="text-[10px] font-black uppercase">Add Photo</span>
+                  <ImagePlus className="w-5 h-5 md:w-7 md:h-7 mb-1 md:mb-2" />
+                  <span className="text-[8px] md:text-[10px] font-black uppercase">Add Photo</span>
                 </button>
               </div>
               <input

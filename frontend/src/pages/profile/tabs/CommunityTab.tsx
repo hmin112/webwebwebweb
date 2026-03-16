@@ -178,42 +178,42 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
     if (filteredMembers.length === 0) return null;
 
     return (
-      <div className="mb-20">
-        <div className="flex items-center gap-2 mb-10 px-2">
-          <Icon size={24} className={colorClass} />
-          <h3 className={`text-2xl font-[900] uppercase tracking-tighter ${colorClass}`}>
-            {title} <span className="ml-1">({filteredMembers.length})</span>
+      <div className="mb-10 md:mb-20">
+        <div className="flex items-center gap-2 mb-6 md:mb-10 px-1 md:px-2">
+          <Icon className={`${colorClass} w-5 h-5 md:w-6 md:h-6`} />
+          <h3 className={`text-lg md:text-2xl font-[900] uppercase tracking-tighter ${colorClass}`}>
+            {title} <span className="ml-0.5 md:ml-1 text-sm md:text-xl opacity-70">({filteredMembers.length})</span>
           </h3>
         </div>
 
         {groupedByYear.map((group) => (
-          <div key={group.year} className="mb-10 last:mb-0">
-            <div className="flex items-center gap-4 mb-6 px-2">
-              <span className="text-sm font-black text-slate-400 shrink-0 whitespace-nowrap">{group.year}학번</span>
+          <div key={group.year} className="mb-6 md:mb-10 last:mb-0">
+            <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6 px-1 md:px-2">
+              <span className="text-xs md:text-sm font-black text-slate-400 shrink-0 whitespace-nowrap">{group.year}학번</span>
               <div className="h-px bg-slate-100 flex-1" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
               {group.list.map((member) => (
                 <motion.div
                   key={member.id}
                   whileHover={{ scale: 1.02 }}
                   onClick={() => onNavigate("member-detail", member.loginId)}
-                  className="bg-white p-6 rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-5 cursor-pointer hover:border-indigo-200 hover:shadow-xl transition-all group"
+                  className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-3 md:gap-5 cursor-pointer hover:border-indigo-200 hover:shadow-xl transition-all group"
                 >
-                  <img src={member.avatar} className="w-16 h-16 rounded-full object-cover border-2 border-slate-50 shrink-0 shadow-sm" alt={member.name} />
+                  <img src={member.avatar} className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-2 border-slate-50 shrink-0 shadow-sm" alt={member.name} />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2 mb-1">
-                      <span className="text-lg font-black text-slate-900">{member.name}</span>
-                      <span className="text-[10px] font-black text-indigo-500 uppercase bg-indigo-50 px-2.5 py-1 rounded-lg border border-indigo-100/50">
+                    <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
+                      <span className="text-base md:text-lg font-black text-slate-900">{member.name}</span>
+                      <span className="text-[8px] md:text-[10px] font-black text-indigo-500 uppercase bg-indigo-50 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md md:rounded-lg border border-indigo-100/50">
                         {member.year}학번
                       </span>
                     </div>
-                    <p className="text-xs font-bold text-slate-400 truncate group-hover:text-slate-600 transition-colors">
+                    <p className="text-[11px] md:text-xs font-bold text-slate-400 truncate group-hover:text-slate-600 transition-colors">
                       {member.projectName}
                     </p>
                   </div>
-                  <ChevronRight size={20} className="text-slate-200 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all shrink-0" />
+                  <ChevronRight className="text-slate-200 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all shrink-0 w-4 h-4 md:w-5 md:h-5" />
                 </motion.div>
               ))}
             </div>
@@ -225,38 +225,38 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center py-40 gap-4">
-        <Loader2 className="animate-spin text-indigo-600" size={40} />
-        <p className="text-slate-400 font-bold tracking-tight">프로젝트 정보를 동기화하고 있습니다...</p>
+      <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
+        <Loader2 className="animate-spin text-indigo-600" size={32} />
+        <p className="text-slate-400 font-bold tracking-tight text-sm">프로젝트 정보를 동기화하고 있습니다...</p>
       </div>
     );
   }
 
   if (isError) {
     return (
-      <div className="flex flex-col items-center justify-center py-40 gap-4">
-        <AlertCircle size={40} className="text-red-500" />
-        <p className="text-slate-900 font-black text-xl">데이터를 불러올 수 없습니다.</p>
-        <button onClick={() => window.location.reload()} className="mt-4 px-6 py-3 bg-slate-900 text-white rounded-xl font-bold">다시 시도</button>
+      <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
+        <AlertCircle size={32} className="text-red-500" />
+        <p className="text-slate-900 font-black text-lg">데이터를 불러올 수 없습니다.</p>
+        <button onClick={() => window.location.reload()} className="mt-2 px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm">다시 시도</button>
       </div>
     );
   }
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="flex flex-col md:flex-row justify-between items-center mb-16 gap-6">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 md:mb-16 gap-4 md:gap-6 px-1 md:px-0">
         <div>
-          <h1 className="text-4xl font-[900] text-slate-900 tracking-tighter uppercase mb-2">커뮤니티</h1>
-          <p className="text-slate-400 font-bold text-sm">DEVSIGN 부원들의 실시간 프로젝트 현황입니다.</p>
+          <h1 className="text-2xl md:text-4xl font-[900] text-slate-900 tracking-tighter uppercase mb-1 md:mb-2">커뮤니티</h1>
+          <p className="text-slate-400 font-bold text-[11px] md:text-sm">DEVSIGN 부원들의 실시간 프로젝트 현황입니다.</p>
         </div>
         <div className="relative w-full md:w-96">
-          <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={20} />
+          <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4 md:w-5 md:h-5" />
           <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="이름 또는 프로젝트 명으로 검색"
-            className="w-full pl-14 pr-6 py-5 bg-white border border-slate-200 rounded-[1.5rem] outline-none font-bold text-sm shadow-sm focus:ring-4 focus:ring-indigo-50 transition-all"
+            placeholder="부원 또는 프로젝트 검색"
+            className="w-full pl-11 md:pl-14 pr-4 md:pr-6 py-3.5 md:py-5 bg-white border border-slate-200 rounded-xl md:rounded-[1.5rem] outline-none font-bold text-xs md:text-sm shadow-sm focus:ring-4 focus:ring-indigo-50 transition-all"
           />
         </div>
       </div>
@@ -311,9 +311,9 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
       />
 
       {members.length === 0 && (
-        <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200">
-          <Users size={48} className="mx-auto text-slate-200 mb-4" />
-          <p className="text-slate-400 font-bold">등록된 부원이 없습니다.</p>
+        <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200 mx-1 md:mx-0">
+          <Users size={40} className="mx-auto text-slate-200 mb-3 md:mb-4" />
+          <p className="text-slate-400 font-bold text-sm md:text-base">등록된 부원이 없습니다.</p>
         </div>
       )}
     </motion.div>

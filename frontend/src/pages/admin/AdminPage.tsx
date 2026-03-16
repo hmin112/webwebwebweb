@@ -132,27 +132,27 @@ export const AdminPage = () => {
 
   const getLogStyle = (type: LogType) => {
     switch (type) {
-      case "LOGIN": return { icon: <LogIn size={14} />, label: "로그인", color: "bg-green-50 text-green-600 border-green-100" };
-      case "LOGOUT": return { icon: <LogOut size={14} />, label: "로그아웃", color: "bg-slate-50 text-slate-500 border-slate-100" };
-      case "SIGNUP": return { icon: <UserPlus size={14} />, label: "회원가입", color: "bg-blue-50 text-blue-600 border-blue-100" };
-      case "POST_CREATE": return { icon: <FilePlus size={14} />, label: "게시글 등록", color: "bg-indigo-50 text-indigo-600 border-indigo-100" };
-      case "POST_UPDATE": return { icon: <Edit size={14} />, label: "게시글 수정", color: "bg-cyan-50 text-cyan-600 border-cyan-100" };
-      case "POST_DELETE": return { icon: <FileX size={14} />, label: "게시글 삭제", color: "bg-rose-50 text-rose-600 border-rose-100" };
-      case "COMMENT_CREATE": return { icon: <MessageSquare size={14} />, label: "댓글 작성", color: "bg-emerald-50 text-emerald-600 border-emerald-100" };
-      case "COMMENT_DELETE": return { icon: <X size={14} />, label: "댓글 삭제", color: "bg-orange-50 text-orange-600 border-orange-100" };
-      case "LIKE": return { icon: <Heart size={14} />, label: "좋아요", color: "bg-pink-50 text-pink-600 border-pink-100" };
-      case "EVENT_CREATE": return { icon: <PlusCircle size={14} />, label: "행사 등록", color: "bg-purple-50 text-purple-600 border-purple-100" };
-      case "EVENT_UPDATE": return { icon: <Edit size={14} />, label: "행사 수정", color: "bg-amber-50 text-amber-600 border-amber-100" };
-      case "EVENT_DELETE": return { icon: <Trash2 size={14} />, label: "행사 삭제", color: "bg-red-50 text-red-600 border-red-100" };
-      case "NOTICE_CREATE": return { icon: <FileText size={14} />, label: "공지 등록", color: "bg-blue-50 text-blue-600 border-blue-100" };
-      case "NOTICE_UPDATE": return { icon: <Edit size={14} />, label: "공지 수정", color: "bg-cyan-50 text-cyan-600 border-cyan-100" };
-      case "NOTICE_DELETE": return { icon: <FileX size={14} />, label: "공지 삭제", color: "bg-rose-50 text-rose-600 border-rose-100" };
-      case "ACCOUNT_SUSPEND": return { icon: <ShieldAlert size={14} />, label: "계정 정지", color: "bg-red-50 text-red-600 border-red-100" };
-      case "ACCOUNT_UNSUSPEND": return { icon: <ShieldCheck size={14} />, label: "정지 해제", color: "bg-emerald-50 text-emerald-600 border-emerald-100" };
-      case "ACCOUNT_RESTORE": return { icon: <RotateCcw size={14} />, label: "계정 복구", color: "bg-indigo-50 text-indigo-600 border-indigo-100" };
-      case "ACCOUNT_DELETE": return { icon: <Trash2 size={14} />, label: "삭제 이동", color: "bg-amber-50 text-amber-600 border-amber-100" };
-      case "ACCOUNT_PERMANENT_DELETE": return { icon: <ShieldBan size={14} />, label: "영구 삭제", color: "bg-slate-900 text-white border-slate-900" };
-      default: return { icon: <Activity size={14} />, label: "기타 활동", color: "bg-slate-50 text-slate-500 border-slate-100" };
+      case "LOGIN": return { icon: <LogIn size={12} />, label: "로그인", color: "bg-green-50 text-green-600 border-green-100" };
+      case "LOGOUT": return { icon: <LogOut size={12} />, label: "로그아웃", color: "bg-slate-50 text-slate-500 border-slate-100" };
+      case "SIGNUP": return { icon: <UserPlus size={12} />, label: "회원가입", color: "bg-blue-50 text-blue-600 border-blue-100" };
+      case "POST_CREATE": return { icon: <FilePlus size={12} />, label: "게시글 등록", color: "bg-indigo-50 text-indigo-600 border-indigo-100" };
+      case "POST_UPDATE": return { icon: <Edit size={12} />, label: "게시글 수정", color: "bg-cyan-50 text-cyan-600 border-cyan-100" };
+      case "POST_DELETE": return { icon: <FileX size={12} />, label: "게시글 삭제", color: "bg-rose-50 text-rose-600 border-rose-100" };
+      case "COMMENT_CREATE": return { icon: <MessageSquare size={12} />, label: "댓글 작성", color: "bg-emerald-50 text-emerald-600 border-emerald-100" };
+      case "COMMENT_DELETE": return { icon: <X size={12} />, label: "댓글 삭제", color: "bg-orange-50 text-orange-600 border-orange-100" };
+      case "LIKE": return { icon: <Heart size={12} />, label: "좋아요", color: "bg-pink-50 text-pink-600 border-pink-100" };
+      case "EVENT_CREATE": return { icon: <PlusCircle size={12} />, label: "행사 등록", color: "bg-purple-50 text-purple-600 border-purple-100" };
+      case "EVENT_UPDATE": return { icon: <Edit size={12} />, label: "행사 수정", color: "bg-amber-50 text-amber-600 border-amber-100" };
+      case "EVENT_DELETE": return { icon: <Trash2 size={12} />, label: "행사 삭제", color: "bg-red-50 text-red-600 border-red-100" };
+      case "NOTICE_CREATE": return { icon: <FileText size={12} />, label: "공지 등록", color: "bg-blue-50 text-blue-600 border-blue-100" };
+      case "NOTICE_UPDATE": return { icon: <Edit size={12} />, label: "공지 수정", color: "bg-cyan-50 text-cyan-600 border-cyan-100" };
+      case "NOTICE_DELETE": return { icon: <FileX size={12} />, label: "공지 삭제", color: "bg-rose-50 text-rose-600 border-rose-100" };
+      case "ACCOUNT_SUSPEND": return { icon: <ShieldAlert size={12} />, label: "계정 정지", color: "bg-red-50 text-red-600 border-red-100" };
+      case "ACCOUNT_UNSUSPEND": return { icon: <ShieldCheck size={12} />, label: "정지 해제", color: "bg-emerald-50 text-emerald-600 border-emerald-100" };
+      case "ACCOUNT_RESTORE": return { icon: <RotateCcw size={12} />, label: "계정 복구", color: "bg-indigo-50 text-indigo-600 border-indigo-100" };
+      case "ACCOUNT_DELETE": return { icon: <Trash2 size={12} />, label: "삭제 이동", color: "bg-amber-50 text-amber-600 border-amber-100" };
+      case "ACCOUNT_PERMANENT_DELETE": return { icon: <ShieldBan size={12} />, label: "영구 삭제", color: "bg-slate-900 text-white border-slate-900" };
+      default: return { icon: <Activity size={12} />, label: "기타 활동", color: "bg-slate-50 text-slate-500 border-slate-100" };
     }
   };
 
@@ -314,44 +314,40 @@ export const AdminPage = () => {
     if (displayData.length === 0 && searchQuery !== "") return null;
 
     return (
-      <div className="mb-12">
-        <div className="flex items-center gap-2 mb-4 px-2">
-          <Icon size={20} className={colorClass} />
-          <h3 className={`text-lg font-black ${colorClass} tracking-tight uppercase`}>{title} ({displayData.length})</h3>
+      <div className="mb-8 md:mb-12">
+        <div className="flex items-center gap-2 mb-3 md:mb-4 px-1 md:px-2">
+          <Icon className={`${colorClass} w-4 h-4 md:w-5 md:h-5`} />
+          <h3 className={`text-sm md:text-lg font-black ${colorClass} tracking-tight uppercase`}>{title} ({displayData.length})</h3>
         </div>
-        <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse min-w-[600px]">
+        <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+          <div className="overflow-x-auto no-scrollbar">
+            <table className="w-full text-left border-collapse min-w-[500px]">
               <thead>
-                <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                  <th className="px-4 sm:px-8 py-5 w-[35%]">부원 정보</th>
-                  <th className="px-4 sm:px-8 py-5 w-[20%]">학번</th>
-                  <th className="px-4 sm:px-8 py-5 w-[25%]">디스코드</th>
-                  <th className="px-4 sm:px-8 py-5 text-center w-[20%]">관리</th>
+                <tr className="bg-slate-50/50 border-b border-slate-100 text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                  <th className="px-4 md:px-8 py-4 md:py-5 w-[35%]">부원 정보</th>
+                  <th className="px-4 md:px-8 py-4 md:py-5 w-[20%]">학번</th>
+                  <th className="px-4 md:px-8 py-4 md:py-5 w-[25%]">디스코드</th>
+                  <th className="px-4 md:px-8 py-4 md:py-5 text-center w-[20%]">관리</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50 text-sm">
+              <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
                 {displayData.map((member: Member) => (
-                  <tr
-                    key={member.id}
-                    /* ✨ [수정] 행 클릭 상세 페이지 이동 기능 제거 */
-                    className={`transition-colors group ${member.suspended ? "bg-red-50/20" : "hover:bg-slate-50/80"}`}
-                  >
-                    <td className="px-4 sm:px-8 py-6">
-                      <div className="flex flex-col max-w-[120px] sm:max-w-none">
-                        <div className="flex items-center gap-3">
+                  <tr key={member.id} className={`transition-colors group ${member.suspended ? "bg-red-50/20" : "hover:bg-slate-50/80"}`}>
+                    <td className="px-4 md:px-8 py-4 md:py-6">
+                      <div className="flex flex-col max-w-[100px] md:max-w-none">
+                        <div className="flex items-center gap-2">
                           <span className={`font-black truncate ${member.suspended ? "text-red-600" : "text-slate-900"}`}>{member.name}</span>
-                          {member.role === "ADMIN" && <span className="px-2 py-0.5 bg-indigo-100 text-indigo-600 text-[8px] sm:text-[9px] font-black rounded uppercase shrink-0">ADMIN</span>}
+                          {member.role === "ADMIN" && <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 text-[7px] md:text-[9px] font-black rounded uppercase shrink-0">ADMIN</span>}
                         </div>
-                        <span className="text-[10px] sm:text-[11px] text-slate-400 font-bold truncate">{member.dept}</span>
+                        <span className="text-[9px] md:text-[11px] text-slate-400 font-bold truncate">{member.dept}</span>
                       </div>
                     </td>
-                    <td className="px-4 sm:px-8 py-6 text-slate-500 font-bold tracking-wider text-xs sm:text-sm">{member.studentId}</td>
-                    <td className="px-4 sm:px-8 py-6 text-indigo-600 font-bold text-xs sm:text-sm truncate">@{member.discordTag}</td>
-                    <td className="px-4 sm:px-8 py-6 text-center">
-                      <div className="flex justify-center gap-2">
-                        <button onClick={() => toggleSuspension(member.id)} className={`p-2 sm:p-2.5 rounded-xl shadow-sm transition-all ${member.suspended ? "bg-indigo-600 text-white" : "bg-white text-red-500 border border-red-100 hover:bg-red-50"}`}>{member.suspended ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}</button>
-                        <button onClick={() => initiateDelete(member, false)} className="p-2 sm:p-2.5 bg-white text-pink-500 border border-pink-100 hover:bg-red-600 hover:text-white rounded-xl transition-all shadow-sm"><Trash2 size={16} /></button>
+                    <td className="px-4 md:px-8 py-4 md:py-6 text-slate-500 font-bold tracking-wider text-[11px] md:text-sm">{member.studentId}</td>
+                    <td className="px-4 md:px-8 py-4 md:py-6 text-indigo-600 font-bold text-[11px] md:text-sm truncate">@{member.discordTag}</td>
+                    <td className="px-4 md:px-8 py-4 md:py-6 text-center">
+                      <div className="flex justify-center gap-1.5 md:gap-2">
+                        <button onClick={() => toggleSuspension(member.id)} className={`p-1.5 md:p-2.5 rounded-lg md:rounded-xl shadow-sm transition-all ${member.suspended ? "bg-indigo-600 text-white" : "bg-white text-red-500 border border-red-100 hover:bg-red-50"}`}>{member.suspended ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}</button>
+                        <button onClick={() => initiateDelete(member, false)} className="p-1.5 md:p-2.5 bg-white text-pink-500 border border-pink-100 hover:bg-red-600 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm"><Trash2 size={14} className="md:w-4 md:h-4" /></button>
                       </div>
                     </td>
                   </tr>
@@ -365,49 +361,49 @@ export const AdminPage = () => {
   };
 
   return (
-    <div className="pt-32 pb-20 px-6 bg-slate-50 min-h-screen font-sans">
+    <div className="pt-24 md:pt-32 pb-16 md:pb-20 px-4 md:px-6 bg-slate-50 min-h-screen font-sans">
       <div className="max-w-7xl mx-auto">
-        <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
+        <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
           <div>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-3 bg-indigo-600 rounded-2xl text-white shadow-lg"><ShieldCheck size={24} /></div>
-              <h1 className="text-3xl font-[900] text-slate-900 tracking-tighter uppercase">관리</h1>
+            <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4">
+              <div className="p-2 md:p-3 bg-indigo-600 rounded-xl md:rounded-2xl text-white shadow-lg"><ShieldCheck className="w-5 h-5 md:w-6 md:h-6" /></div>
+              <h1 className="text-xl md:text-3xl font-[900] text-slate-900 tracking-tighter uppercase">관리</h1>
             </div>
-            <p className="text-slate-500 font-bold tracking-tight">부원 권한 관리 및 실시간 로그 모니터링 시스템</p>
+            <p className="text-slate-500 font-bold tracking-tight text-[11px] md:text-sm">부원 권한 관리 및 실시간 로그 모니터링 시스템</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 bg-white p-2 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex flex-wrap items-center gap-2 bg-white p-1.5 md:p-2 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm w-full md:w-auto justify-end">
             <button
               onClick={handleDiscordSync}
               disabled={isSyncing}
-              className="flex items-center gap-2 px-5 py-3 bg-white text-indigo-600 border border-indigo-100 font-black rounded-xl hover:bg-indigo-50 transition-all disabled:opacity-50"
+              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-2 md:py-3 bg-white text-indigo-600 border border-indigo-100 font-black rounded-lg md:rounded-xl hover:bg-indigo-50 transition-all disabled:opacity-50 text-[10px] md:text-sm h-auto"
             >
-              <RefreshCcw size={18} className={isSyncing ? "animate-spin" : ""} /> 디스코드 정보 가져오기
+              <RefreshCcw size={14} className={isSyncing ? "animate-spin" : ""} /> <span className="whitespace-nowrap">디스코드 동기화</span>
             </button>
-            <button onClick={exportToCSV} className="flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100"><Download size={18} /> CSV</button>
+            <button onClick={exportToCSV} className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-2 md:py-3 bg-indigo-600 text-white font-black rounded-lg md:rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 text-[10px] md:text-sm h-auto"><Download size={14} /> CSV</button>
           </div>
         </div>
 
-        <div className="flex gap-4 p-1.5 bg-slate-200/50 rounded-[1.5rem] mb-10 w-fit">
-          <button onClick={() => { setActiveTab("members"); setSearchQuery(""); }} className={`px-6 sm:px-8 py-3 rounded-2xl font-bold transition-all text-sm sm:text-base ${activeTab === "members" ? "bg-white text-indigo-600 shadow-md" : "text-slate-500 hover:text-slate-700"}`}>부원 명단</button>
-          <button onClick={() => { setActiveTab("access"); setSearchQuery(""); }} className={`px-6 sm:px-8 py-3 rounded-2xl font-bold transition-all text-sm sm:text-base ${activeTab === "access" ? "bg-white text-indigo-600 shadow-md" : "text-slate-500 hover:text-slate-700"}`}>통합 로그</button>
-          <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`px-6 sm:px-8 py-3 rounded-2xl font-bold transition-all text-sm sm:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-md" : "text-slate-500 hover:text-slate-700"}`}>삭제 기록</button>
+        <div className="flex gap-2 p-1 bg-slate-200/50 rounded-xl md:rounded-[1.5rem] mb-8 md:mb-10 w-fit">
+          <button onClick={() => { setActiveTab("members"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "members" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>부원 명단</button>
+          <button onClick={() => { setActiveTab("access"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "access" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>통합 로그</button>
+          <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>삭제 기록</button>
         </div>
 
         {activeTab === "members" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8">
-              <div className="flex items-center gap-2 px-4 py-3 bg-white rounded-2xl border border-slate-100 w-fit shadow-sm">
-                <Users size={18} className="text-indigo-600" />
-                <span className="text-sm font-black text-slate-600 tracking-tight uppercase">전체 부원: <span className="text-indigo-600">{members.length}</span> 명</span>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-8">
+              <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-white rounded-xl md:rounded-2xl border border-slate-100 w-fit shadow-sm">
+                <Users size={16} className="text-indigo-600" />
+                <span className="text-[11px] md:text-sm font-black text-slate-600 tracking-tight uppercase">전체 부원: <span className="text-indigo-600">{members.length}</span> 명</span>
               </div>
               <div className="relative w-full md:max-w-md">
-                <Search className="absolute left-5 top-1/2 -translate-y-1/2 text-slate-300" size={18} />
+                <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4 md:w-[18px] md:h-[18px]" />
                 <input
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="부원 이름, 학번 또는 디스코드 태그로 검색..."
-                  className="w-full pl-14 pr-6 py-4 bg-white border border-slate-100 rounded-[1.5rem] outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all font-bold text-sm"
+                  placeholder="부원 이름, 학번 또는 태그 검색..."
+                  className="w-full pl-11 md:pl-14 pr-4 md:pr-6 py-3 md:py-4 bg-white border border-slate-100 rounded-xl md:rounded-[1.5rem] outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all font-bold text-xs md:text-sm"
                 />
               </div>
             </div>
@@ -421,51 +417,53 @@ export const AdminPage = () => {
             <MemberTable title="기타 상태" icon={Users} data={members.filter(m => isOtherStatus(m.userStatus) && !isAdminMember(m))} colorClass="text-slate-500" />
 
             {searchQuery !== "" && getFilteredAndSortedMembers(members).length === 0 && (
-              <div className="text-center py-20 bg-white rounded-[3rem] border border-dashed border-slate-200">
-                <p className="text-slate-300 font-black uppercase tracking-widest">검색 결과가 없습니다.</p>
+              <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200">
+                <p className="text-slate-300 font-black uppercase tracking-widest text-xs md:text-sm">검색 결과가 없습니다.</p>
               </div>
             )}
           </motion.div>
         )}
 
         {activeTab === "access" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-8">
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl shrink-0"><Calendar size={18} /><span className="text-xs font-black uppercase">날짜</span></div>
-                <div className="flex gap-2">
-                  <button onClick={() => setSelectedDate("ALL")} className={`px-5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${selectedDate === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400"}`}>전체보기</button>
-                  {getAvailableDates().map(date => <button key={date} onClick={() => setSelectedDate(date)} className={`px-5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${selectedDate === date ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400"}`}>{date}</button>)}
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 md:space-y-8">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+              <div className="flex items-center gap-3 md:gap-4 bg-white p-3 md:p-4 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl shrink-0"><Calendar size={16} /><span className="text-[10px] font-black uppercase">날짜</span></div>
+                <div className="flex gap-1.5">
+                  <button onClick={() => setSelectedDate("ALL")} className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedDate === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400"}`}>전체보기</button>
+                  {getAvailableDates().map(date => <button key={date} onClick={() => setSelectedDate(date)} className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedDate === date ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400"}`}>{date}</button>)}
                 </div>
               </div>
-              <div className="flex items-center gap-4 bg-white p-4 rounded-[2rem] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-2 px-4 py-2 bg-amber-50 text-amber-600 rounded-xl shrink-0"><Clock size={18} /><span className="text-xs font-black uppercase">시간대</span></div>
-                <div className="flex gap-2">
+              <div className="flex items-center gap-3 md:gap-4 bg-white p-3 md:p-4 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
+                <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-amber-50 text-amber-600 rounded-lg md:rounded-xl shrink-0"><Clock size={16} /><span className="text-[10px] font-black uppercase">시간</span></div>
+                <div className="flex gap-1.5">
                   {[{ id: "ALL", label: "전체" }, { id: "MORNING", label: "오전" }, { id: "AFTERNOON", label: "오후" }, { id: "EVENING", label: "저녁" }, { id: "NIGHT", label: "새벽" }].map(r => (
-                    <button key={r.id} onClick={() => setSelectedTimeRange(r.id)} className={`px-5 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap ${selectedTimeRange === r.id ? "bg-amber-500 text-white" : "bg-slate-50 text-slate-400"}`}>{r.label}</button>
+                    <button key={r.id} onClick={() => setSelectedTimeRange(r.id)} className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedTimeRange === r.id ? "bg-amber-500 text-white" : "bg-slate-50 text-slate-400"}`}>{r.label}</button>
                   ))}
                 </div>
               </div>
             </div>
             {Object.entries(groupLogsByDate(accessLogs)).map(([date, logs]) => (
-              <div key={date} className="space-y-4">
-                <div className="flex items-center gap-4 px-2"><div className="h-px flex-grow bg-slate-200" /><span className="text-xs font-black text-slate-400 uppercase tracking-widest">{date}</span><div className="h-px flex-grow bg-slate-200" /></div>
-                <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                  <table className="w-full text-left table-fixed">
-                    <tbody className="divide-y divide-slate-50 text-sm">
-                      {logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((log) => {
-                        const style = getLogStyle(log.type);
-                        return (
-                          <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
-                            <td className="px-8 py-6"><div className="flex flex-col"><span className="font-black text-slate-900">{log.name}</span><span className="text-[10px] text-slate-400 font-bold">{log.studentId}</span></div></td>
-                            <td className="px-8 py-6 text-[11px] text-slate-400 font-bold"><Globe size={12} className="inline mr-1" /> {log.ip}</td>
-                            <td className="px-8 py-6"><div className={`inline-flex items-center gap-2 px-3 py-1.5 rounded-xl text-[10px] font-black border ${style.color}`}>{style.icon} {style.label}</div></td>
-                            <td className="px-8 py-6 text-right pr-12 text-slate-500 font-bold tabular-nums">{formatTimeOnly(log.timestamp)}</td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
+              <div key={date} className="space-y-3 md:space-y-4">
+                <div className="flex items-center gap-3 md:gap-4 px-1 md:px-2"><div className="h-px flex-grow bg-slate-200" /><span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">{date}</span><div className="h-px flex-grow bg-slate-200" /></div>
+                <div className="bg-white rounded-xl md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="overflow-x-auto no-scrollbar">
+                    <table className="w-full text-left table-fixed min-w-[500px]">
+                      <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
+                        {logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((log) => {
+                          const style = getLogStyle(log.type);
+                          return (
+                            <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
+                              <td className="px-4 md:px-8 py-4 md:py-6"><div className="flex flex-col min-w-0"><span className="font-black text-slate-900 truncate">{log.name}</span><span className="text-[9px] md:text-[10px] text-slate-400 font-bold">{log.studentId}</span></div></td>
+                              <td className="px-4 md:px-8 py-4 md:py-6 text-[10px] md:text-[11px] text-slate-400 font-bold truncate"><Globe size={10} className="inline mr-1" /> {log.ip}</td>
+                              <td className="px-4 md:px-8 py-4 md:py-6"><div className={`inline-flex items-center gap-1.5 md:gap-2 px-2 md:px-3 py-1 md:py-1.5 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black border shrink-0 ${style.color}`}>{style.icon} {style.label}</div></td>
+                              <td className="px-4 md:px-8 py-4 md:py-6 text-right pr-6 md:pr-12 text-slate-500 font-bold tabular-nums text-[11px] md:text-sm shrink-0 whitespace-nowrap">{formatTimeOnly(log.timestamp)}</td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
                 </div>
               </div>
             ))}
@@ -473,38 +471,40 @@ export const AdminPage = () => {
         )}
 
         {activeTab === "logs" && (
-          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6">
-            <div className="flex items-center gap-3 px-2 mb-6 text-slate-400 uppercase tracking-widest font-black text-xs"><History size={16} /> 계정 삭제 기록 및 휴지통</div>
+          <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-4 md:space-y-6">
+            <div className="flex items-center gap-2 md:gap-3 px-1 md:px-2 mb-4 md:mb-6 text-slate-400 uppercase tracking-widest font-black text-[10px] md:text-xs"><History size={14} className="md:w-4 md:h-4" /> 계정 삭제 기록 및 휴지통</div>
             {deletedMembers.length > 0 ? (
-              <div className="bg-white rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-                <table className="w-full text-left border-collapse table-fixed">
-                  <thead>
-                    <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                      <th className="px-8 py-5 w-[30%]">삭제된 부원</th>
-                      <th className="px-8 py-5 w-[20%]">학번</th>
-                      <th className="px-8 py-5 w-[25%] text-right pr-8">삭제 일시</th>
-                      <th className="px-8 py-5 text-center w-[25%]">관리</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-50 text-sm">
-                    {deletedMembers.map((member) => (
-                      <tr key={member.id} className="hover:bg-slate-50/30 transition-colors">
-                        <td className="px-8 py-6 font-bold text-slate-400 line-through">{member.name}</td>
-                        <td className="px-8 py-6 text-slate-300 font-medium">{member.studentId}</td>
-                        <td className="px-8 py-6 text-right pr-8 text-slate-300 font-medium">{formatTimestamp(member.deletedAt || "")}</td>
-                        <td className="px-8 py-6 text-center">
-                          <div className="flex justify-center gap-2">
-                            <button onClick={() => restoreMember(member)} className="inline-flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-600 rounded-xl font-black text-[11px] hover:bg-indigo-600 hover:text-white transition-all shadow-sm"><RotateCcw size={14} /> 복구</button>
-                            <button onClick={() => initiateDelete(member, true)} className="inline-flex items-center gap-2 px-4 py-2 bg-red-50 text-red-600 rounded-xl font-black text-[11px] hover:bg-red-600 hover:text-white transition-all shadow-sm"><Trash2 size={14} /> 영구 삭제</button>
-                          </div>
-                        </td>
+              <div className="bg-white rounded-xl md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div className="overflow-x-auto no-scrollbar">
+                  <table className="w-full text-left border-collapse table-fixed min-w-[500px]">
+                    <thead>
+                      <tr className="bg-slate-50/50 border-b border-slate-100 text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        <th className="px-4 md:px-8 py-4 md:py-5 w-[30%]">삭제된 부원</th>
+                        <th className="px-4 md:px-8 py-4 md:py-5 w-[20%]">학번</th>
+                        <th className="px-4 md:px-8 py-4 md:py-5 w-[25%] text-right pr-6 md:pr-8">삭제 일시</th>
+                        <th className="px-4 md:px-8 py-4 md:py-5 text-center w-[25%]">관리</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
+                      {deletedMembers.map((member) => (
+                        <tr key={member.id} className="hover:bg-slate-50/30 transition-colors">
+                          <td className="px-4 md:px-8 py-4 md:py-6 font-bold text-slate-400 line-through truncate">{member.name}</td>
+                          <td className="px-4 md:px-8 py-4 md:py-6 text-slate-300 font-medium truncate">{member.studentId}</td>
+                          <td className="px-4 md:px-8 py-4 md:py-6 text-right pr-6 md:pr-8 text-slate-300 font-medium whitespace-nowrap text-[10px] md:text-sm">{formatTimestamp(member.deletedAt || "")}</td>
+                          <td className="px-4 md:px-8 py-4 md:py-6 text-center">
+                            <div className="flex justify-center gap-1.5 md:gap-2">
+                              <button onClick={() => restoreMember(member)} className="inline-flex items-center gap-1 md:gap-2 px-2.5 md:px-4 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl font-black text-[9px] md:text-[11px] hover:bg-indigo-600 hover:text-white transition-all shadow-sm shrink-0"><RotateCcw size={12} /> <span className="hidden sm:inline">복구</span></button>
+                              <button onClick={() => initiateDelete(member, true)} className="inline-flex items-center gap-1 md:gap-2 px-2.5 md:px-4 py-1.5 md:py-2 bg-red-50 text-red-600 rounded-lg md:rounded-xl font-black text-[9px] md:text-[11px] hover:bg-red-600 hover:text-white transition-all shadow-sm shrink-0"><Trash2 size={12} /> <span className="hidden sm:inline">삭제</span></button>
+                            </div>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             ) : (
-              <div className="text-center py-40 bg-white rounded-[3rem] border border-dashed border-slate-200"><p className="text-slate-300 font-black uppercase tracking-widest">삭제된 부원 기록이 없습니다.</p></div>
+              <div className="text-center py-20 md:py-40 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200"><p className="text-slate-300 font-black uppercase tracking-widest text-xs md:text-sm">삭제된 부원 기록이 없습니다.</p></div>
             )}
           </motion.div>
         )}
@@ -512,20 +512,20 @@ export const AdminPage = () => {
 
       <AnimatePresence>
         {isDeleteModalOpen && memberToDelete && (
-          <div className="fixed inset-0 z-[400] flex items-center justify-center px-6">
+          <div className="fixed inset-0 z-[400] flex items-center justify-center px-4 md:px-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={closeDeleteModal} />
-            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-md rounded-[3rem] p-10 shadow-2xl text-center">
-              <div className={`w-20 h-20 ${isHardDelete ? "bg-red-600 text-white" : "bg-red-50 text-red-500"} rounded-3xl flex items-center justify-center mx-auto mb-6`}>
-                {isHardDelete ? <ShieldBan size={40} /> : <Trash2 size={40} />}
+            <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.9, opacity: 0 }} className="relative bg-white w-full max-w-md rounded-2xl md:rounded-[3rem] p-6 md:p-10 shadow-2xl text-center">
+              <div className={`w-14 h-14 md:w-20 md:h-20 ${isHardDelete ? "bg-red-600 text-white" : "bg-red-50 text-red-500"} rounded-2xl md:rounded-3xl flex items-center justify-center mx-auto mb-4 md:mb-6`}>
+                {isHardDelete ? <ShieldBan className="w-8 h-8 md:w-10 md:h-10" /> : <Trash2 className="w-8 h-8 md:w-10 md:h-10" />}
               </div>
-              <h2 className="text-2xl font-black text-slate-900 mb-2 tracking-tight">{isHardDelete ? "⚠️ 영구 삭제 승인" : "계정 삭제 승인"}</h2>
-              <p className="text-slate-500 font-bold text-sm mb-8 leading-relaxed">
+              <h2 className="text-lg md:text-2xl font-black text-slate-900 mb-1 md:mb-2 tracking-tight">{isHardDelete ? "⚠️ 영구 삭제 승인" : "계정 삭제 승인"}</h2>
+              <p className="text-slate-500 font-bold text-xs md:text-sm mb-6 md:mb-8 leading-relaxed">
                 {isHardDelete ? "이 작업은 되돌릴 수 없습니다. DB에서 영구적으로 삭제됩니다." : `현재 ${memberToDelete.name} 부원을 삭제 기록으로 이동하시겠습니까?`}
               </p>
-              <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="관리자 비밀번호" className="w-full px-6 py-5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-red-500 font-bold mb-6 text-center" />
-              <div className="flex gap-4">
-                <Button onClick={closeDeleteModal} variant="ghost" className="flex-1 h-16 rounded-2xl font-black text-slate-400">취소</Button>
-                <Button onClick={confirmDelete} className={`flex-1 h-16 ${isHardDelete ? "bg-red-600" : "bg-red-50"} text-white rounded-2xl font-black shadow-xl`}>확정</Button>
+              <input type="password" value={adminPassword} onChange={(e) => setAdminPassword(e.target.value)} placeholder="관리자 비밀번호" className="w-full px-4 md:px-6 py-3 md:py-5 bg-slate-50 rounded-xl md:rounded-2xl border-none outline-none focus:ring-2 focus:ring-red-500 font-bold mb-4 md:mb-6 text-center text-sm md:text-base" />
+              <div className="flex gap-3 md:gap-4">
+                <Button onClick={closeDeleteModal} variant="ghost" className="flex-1 h-12 md:h-16 rounded-xl md:rounded-2xl font-black text-slate-400 text-sm md:text-base h-auto">취소</Button>
+                <Button onClick={confirmDelete} className={`flex-1 h-12 md:h-16 ${isHardDelete ? "bg-red-600" : "bg-red-50"} text-white rounded-xl md:rounded-2xl font-black shadow-xl text-sm md:text-base h-auto`}>확정</Button>
               </div>
             </motion.div>
           </div>

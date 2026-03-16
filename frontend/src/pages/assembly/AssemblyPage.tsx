@@ -19,20 +19,21 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   user?: any
 }) => {
   const [activeTab, setActiveTab] = useState(userStatus === "ATTENDING" ? "mypage" : "community");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 기존 로직 유지를 위해 남겨둠
 
   const [selectedLoginId, setSelectedLoginId] = useState<string | null>(null);
 
-  // --- ✨ 출석 시스템 관련 모든 상태 및 useEffect 제거됨 ---
-
   const userMenus = [
-    ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={20} /> }] : []),
-    { id: "community", name: "커뮤니티", icon: <Users size={20} /> },
+    ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={18} /> }] : []),
+    { id: "community", name: "커뮤니티", icon: <Users size={18} /> },
   ];
 
   const adminMenus = [
-    { id: "admin-period", name: "제출 기간 / 자료 현황", icon: <CalendarRange size={20} /> },
+    { id: "admin-period", name: "제출 / 자료", icon: <CalendarRange size={18} /> },
   ];
+
+  // 모바일 탭 출력을 위한 통합 메뉴
+  const allMenus = [...userMenus, ...(isAdmin ? adminMenus : [])];
 
   const handleTabChange = (id: string) => {
     setActiveTab(id);
@@ -48,18 +49,28 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   return (
     <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row pt-20 font-sans selection:bg-indigo-100 selection:text-indigo-700">
 
-      {/* 📱 모바일 상단 */}
-      <div className="lg:hidden sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-200 px-6 py-4 flex justify-between items-center shadow-sm">
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center text-white font-bold text-sm">D</div>
-          <span className="font-black text-slate-900 tracking-tight text-sm uppercase">{activeTab}</span>
-        </div>
-        <button onClick={() => setIsMobileMenuOpen(true)} className="p-2 bg-slate-50 rounded-xl text-slate-600">
-          <MenuIcon size={24} />
-        </button>
+      {/* 📱 모바일 전용: 알약 모양 상단 탭 (Sticky) */}
+      <div className="lg:hidden sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-3 overflow-x-auto no-scrollbar flex gap-2">
+        {allMenus.map((menu) => {
+          const isActive = activeTab === menu.id || (menu.id === "community" && activeTab === "member-detail");
+          return (
+            <button
+              key={menu.id}
+              onClick={() => handleTabChange(menu.id)}
+              className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all text-xs font-black ${
+                isActive 
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" 
+                  : "bg-slate-100 text-slate-500"
+              }`}
+            >
+              {menu.icon}
+              {menu.name}
+            </button>
+          );
+        })}
       </div>
 
-      {/* 💻 데스크탑 사이드바 */}
+      {/* 💻 데스크탑 사이드바 (기존 유지) */}
       <aside className="hidden lg:flex w-72 bg-white border-r border-slate-200 sticky top-20 h-[calc(100vh-80px)] p-6 flex flex-col shrink-0">
         <div className="mb-10 px-4">
           <div className="flex items-center gap-2 text-indigo-600 mb-2">
@@ -90,41 +101,9 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
         </nav>
       </aside>
 
-      {/* 📱 모바일 메뉴 드로워 */}
-      <AnimatePresence>
-        {isMobileMenuOpen && (
-          <div className="fixed inset-0 z-[150] lg:hidden">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsMobileMenuOpen(false)} />
-            <motion.div initial={{ x: "-100%" }} animate={{ x: 0 }} exit={{ x: "-100%" }} transition={{ type: "spring", damping: 25 }} className="relative w-[80%] max-w-xs bg-white h-full p-8 flex flex-col shadow-2xl">
-              <div className="flex justify-between items-center mb-10">
-                <h2 className="text-2xl font-black text-slate-900">시스템 메뉴</h2>
-                <button onClick={() => setIsMobileMenuOpen(false)}><X size={24} className="text-slate-300" /></button>
-              </div>
-              <nav className="space-y-2">
-                {userMenus.map((menu) => (
-                  <SidebarLink
-                    key={menu.id}
-                    active={activeTab === menu.id || (menu.id === "community" && activeTab === "member-detail")}
-                    onClick={() => handleTabChange(menu.id)}
-                    icon={menu.icon}
-                    name={menu.name}
-                  />
-                ))}
-                {isAdmin && (
-                  <div className="pt-6 mt-6 border-t border-slate-100 space-y-2">
-                    {adminMenus.map((menu) => (
-                      <SidebarLink key={menu.id} active={activeTab === menu.id} onClick={() => handleTabChange(menu.id)} icon={menu.icon} name={menu.name} isAdmin />
-                    ))}
-                  </div>
-                )}
-              </nav>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
-
       {/* 🚀 메인 컨텐츠 */}
-      <main className="flex-1 p-6 md:p-12 overflow-y-auto">
+      {/* ✨ 모바일에서 상단 탭 여유를 위해 패딩 살짝 조정 */}
+      <main className="flex-1 p-5 md:p-12 overflow-y-auto">
         <AnimatePresence mode="wait">
           {activeTab === "mypage" && <MyPageTab key="mypage" loginId={loginId} />}
 
