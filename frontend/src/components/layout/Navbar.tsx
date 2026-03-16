@@ -28,7 +28,13 @@ interface NavbarProps {
   onLogout: () => void;
 }
 
-export const Navbar = ({ onNavigate, currentPage, isLoggedIn, userRole, onLogout }: NavbarProps) => {
+export const Navbar = ({ 
+  onNavigate, 
+  currentPage, 
+  isLoggedIn, 
+  userRole, 
+  onLogout 
+}: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState(currentPage); // ✨ 현재 활성화된 밑줄 상태
@@ -66,6 +72,7 @@ export const Navbar = ({ onNavigate, currentPage, isLoggedIn, userRole, onLogout
       ];
 
       let currentSection = "home";
+      
       for (const section of sections) {
         const element = document.getElementById(section.id);
         if (element) {
@@ -141,34 +148,41 @@ export const Navbar = ({ onNavigate, currentPage, isLoggedIn, userRole, onLogout
 
   return (
     <>
-      <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100 h-20 flex items-center shadow-sm">
+      {/* h-16(모바일) / lg:h-20(데스크탑) 으로 반응형 높이 설정 */}
+      <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100 h-16 lg:h-20 flex items-center shadow-sm">
         <div className="w-full px-8 md:px-12 flex items-center justify-between">
 
-          {/* 로고 영역 - 'D' 텍스트 박스를 실제 이미지 로고로 교체 */}
-          <div className="flex items-center gap-3 cursor-pointer shrink-0" onClick={() => handleNavigate("home")}>
-            <div className="w-10 h-10 rounded-xl overflow-hidden shadow-lg border border-slate-100 flex items-center justify-center bg-white group hover:scale-105 transition-transform">
+          {/* 로고 영역 - 데스크탑에서는 다시 w-10 h-10으로 복구 */}
+          <div 
+            className="flex items-center gap-3 cursor-pointer shrink-0" 
+            onClick={() => handleNavigate("home")}
+          >
+            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl overflow-hidden shadow-lg border border-slate-100 flex items-center justify-center bg-white group hover:scale-105 transition-transform">
               <img 
                 src={DISCORD_SERVER_ICON} 
                 alt="DEVSIGN" 
                 className="w-full h-full object-cover"
                 onError={(e: any) => {
-                  e.target.style.display = 'none'; // 이미지 로드 실패 시 숨김 처리
+                  e.target.style.display = 'none'; 
                 }}
               />
             </div>
-            <span className="font-bold text-2xl text-slate-900 tracking-tight">DEVSIGN</span>
+            <span className="font-bold text-xl lg:text-2xl text-slate-900 tracking-tight">
+              DEVSIGN
+            </span>
           </div>
 
-          {/* 중앙 메뉴 영역 */}
+          {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
           <div className="hidden lg:flex items-center gap-10">
             {visibleLinks.map((link) => {
-              const isActive = activeTab === link.id; // ✨ activeTab 사용
+              const isActive = activeTab === link.id; 
               return (
                 <button
                   key={link.id}
                   onClick={() => handleNavigate(link.id)}
-                  className={`relative py-2 font-bold transition-all text-[15px] whitespace-nowrap group ${isActive ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
-                    }`}
+                  className={`relative py-1 lg:py-2 font-bold transition-all text-[14px] lg:text-[15px] whitespace-nowrap group ${
+                    isActive ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
+                  }`}
                 >
                   {link.name}
                   {isActive && (
@@ -186,15 +200,22 @@ export const Navbar = ({ onNavigate, currentPage, isLoggedIn, userRole, onLogout
             })}
           </div>
 
-          {/* 우측 버튼 영역 */}
+          {/* 우측 버튼 영역 - 데스크탑 크기 복구 */}
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-3">
               {!isLoggedIn ? (
                 <>
-                  <Button variant="ghost" className="font-bold text-slate-600 hover:text-indigo-600" onClick={() => handleNavigate("signup")}>
+                  <Button 
+                    variant="ghost" 
+                    className="font-bold text-slate-600 hover:text-indigo-600 text-sm lg:text-base" 
+                    onClick={() => handleNavigate("signup")}
+                  >
                     회원가입
                   </Button>
-                  <Button className="bg-indigo-600 text-white font-bold px-8 py-5 rounded-xl hover:bg-indigo-700 shadow-lg transition-all active:scale-95" onClick={() => handleNavigate("login")}>
+                  <Button 
+                    className="bg-indigo-600 text-white font-bold px-6 py-4 lg:px-8 lg:py-5 rounded-xl hover:bg-indigo-700 shadow-lg transition-all active:scale-95 text-sm lg:text-base" 
+                    onClick={() => handleNavigate("login")}
+                  >
                     로그인
                   </Button>
                 </>
@@ -204,7 +225,7 @@ export const Navbar = ({ onNavigate, currentPage, isLoggedIn, userRole, onLogout
                     className="flex items-center gap-3 px-3 py-1.5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100 transition-all cursor-pointer group"
                     onClick={() => handleNavigate("profile")}
                   >
-                    <div className="w-8 h-8 rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
+                    <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
                       {user?.avatarUrl || user?.profileImage ? (
                         <img
                           src={user.avatarUrl || user.profileImage}
@@ -220,65 +241,106 @@ export const Navbar = ({ onNavigate, currentPage, isLoggedIn, userRole, onLogout
                         </div>
                       )}
                     </div>
-                    <span className="text-sm font-black text-slate-700">{user?.name || "사용자"} 님</span>
+                    <span className="text-xs lg:text-sm font-black text-slate-700">
+                      {user?.name || "사용자"} 님
+                    </span>
                   </div>
                   <Button
                     variant="ghost"
-                    className="font-bold text-slate-400 hover:text-red-500 flex items-center gap-2"
+                    className="font-bold text-slate-400 hover:text-red-500 flex items-center gap-2 text-xs lg:text-sm"
                     onClick={handleLogoutClick}
                   >
-                    <LogOut size={16} /> 로그아웃
+                    <LogOut size={14} className="lg:w-4 lg:h-4" /> 로그아웃
                   </Button>
                 </div>
               )}
             </div>
-            <button className="lg:hidden p-2 text-slate-600" onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}>
-              {isMobileMenuOpen ? <X size={28} /> : <Menu size={28} />}
+            
+            {/* 모바일 메뉴 햄버거 버튼 */}
+            <button 
+              className="lg:hidden p-2 text-slate-600" 
+              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            >
+              {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
             </button>
           </div>
         </div>
       </nav>
 
-      {/* 모바일 메뉴 */}
       <AnimatePresence>
         {isMobileMenuOpen && (
           <>
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[105] lg:hidden" onClick={() => setIsMobileMenuOpen(false)} />
-            <motion.div initial={{ x: "100%" }} animate={{ x: 0 }} exit={{ x: "100%" }} transition={{ type: "spring", damping: 30, stiffness: 300 }} className="fixed top-0 right-0 bottom-0 w-[85%] max-w-sm bg-white z-[110] lg:hidden flex flex-col p-8 pt-24 gap-6 shadow-2xl">
+            <motion.div 
+              initial={{ opacity: 0 }} 
+              animate={{ opacity: 1 }} 
+              exit={{ opacity: 0 }} 
+              className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[105] lg:hidden" 
+              onClick={() => setIsMobileMenuOpen(false)} 
+            />
+            
+            <motion.div 
+              initial={{ x: "100%" }} 
+              animate={{ x: 0 }} 
+              exit={{ x: "100%" }} 
+              transition={{ type: "spring", damping: 30, stiffness: 300 }} 
+              className="fixed top-0 right-0 bottom-0 w-[75%] max-w-[280px] bg-white z-[110] lg:hidden flex flex-col p-6 pt-16 gap-2 shadow-2xl"
+            >
               {visibleLinks.map((link) => {
-                const isActive = activeTab === link.id; // ✨ 모바일도 activeTab 적용
+                const isActive = activeTab === link.id;
                 return (
-                  <button key={link.id} onClick={() => handleNavigate(link.id)} className={`text-left py-3 px-4 text-xl font-bold rounded-2xl transition-all ${isActive ? "bg-indigo-50 text-indigo-600" : "text-slate-700"}`}>
+                  <button 
+                    key={link.id} 
+                    onClick={() => handleNavigate(link.id)} 
+                    className={`text-left py-2.5 px-4 text-[15px] font-bold rounded-xl transition-all ${
+                      isActive ? "bg-indigo-50 text-indigo-600" : "text-slate-700"
+                    }`}
+                  >
                     {link.name}
                   </button>
                 );
               })}
-              <div className="mt-auto border-t pt-6 space-y-4">
+              
+              <div className="mt-auto border-t pt-4 space-y-2.5">
                 {!isLoggedIn ? (
                   <>
-                    <Button className="w-full py-6 bg-slate-50 text-slate-600 rounded-2xl font-bold" onClick={() => handleNavigate("signup")}>회원가입</Button>
-                    <Button className="w-full py-6 bg-indigo-600 text-white rounded-2xl font-bold" onClick={() => handleNavigate("login")}>로그인</Button>
+                    <Button 
+                      className="w-full py-4 bg-slate-50 text-slate-600 rounded-xl font-bold text-sm" 
+                      onClick={() => handleNavigate("signup")}
+                    >
+                      회원가입
+                    </Button>
+                    <Button 
+                      className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-sm" 
+                      onClick={() => handleNavigate("login")}
+                    >
+                      로그인
+                    </Button>
                   </>
                 ) : (
-                  <div className="space-y-4">
+                  <div className="space-y-2.5">
                     <div
-                      className="px-4 py-4 bg-slate-50 rounded-2xl border border-slate-100 flex items-center justify-between group cursor-pointer"
+                      className="px-3 py-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between group cursor-pointer"
                       onClick={() => handleNavigate("profile")}
                     >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl overflow-hidden border-2 border-white shadow-sm">
+                      <div className="flex items-center gap-2.5">
+                        <div className="w-8 h-8 rounded-lg overflow-hidden border-2 border-white shadow-sm">
                           <img
                             src={user?.avatarUrl || user?.profileImage || "https://cdn.discordapp.com/embed/avatars/0.png"}
                             alt="profile"
                             className="w-full h-full object-cover"
                           />
                         </div>
-                        <span className="font-bold text-slate-700">{user?.name || "사용자"} 님</span>
+                        <span className="font-bold text-slate-700 text-[13px]">
+                          {user?.name || "사용자"} 님
+                        </span>
                       </div>
-                      <ChevronRight size={18} className="text-slate-300" />
+                      <ChevronRight size={16} className="text-slate-300" />
                     </div>
-                    <Button className="w-full py-6 bg-red-50 text-red-500 rounded-2xl font-bold flex items-center justify-center gap-2" onClick={handleLogoutClick}>
-                      <LogOut size={18} /> 로그아웃
+                    <Button 
+                      className="w-full py-3.5 bg-red-50 text-red-500 rounded-xl font-bold flex items-center justify-center gap-2 text-sm" 
+                      onClick={handleLogoutClick}
+                    >
+                      <LogOut size={16} /> 로그아웃
                     </Button>
                   </div>
                 )}
