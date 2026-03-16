@@ -1,7 +1,8 @@
 import axios from "axios";
 
 export const api = axios.create({
-    baseURL: import.meta.env.VITE_API_BASE_URL + "/api",
+    // 배포 환경에서 Caddy가 /api 경로를 인식하여 백엔드로 전달할 수 있도록 수정되었습니다.
+    baseURL: "/api",
 });
 
 api.interceptors.request.use((config) => {

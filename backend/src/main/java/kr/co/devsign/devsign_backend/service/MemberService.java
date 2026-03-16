@@ -143,8 +143,8 @@ public class MemberService {
 
             String avatarUrl = DEFAULT_AVATAR_URL;
             try {
-                String botUrl = "http://127.0.0.1:8000/get-avatar/" + m.getDiscordTag();
-                Map<String, Object> botResponse = restTemplate.getForObject(botUrl, Map.class);
+                // 수정된 부분: 하드코딩된 URL(127.0.0.1) 호출을 제거하고 discordBotClient를 통해 통신하도록 변경
+                Map<String, Object> botResponse = discordBotClient.getAvatar(m.getDiscordTag());
                 if (botResponse != null && "success".equals(botResponse.get("status"))) {
                     avatarUrl = asString(botResponse.get("avatarUrl"));
                 }

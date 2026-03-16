@@ -4,6 +4,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.http.SessionCreationPolicy;
@@ -46,10 +48,10 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-                // 1. CORS 설정 적용 (Spring Security 레벨에서 처리)
+                // 1. CORS 설정 적용
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
 
-                // 2. CSRF 보안 해제 (API 방식)
+                // 2. CSRF 보안 해제
                 .csrf(csrf -> csrf.disable())
 
                 // 3. 세션을 사용하지 않음 (JWT 방식)
@@ -65,42 +67,51 @@ public class SecurityConfig {
                         .requestMatchers(
                                 "/api/members/login",
                                 "/api/members/signup",
+                                "/api/members/send-code",        // 인증번호 발송 경로 추가
                                 "/api/members/discord-send",
                                 "/api/members/verify-code",
                                 "/api/members/find-discord-by-info",
                                 "/api/members/verify-id-pw",
                                 "/api/members/reset-password-final",
                                 "/api/members/check/**",
-                                "/h2-console/**"
+                                "/h2-console/**",
+                                "/favicon.ico",
+                                "/error"                         // 에러 페이지 허용 (무한 루프 방지)
                         ).permitAll()
-                        // GET 요청은 비로그인도 허용 (공개 콘텐츠 조회)
+                        // GET 요청은 비로그인도 허용
                         .requestMatchers(HttpMethod.GET,
                                 "/api/posts/**",
                                 "/api/notices/**",
                                 "/api/events/**"
                         ).permitAll()
-                        // 관리자만 접근 가능한 경로
+                        // 관리자 전용 경로
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")
                         // 나머지 모든 요청은 인증 필요
                         .anyRequest().authenticated()
                 )
 
-                // 5. JWT 필터를 UsernamePasswordAuthenticationFilter 앞에 추가
+                // 5. JWT 필터 배치
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
 
-                // 6. H2 콘솔 및 프레임 허용
+                // 6. 헤더 및 프레임 허용
                 .headers(headers -> headers.frameOptions(frame -> frame.disable()));
 
         return http.build();
     }
 
+    // 기본 시큐리티 비밀번호 생성을 방지하기 위한 빈 등록
     @Bean
-    public RestTemplate RestTemplate() {
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
         return new RestTemplate();
     }
 
     @Bean
-    public BCryptPasswordEncoder BCryptPasswordEncoder() {
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
         return new BCryptPasswordEncoder();
     }
 }

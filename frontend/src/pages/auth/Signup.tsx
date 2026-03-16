@@ -64,7 +64,6 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
   };
 
   // 정규식 정의
-  // 아이디는 문자(한글/영문) + 숫자 조합으로 6자 이상 허용
   const idRegex = /^(?=.{6,}$)[\p{L}\p{N}]+$/u;
   const passwordRegex = /^(?=.*[!@#$%^&*(),.?":{}|<>]).{8,}$/;
 
@@ -95,9 +94,11 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
     setIsSendingCode(true);
     try {
       const discordTag = formData.discord.replace("@", "");
+      // ⭕ 올바른 백엔드 주소(/members/discord-send)로 복구
       const response = await api.post("/members/discord-send", {
         discordTag: discordTag
       });
+      
       if (response.data.status === "success") {
         setTimeLeft(300);
         setIsTimerActive(true);
@@ -108,13 +109,14 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
         alert("인증번호 발송에 실패했습니다. 동아리 서버에 계정이 있는지 확인해주세요.");
       }
     } catch (e) {
+      console.error("인증번호 발송 에러:", e);
       alert("서버 통신 중 오류가 발생했습니다.");
     } finally {
       setIsSendingCode(false);
     }
   };
 
-  // ✨ [수정] 인증번호 확인 로직 (백엔드 Map 응답 대응)
+  // 인증번호 확인 로직
   const handleVerifyCode = async () => {
     if (timeLeft === 0 && !discordVerified) {
       return alert("인증 시간이 만료되었습니다. 번호를 다시 전송해주세요.");
@@ -124,18 +126,15 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
     try {
       const discordTag = formData.discord.replace("@", "");
 
-      // 1. 스프링 부트 서버에 코드 검증 요청
       const response = await api.post("/members/verify-code", {
         discordTag: discordTag,
         code: verificationCode
       });
 
-      // 2. ✨ 백엔드에서 반환한 Map 객체의 status 확인
       if (response.data.status === "success") {
-        // 백엔드가 준 정보를 바로 상태에 저장 (파이썬 서버 재호출 불필요)
         setVerifiedInfo({
           name: response.data.name,
-          studentId: response.data.studentId, // "22" 또는 "LAB"
+          studentId: response.data.studentId, 
           userStatus: response.data.userStatus,
           role: response.data.role
         });
@@ -166,7 +165,7 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
         dept: formData.dept,
         interests: formData.interest === "기타" ? formData.otherInterest : formData.interest,
         discordTag: formData.discord.replace("@", ""),
-        authCode: verificationCode // 백엔드 매칭용
+        authCode: verificationCode 
       });
 
       if (response.status === 200 || response.status === 201) {
@@ -192,7 +191,6 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
           </div>
 
           <form className="space-y-10" onSubmit={(e) => e.preventDefault()}>
-            {/* 1. 계정 정보 */}
             <section className="space-y-6">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <span className="w-1.5 h-6 bg-indigo-600 rounded-full" /> 계정 설정
@@ -212,7 +210,7 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
                         className={`w-full pl-12 pr-2 py-4 rounded-2xl outline-none transition-all font-medium text-sm ${idChecked ? "bg-green-50 text-green-700" : "bg-slate-50 text-slate-900"}`} 
                       />
                     </div>
-                    <Button onClick={handleCheckId} disabled={idChecked} className="h-[56px] px-5 rounded-2xl font-bold bg-indigo-600">중복 확인</Button>
+                    <Button onClick={handleCheckId} disabled={idChecked} className="h-[56px] px-5 rounded-2xl font-bold bg-indigo-600 text-white shadow-lg">중복 확인</Button>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -225,7 +223,6 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
               </div>
             </section>
 
-            {/* 2. 디스코드 인증 */}
             <section className="space-y-6">
               <h3 className="text-lg font-bold text-slate-900 flex items-center gap-2">
                 <span className="w-1.5 h-6 bg-indigo-400 rounded-full" /> 디스코드 인증
@@ -275,7 +272,6 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
                   </Button>
                 </div>
 
-                {/* 인증 성공 시 정보 미리보기 카드 */}
                 <AnimatePresence>
                   {discordVerified && verifiedInfo && (
                     <motion.div 
@@ -308,7 +304,6 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
               </div>
             </section>
 
-            {/* 3. 소속 학과 */}
             <section className="space-y-4">
               <label className="text-sm font-black text-slate-700 ml-1 flex items-center gap-2"><GraduationCap size={18} className="text-indigo-600" /> 소속 학과</label>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -318,7 +313,6 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
               </div>
             </section>
 
-            {/* 4. 관심 분야 */}
             <section className="space-y-4 pt-4">
               <label className="text-sm font-black text-slate-700 ml-1 flex items-center gap-2"><Heart size={18} className="text-pink-500" /> 관심 분야</label>
               <div className="flex flex-wrap gap-2">

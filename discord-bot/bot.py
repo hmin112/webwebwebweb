@@ -4,17 +4,19 @@ from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 import uvicorn
 import asyncio
+import os  # 환경 변수 사용을 위해 추가
 
-# --- [설정 부분] ---
-# 실제 환경에 맞게 토큰과 ID를 확인해주세요.
-TOKEN = ''
-GUILD_ID =   
-LOG_CHANNEL_ID =   
+# --- [설정 부분: 환경 변수에서 읽어옴] ---
+# 실제 환경에 맞게 우분투 내부 .env 파일에 값을 저장해두세요.
+TOKEN = os.getenv('DISCORD_TOKEN')
+GUILD_ID = int(os.getenv('DISCORD_GUILD_ID', 0))
+LOG_CHANNEL_ID = int(os.getenv('DISCORD_LOG_CHANNEL_ID', 0))
 # ------------------
 
 # 1. 디스코드 봇 설정
 intents = discord.Intents.default()
 intents.members = True 
+intents.message_content = True # 메시지 내용 읽기 권한 추가 (필요 시)
 bot = commands.Bot(command_prefix="!", intents=intents)
 
 # 2. FastAPI 설정
@@ -139,7 +141,6 @@ async def get_user_avatar(user_tag: str):
     return {"status": "fail", "avatarUrl": "https://cdn.discordapp.com/embed/avatars/0.png"}
 
 # [기능 4] 관리자용 전체 부원 정보 동기화
-# 모든 부원의 별명, 역할, 아바타 정보를 일괄적으로 추출하여 스프링 부트로 전달합니다.
 @app.get("/sync-all-members")
 async def sync_all_members():
     guild = bot.get_guild(GUILD_ID)
@@ -160,8 +161,8 @@ async def sync_all_members():
 
 # 메인 실행 루프
 async def main():
-    # FastAPI 서버와 디스코드 봇을 동시에 실행
-    config = uvicorn.Config(app, host="127.0.0.1", port=8000, loop="asyncio")
+    # 도커 컨테이너 외부에서도 접근 가능하도록 host를 "0.0.0.0"으로 변경
+    config = uvicorn.Config(app, host="0.0.0.0", port=8000, loop="asyncio")
     server = uvicorn.Server(config)
     
     await asyncio.gather(
@@ -172,5 +173,5 @@ async def main():
 if __name__ == "__main__":
     try:
         asyncio.run(main())
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         pass

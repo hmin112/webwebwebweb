@@ -1,0 +1,4478 @@
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/Comment.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Getter @Setter
+public class Comment {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    // ✨ 작성자 관련 상세 정보
+    private String author;
+    private String loginId;
+    private String studentId;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String profileImage;
+
+    private String date;
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    // ✨ 댓글 좋아요 기능
+    private int likes = 0;
+
+    @Transient
+    private boolean likedByMe; // DB 저장 안 함, 현재 접속자가 좋아요 눌렀는지 확인용
+
+    // ✨ [추가] 답글 여부 구분 필드
+    // 이 필드가 있어야 메인 댓글 목록에서 답글이 중복으로 나오는 것을 방지할 수 있습니다.
+    private boolean isReply = false;
+
+    // ✨ 게시글과의 연관관계 설정
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id")
+    @JsonIgnore
+    private Post post;
+
+    // ✨ [인스타 스타일] 대댓글 기능을 위한 셀프 참조 (부모 댓글)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_id")
+    @JsonIgnore
+    private Comment parent;
+
+    // ✨ [핵심] 대댓글 리스트 (부모 삭제 시 자식 자동 삭제 설정)
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC") // 대댓글은 작성 순서대로 정렬
+    private List<Comment> replies = new ArrayList<>();
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/NoticeView.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+public class NoticeView {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    private Member member;
+
+    @ManyToOne
+    private Notice notice;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/AccessLog.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.time.LocalDateTime;
+
+@Entity
+@Getter @Setter
+@Table(name = "access_log") // DB에 생성될 테이블 이름
+public class AccessLog {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String name;
+    private String studentId;
+
+    // LOGIN, LOGOUT, SIGNUP, POST_CREATE, LIKE, FILE_UPLOAD 등
+    private String type;
+
+    private String ip;
+
+    private LocalDateTime timestamp;
+
+    // ✨ 생성 시 자동으로 현재 시간 설정 (@PrePersist)
+    // 이 메서드 덕분에 컨트롤러에서 별도로 시간을 세팅할 필요가 없습니다.
+    @PrePersist
+    public void prePersist() {
+        this.timestamp = LocalDateTime.now();
+    }
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/EventLike.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+public class EventLike {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    private Member member;
+
+    @ManyToOne
+    private Event event;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/Event.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+public class Event {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String category;
+    private String title;
+    private String date;
+    private String location;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String image;
+
+    private int views = 0;
+    private int likes = 0;
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/Notice.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.time.LocalDateTime;
+import java.util.List; // ✨ 이미지 리스트를 위해 추가
+
+@Entity
+@Getter @Setter
+public class Notice {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String tag;
+
+    // ✨ 컨트롤러의 setCategory() 대응을 위해 추가
+    private String category;
+
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    private String author;
+    private int views = 0;   // ✨ 초기값 0 설정
+
+    private String date;
+
+    // ✨ [수정] Base64 대용량 이미지 저장을 위해 LONGTEXT 타입 지정
+    @ElementCollection
+    @Column(columnDefinition = "LONGTEXT")
+    private List<String> images;
+
+    // ✨ 컨트롤러의 setImportant() 대응을 위해 추가
+    private boolean important;
+
+    private boolean pinned = false;
+
+    private LocalDateTime createdAt = LocalDateTime.now();
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/AssemblyPeriod.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDate;
+
+@Entity
+@Table(
+        name = "assembly_period",
+        uniqueConstraints = @UniqueConstraint(columnNames = {"period_year", "semester", "period_month"})
+)
+@Getter
+@Setter
+public class AssemblyPeriod {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "period_year", nullable = false)
+    private int year;
+
+    @Column(nullable = false)
+    private int semester;
+
+    @Column(name = "period_month", nullable = false)
+    private int month;
+
+    @Column(nullable = false)
+    private String type;
+
+    @Column(nullable = false)
+    private LocalDate startDate;
+
+    @Column(nullable = false)
+    private LocalDate endDate;
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/CommentLike.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+@Table(name = "comment_likes")
+public class CommentLike {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // 누가 눌렀나?
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    private Member member;
+
+    // 어떤 댓글에 눌렀나?
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "comment_id")
+    private Comment comment;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/Member.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import lombok.Getter;
+import lombok.Setter;
+
+import java.time.LocalDateTime;
+
+@Entity
+@Getter
+@Setter
+public class Member {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(unique = true, nullable = false)
+    private String loginId;
+
+    @Column(nullable = false)
+    private String password;
+
+    private String name;
+    private String studentId;
+    private String dept;
+    private String interests;
+    private String discordTag;
+    private String userStatus;
+    private String role;
+
+    private boolean suspended = false;
+
+    @Column(nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    private boolean deleted = false;
+
+    private LocalDateTime deletedAt;
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String profileImage;
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/EventView.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+public class EventView {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @ManyToOne
+    private Member member;
+
+    @ManyToOne
+    private Event event;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/PostLike.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+@Table(name = "post_likes") // 테이블명 명시
+public class PostLike {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // ✨ 좋아요를 누른 부원 정보 (지연 로딩 설정으로 성능 최적화)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    private Member member;
+
+    // ✨ 좋아요가 눌린 게시글 정보
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id")
+    private Post post;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/PostView.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+@Table(name = "post_views") // 테이블명 명시
+public class PostView {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    // ✨ 해당 게시글을 읽은 부원 (지연 로딩으로 성능 최적화)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "member_id")
+    private Member member;
+
+    // ✨ 조회 기록이 생성된 게시글
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "post_id")
+    private Post post;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/DiscordAuth.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.time.LocalDateTime;
+
+@Entity
+@Getter @Setter
+public class DiscordAuth {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String discordTag;
+    private String code;
+    private LocalDateTime expiry;
+
+    // ✨ 추가해야 할 필드들 (이게 없어서 getRole, getDiscordNickname 등에서 에러 발생)
+    private String discordNickname; // "22 김형민" 형태 저장용
+    private String role;            // ADMIN 또는 USER
+    private String userStatus;      // 재학생, 휴학생 등
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String avatarUrl;       // 디스코드 프로필 이미지 주소
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/AssemblyReport.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+public class AssemblyReport {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String loginId;
+
+    @Column(name = "report_year") // ✨ year는 SQL 예약어이므로 컬럼명 변경
+    private int year;
+
+    private int semester;
+
+    @Column(name = "report_month") // ✨ month는 H2 예약어이므로 컬럼명 변경
+    private int month;
+
+    private String type;
+    private String status;
+    private String title;
+
+    @Column(length = 1000)
+    private String memo;
+
+    private String date;
+    private String deadline;
+
+    private String presentationPath;
+    private String pdfPath;
+    private String otherPath;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/Post.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+
+@Entity
+@Getter @Setter
+public class Post {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String title;
+
+    @Column(columnDefinition = "TEXT")
+    private String content;
+
+    private String category;    // 카테고리 (회비, 자유, 질문)
+
+    // ✨ 작성자 관련 상세 정보 (프론트엔드 프로필 연동)
+    private String author;      // 작성자 이름
+    private String loginId;     // 작성자 아이디 (수정/삭제 권한 확인용)
+    private String studentId;   // 학번 (앞 2자리를 이용해 '22학번' 등으로 표시)
+
+    @Column(columnDefinition = "LONGTEXT")
+    private String profileImage; // 작성자 프로필 이미지 (Base64)
+
+    private int views = 0;
+    private int likes = 0;
+
+    // ✨ [추가] 좋아요 상태 유지 필드
+    // DB에 저장되지는 않지만, 상세 조회 시 현재 사용자가 좋아요를 눌렀는지 여부를 담아 보냅니다.
+    @Transient
+    private boolean likedByMe;
+
+    // ✨ 게시글 첨부 이미지 (용량 초과 방지를 위해 LONGTEXT 설정)
+    @ElementCollection
+    @CollectionTable(name = "post_images", joinColumns = @JoinColumn(name = "post_id"))
+    @Column(name = "image_data", columnDefinition = "LONGTEXT")
+    private List<String> images = new ArrayList<>();
+
+    // ✨ 댓글 연관관계 (게시글 삭제 시 댓글도 함께 삭제되도록 설정)
+    @OneToMany(mappedBy = "post", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("id ASC") // ✨ 최신 댓글이 밑으로 가도록 오름차순 정렬로 수정
+    private List<Comment> commentsList = new ArrayList<>();
+
+    private LocalDateTime createdAt = LocalDateTime.now();
+
+    // ✨ 프론트엔드 날짜/시간 표시용 (예: 02.06 18:30)
+    private String date;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/entity/AssemblyProject.java
+// ====================
+package kr.co.devsign.devsign_backend.entity;
+
+import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.Setter;
+
+@Entity
+@Getter @Setter
+public class AssemblyProject {
+    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    private String loginId;
+    private int year;
+    private int semester;
+    private String title;
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/PostRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Post;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public interface PostRepository extends JpaRepository<Post, Long> {
+    // 게시글을 최신순으로 가져옴
+    List<Post> findAllByOrderByIdDesc();
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/AssemblyProjectRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.AssemblyProject;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface AssemblyProjectRepository extends JpaRepository<AssemblyProject, Long> {
+    Optional<AssemblyProject> findByLoginIdAndYearAndSemester(String loginId, int year, int semester);
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/MemberRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Member;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.List;
+import java.util.Optional;
+
+@Repository
+public interface MemberRepository extends JpaRepository<Member, Long> {
+    Optional<Member> findByLoginId(String loginId);
+
+    Optional<Member> findByNameAndStudentId(String name, String studentId);
+
+    Optional<Member> findByDiscordTag(String discordTag);
+
+    List<Member> findAllByOrderByStudentIdDesc();
+
+    List<Member> findByDeletedFalseOrderByStudentIdDesc();
+
+    List<Member> findByDeletedTrueOrderByDeletedAtDesc();
+
+    Optional<Member> findByIdAndDeletedTrue(Long id);
+
+    Optional<Member> findByLoginIdAndDeletedTrue(String loginId);
+
+    long countByDeletedFalse();
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/EventRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Event;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface EventRepository extends JpaRepository<Event, Long> {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/EventLikeRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Event;
+import kr.co.devsign.devsign_backend.entity.EventLike;
+import kr.co.devsign.devsign_backend.entity.Member;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.transaction.annotation.Transactional; // ✨ 필수 임포트
+
+public interface EventLikeRepository extends JpaRepository<EventLike, Long> {
+    boolean existsByMemberAndEvent(Member member, Event event);
+
+    // 좋아요 취소
+    @Transactional
+    void deleteByMemberAndEvent(Member member, Event event);
+
+    void deleteByEvent(Event event);
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/DiscordAuthRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.DiscordAuth;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.Optional;
+
+public interface DiscordAuthRepository extends JpaRepository<DiscordAuth, Long> {
+    // 발송된 인증번호 찾기
+    Optional<DiscordAuth> findTopByDiscordTagOrderByExpiryDesc(String discordTag);
+
+    // 인증번호로 데이터를 찾기
+    Optional<DiscordAuth> findByCode(String code);
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/AssemblyPeriodRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+import java.util.List;
+import java.util.Optional;
+
+public interface AssemblyPeriodRepository extends JpaRepository<AssemblyPeriod, Long> {
+    List<AssemblyPeriod> findByYearOrderByMonthAsc(int year);
+
+    Optional<AssemblyPeriod> findByYearAndSemesterAndMonth(int year, int semester, int month);
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/NoticeRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Notice;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public interface NoticeRepository extends JpaRepository<Notice, Long> {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/PostViewRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.entity.Post;
+import kr.co.devsign.devsign_backend.entity.PostView;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+@Repository
+public interface PostViewRepository extends JpaRepository<PostView, Long> {
+
+    // 해당 회원이 이 게시글을 이미 읽었는지 확인 (중복 조회수 증가 방지)
+    boolean existsByMemberAndPost(Member member, Post post);
+
+    // 게시글 삭제 시 연결된 모든 조회 기록 삭제
+    @Transactional
+    void deleteByPost(Post post);
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/NoticeViewRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.entity.Notice;
+import kr.co.devsign.devsign_backend.entity.NoticeView;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+@Repository
+public interface NoticeViewRepository extends JpaRepository<NoticeView, Long> {
+    // 해당 회원이 이 공지사항을 읽었는지 확인
+    boolean existsByMemberAndNotice(Member member, Notice notice);
+
+    // 특정 공지사항의 조회 기록 삭제
+    @Transactional
+    void deleteByNotice(Notice notice);
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/EventViewRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Event;
+import kr.co.devsign.devsign_backend.entity.EventView;
+import kr.co.devsign.devsign_backend.entity.Member;
+import org.springframework.data.jpa.repository.JpaRepository;
+
+public interface EventViewRepository extends JpaRepository<EventView, Long> {
+
+    boolean existsByMemberAndEvent(Member member, Event event);
+
+    void deleteByEvent(Event event);
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/CommentRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Comment;
+import kr.co.devsign.devsign_backend.entity.Post;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+
+@Repository
+public interface CommentRepository extends JpaRepository<Comment, Long> {
+
+    // 댓글을 최신순(ID 내림차순)으로 조회
+    List<Comment> findByPostOrderByIdDesc(Post post);
+
+    // 게시글 삭제시 댓글도 삭제
+    @Transactional
+    void deleteByPost(Post post);
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/AccessLogRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.AccessLog;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.List;
+
+@Repository
+public interface AccessLogRepository extends JpaRepository<AccessLog, Long> {
+    List<AccessLog> findAllByOrderByTimestampDesc();
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/PostLikeRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.entity.Post;
+import kr.co.devsign.devsign_backend.entity.PostLike;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Optional;
+
+@Repository
+public interface PostLikeRepository extends JpaRepository<PostLike, Long> {
+
+    // 특정 회원이 특정 게시글에 좋아요 눌렀는지 확인
+    boolean existsByMemberAndPost(Member member, Post post);
+
+    // 좋아요 취소 처리를 위한 데이터 찾기
+    Optional<PostLike> findByMemberAndPost(Member member, Post post);
+
+    // 좋아요 취소 시 삭제 처리
+    @Transactional
+    void deleteByMemberAndPost(Member member, Post post);
+
+    // 특정 게시글 삭제 시 연결된 모든 좋아요 기록 삭제
+    @Transactional
+    void deleteByPost(Post post);
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/AssemblyReportRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.AssemblyReport;
+import org.springframework.data.jpa.repository.JpaRepository;
+import java.util.List;
+
+public interface AssemblyReportRepository extends JpaRepository<AssemblyReport, Long> {
+    List<AssemblyReport> findByLoginIdAndYearAndSemesterOrderByMonthAsc(String loginId, int year, int semester);
+
+    long countByYearAndSemesterAndMonthAndStatus(int year, int semester, int month, String status);
+
+    List<AssemblyReport> findByYearAndSemesterAndMonthAndStatusOrderByIdDesc(int year, int semester, int month, String status);
+
+    List<AssemblyReport> findByLoginIdInAndYearAndMonthAndStatus(List<String> loginIds, int year, int month, String status);
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/repository/CommentLikeRepository.java
+// ====================
+package kr.co.devsign.devsign_backend.repository;
+
+import kr.co.devsign.devsign_backend.entity.Comment;
+import kr.co.devsign.devsign_backend.entity.CommentLike;
+import kr.co.devsign.devsign_backend.entity.Member;
+
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+import java.util.Optional;
+
+@Repository
+public interface CommentLikeRepository extends JpaRepository<CommentLike, Long> {
+    // 유저와 댓글로 좋아요 기록 찾기
+    Optional<CommentLike> findByMemberAndComment(Member member, Comment comment);
+
+    // 좋아요 여부 확인 (하트 표시용)
+    boolean existsByMemberAndComment(Member member, Comment comment);
+
+    // 댓글 삭제 시 좋아요 기록도 같이 삭제
+    void deleteByComment(Comment comment);
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/event/EventResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.event;
+
+public record EventResponse(
+        Long id,
+        String category,
+        String title,
+        String date,
+        String location,
+        String content,
+        String image,
+        int views,
+        int likes
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/event/EventDetailResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.event;
+
+public record EventDetailResponse(
+        EventResponse event,
+        boolean isLiked
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/event/EventLikeResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.event;
+
+public record EventLikeResponse(
+        String status,
+        String message,
+        Boolean liked,
+        Integer likeCount
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/event/EventRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.event;
+
+public record EventRequest(
+        String category,
+        String title,
+        String date,
+        String location,
+        String content,
+        String image
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/assembly/SaveProjectTitleRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.assembly;
+
+public record SaveProjectTitleRequest(
+        String loginId,
+        int year,
+        int semester,
+        String title
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/assembly/SubmissionPeriodResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.assembly;
+
+public record SubmissionPeriodResponse(
+        Long id,
+        int month,
+        int year,
+        int semester,
+        String type,
+        String startDate,
+        String endDate
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/assembly/MySubmissionsResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.assembly;
+
+import java.util.List;
+
+public record MySubmissionsResponse(
+        List<AssemblyReportResponse> reports,
+        String projectTitle
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/assembly/SubmitFilesCommand.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.assembly;
+
+import org.springframework.web.multipart.MultipartFile;
+
+public record SubmitFilesCommand(
+        String loginId,
+        String reportId,
+        int year,
+        int semester,
+        int month,
+        String memo,
+        MultipartFile presentation,
+        MultipartFile pdf,
+        MultipartFile other
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/assembly/SubmitFilesResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.assembly;
+
+public record SubmitFilesResponse(
+        String status,
+        String message
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/assembly/AssemblyReportResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.assembly;
+
+public record AssemblyReportResponse(
+        Long id,
+        String loginId,
+        int year,
+        int semester,
+        int month,
+        String type,
+        String status,
+        String title,
+        String memo,
+        String date,
+        String deadline,
+        String presentationPath,
+        String pdfPath,
+        String otherPath
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/VerifyIdPwResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record VerifyIdPwResponse(
+        String status,
+        String loginId
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/FindDiscordByInfoRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record FindDiscordByInfoRequest(
+        String name,
+        String studentId
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/ResetPasswordFinalRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record ResetPasswordFinalRequest(
+        String name,
+        String studentId,
+        String newPassword
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/LoginResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record LoginResponse(
+        String status,
+        String message,
+        String token,
+        String role,
+        String userStatus,
+        String name,
+        String loginId,
+        String studentId,
+        String dept,
+        String discordTag,
+        String avatarUrl
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/VerifyIdPwRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record VerifyIdPwRequest(
+        String name,
+        String studentId,
+        String code
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/ChangePasswordRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record ChangePasswordRequest(
+        String currentPassword,
+        String newPassword
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/SendDiscordCodeResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record SendDiscordCodeResponse(
+        String status,
+        String message,
+        String name,
+        String studentId,
+        String userStatus,
+        String role,
+        String avatarUrl
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/VerifyCodeResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record VerifyCodeResponse(
+        String status,
+        String name,
+        String studentId,
+        String userStatus,
+        String role
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/MemberResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record MemberResponse(
+        Long id,
+        String loginId,
+        String name,
+        String studentId,
+        String dept,
+        String interests,
+        String discordTag,
+        String userStatus,
+        String role,
+        boolean suspended,
+        String profileImage
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/SignupRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record SignupRequest(
+        String loginId,
+        String password,
+        String dept,
+        String interests,
+        String authCode
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/SendDiscordCodeRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record SendDiscordCodeRequest(
+        String discordTag
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/VerifyCodeRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record VerifyCodeRequest(
+        String discordTag,
+        String code
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/UpdateMemberRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record UpdateMemberRequest(
+        String dept,
+        String discordTag
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/LogoutLogRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record LogoutLogRequest(
+        String name,
+        String studentId
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/DiscordLookupResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record DiscordLookupResponse(
+        String status,
+        String discordTag
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/member/LoginRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.member;
+
+public record LoginRequest(
+        String loginId,
+        String password
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/common/StatusResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.common;
+
+public record StatusResponse(
+        String status,
+        String message
+) {
+    public static StatusResponse success() {
+        return new StatusResponse("success", null);
+    }
+
+    public static StatusResponse success(String message) {
+        return new StatusResponse("success", message);
+    }
+
+    public static StatusResponse fail(String message) {
+        return new StatusResponse("fail", message);
+    }
+
+    public static StatusResponse error(String message) {
+        return new StatusResponse("error", message);
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/AdminPeriodZipRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+import java.util.List;
+
+public record AdminPeriodZipRequest(
+        List<String> userIds,
+        Integer year,
+        Integer month,
+        String fileType
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/SyncDiscordResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record SyncDiscordResponse(
+        String status,
+        String message
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/AdminPeriodSaveRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record AdminPeriodSaveRequest(
+        Long id,
+        Integer month,
+        Integer year,
+        Integer semester,
+        String type,
+        String startDate,
+        String endDate,
+        Long submittedCount,
+        Long totalCount
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/AdminMemberResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record AdminMemberResponse(
+        Long id,
+        String loginId,
+        String name,
+        String studentId,
+        String dept,
+        String interests,
+        String discordTag,
+        String userStatus,
+        String role,
+        boolean suspended,
+        String profileImage,
+        String deletedAt
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/HeroSettingsRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record HeroSettingsRequest(
+        String recruitmentText,
+        String applyLink
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/AdminPeriodResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record AdminPeriodResponse(
+        Long id,
+        int month,
+        int year,
+        int semester,
+        String type,
+        String startDate,
+        String endDate,
+        long submittedCount,
+        long totalCount
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/AdminPeriodSubmissionResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record AdminPeriodSubmissionResponse(
+        String loginId,
+        String name,
+        String studentId,
+        String submitDate,
+        String presentationPath,
+        String pdfPath,
+        String otherPath,
+        String memo
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/AdminPasswordVerifyRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record AdminPasswordVerifyRequest(
+        String password
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/HeroSettingsResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record HeroSettingsResponse(
+        String recruitmentText,
+        String applyLink
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/AccessLogResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+import java.time.LocalDateTime;
+
+public record AccessLogResponse(
+        Long id,
+        String name,
+        String studentId,
+        String type,
+        String ip,
+        LocalDateTime timestamp
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/admin/RestoreMemberRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.admin;
+
+public record RestoreMemberRequest(
+        Long id,
+        String loginId,
+        String password,
+        String name,
+        String studentId,
+        String dept,
+        String interests,
+        String discordTag,
+        String userStatus,
+        String role,
+        boolean suspended,
+        String profileImage
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/board/UpdatePostRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.board;
+
+import java.util.List;
+
+public record UpdatePostRequest(
+        String title,
+        String content,
+        String category,
+        List<String> images
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/board/PostResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.board;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record PostResponse(
+        Long id,
+        String title,
+        String content,
+        String category,
+        String author,
+        String loginId,
+        String studentId,
+        String profileImage,
+        int views,
+        int likes,
+        boolean likedByMe,
+        List<String> images,
+        List<CommentResponse> commentsList,
+        LocalDateTime createdAt,
+        String date
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/board/CreateCommentRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.board;
+
+public record CreateCommentRequest(
+        String content,
+        Long parentId
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/board/CreatePostRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.board;
+
+import java.util.List;
+
+public record CreatePostRequest(
+        String title,
+        String content,
+        String category,
+        List<String> images
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/board/CommentResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.board;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record CommentResponse(
+        Long id,
+        String content,
+        String author,
+        String loginId,
+        String studentId,
+        String profileImage,
+        String date,
+        LocalDateTime createdAt,
+        int likes,
+        boolean likedByMe,
+        boolean reply,
+        List<CommentResponse> replies
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/notice/NoticePinResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.notice;
+
+public record NoticePinResponse(
+        String status,
+        String message,
+        Boolean pinned
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/notice/NoticeRequest.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.notice;
+
+import java.util.List;
+
+public record NoticeRequest(
+        String title,
+        String content,
+        String category,
+        List<String> images,
+        Boolean important
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/dto/notice/NoticeResponse.java
+// ====================
+package kr.co.devsign.devsign_backend.dto.notice;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+public record NoticeResponse(
+        Long id,
+        String tag,
+        String category,
+        String title,
+        String content,
+        String author,
+        int views,
+        String date,
+        List<String> images,
+        boolean important,
+        boolean pinned,
+        LocalDateTime createdAt
+) {
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/DevsignBackendApplication.java
+// ====================
+package kr.co.devsign.devsign_backend;
+
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.context.annotation.Bean;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+
+@SpringBootApplication
+public class DevsignBackendApplication {
+
+	public static void main(String[] args) {
+		SpringApplication.run(DevsignBackendApplication.class, args);
+	}
+
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/controller/AdminController.java
+// ====================
+package kr.co.devsign.devsign_backend.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import kr.co.devsign.devsign_backend.dto.admin.AccessLogResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminMemberResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPasswordVerifyRequest;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodSaveRequest;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodSubmissionResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodZipRequest;
+import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsRequest;
+import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsResponse;
+import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
+import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.service.AdminService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/admin")
+@RequiredArgsConstructor
+public class AdminController {
+
+    private final AdminService adminService;
+
+    @GetMapping("/members")
+    public List<AdminMemberResponse> getAllMembers() {
+        return adminService.getAllMembers();
+    }
+
+    @GetMapping("/members/deleted")
+    public List<AdminMemberResponse> getDeletedMembers() {
+        return adminService.getDeletedMembers();
+    }
+
+    @GetMapping("/logs")
+    public List<AccessLogResponse> getAllLogs() {
+        return adminService.getAllLogs();
+    }
+
+    @GetMapping("/settings")
+    public HeroSettingsResponse getHeroSettings() {
+        return adminService.getHeroSettings();
+    }
+
+    @PostMapping("/settings")
+    public StatusResponse updateHeroSettings(@RequestBody HeroSettingsRequest settings) {
+        return adminService.updateHeroSettings(settings);
+    }
+
+    @GetMapping("/periods/{year}")
+    public List<AdminPeriodResponse> getPeriods(@PathVariable int year) {
+        return adminService.getPeriods(year);
+    }
+
+    @GetMapping("/periods/submissions")
+    public List<AdminPeriodSubmissionResponse> getSubmittedMembers(
+            @RequestParam int year,
+            @RequestParam int semester,
+            @RequestParam int month
+    ) {
+        return adminService.getSubmittedMembers(year, semester, month);
+    }
+
+    @PostMapping("/periods/save-all")
+    public StatusResponse saveAllPeriods(@RequestBody List<AdminPeriodSaveRequest> periods) {
+        return adminService.saveAllPeriods(periods);
+    }
+
+    @PostMapping("/periods/download-zip")
+    public ResponseEntity<byte[]> downloadZip(@RequestBody AdminPeriodZipRequest request) {
+        return adminService.downloadPeriodZip(request);
+    }
+
+    @GetMapping("/sync-discord")
+    public SyncDiscordResponse syncDiscord() {
+        return adminService.syncDiscord();
+    }
+
+    @PutMapping("/members/{id}/suspend")
+    public StatusResponse toggleSuspension(@PathVariable Long id, HttpServletRequest request) {
+        return adminService.toggleSuspension(id, request.getRemoteAddr());
+    }
+
+    @PostMapping("/members/restore")
+    public StatusResponse restoreMember(@RequestBody RestoreMemberRequest member, HttpServletRequest request) {
+        return adminService.restoreMember(member, request.getRemoteAddr());
+    }
+
+    @DeleteMapping("/members/{id}")
+    public StatusResponse deleteMember(
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "false") boolean hard,
+            HttpServletRequest request
+    ) {
+        return adminService.deleteMember(id, hard, request.getRemoteAddr());
+    }
+
+    @PostMapping("/verify-password")
+    public StatusResponse verifyAdminPassword(
+            @RequestBody AdminPasswordVerifyRequest request,
+            Authentication authentication
+    ) {
+        return adminService.verifyAdminPassword(authentication, request);
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/controller/EventController.java
+// ====================
+package kr.co.devsign.devsign_backend.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import kr.co.devsign.devsign_backend.service.EventService;
+import kr.co.devsign.devsign_backend.util.JwtUtil;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.dto.event.EventDetailResponse;
+import kr.co.devsign.devsign_backend.dto.event.EventLikeResponse;
+import kr.co.devsign.devsign_backend.dto.event.EventRequest;
+import kr.co.devsign.devsign_backend.dto.event.EventResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/events")
+@RequiredArgsConstructor
+public class EventController {
+
+    private final EventService eventService;
+    private final JwtUtil jwtUtil;
+
+    @GetMapping
+    public List<EventResponse> getAllEvents() {
+        return eventService.getAllEvents();
+    }
+
+    @PostMapping
+    public EventResponse createEvent(@RequestBody EventRequest payload, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return eventService.createEvent(payload, loginId, request.getRemoteAddr());
+    }
+
+    @PutMapping("/{id}")
+    public EventResponse updateEvent(@PathVariable Long id, @RequestBody EventRequest payload, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return eventService.updateEvent(id, payload, loginId, request.getRemoteAddr());
+    }
+
+    @GetMapping("/{id}")
+    public EventDetailResponse getEventDetail(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return eventService.getEventDetail(id, loginId);
+    }
+
+    @PostMapping("/{id}/like")
+    public EventLikeResponse toggleLike(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return eventService.toggleLike(id, loginId);
+    }
+
+    @DeleteMapping("/{id}")
+    public StatusResponse deleteEvent(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return eventService.deleteEvent(id, loginId, request.getRemoteAddr());
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/controller/NoticeController.java
+// ====================
+package kr.co.devsign.devsign_backend.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import kr.co.devsign.devsign_backend.service.NoticeService;
+import kr.co.devsign.devsign_backend.util.JwtUtil;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.dto.notice.NoticePinResponse;
+import kr.co.devsign.devsign_backend.dto.notice.NoticeRequest;
+import kr.co.devsign.devsign_backend.dto.notice.NoticeResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/notices")
+@RequiredArgsConstructor
+public class NoticeController {
+
+    private final NoticeService noticeService;
+    private final JwtUtil jwtUtil;
+
+    @GetMapping
+    public List<NoticeResponse> getAllNotices() {
+        return noticeService.getAllNotices();
+    }
+
+    @PutMapping("/{id}/pin")
+    public NoticePinResponse togglePin(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return noticeService.togglePin(id, loginId, request.getRemoteAddr());
+    }
+
+    @PostMapping
+    public NoticeResponse createNotice(@RequestBody NoticeRequest payload, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return noticeService.createNotice(payload, loginId, request.getRemoteAddr());
+    }
+
+    @PutMapping("/{id}")
+    public NoticeResponse updateNotice(@PathVariable Long id, @RequestBody NoticeRequest payload, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return noticeService.updateNotice(id, payload, loginId, request.getRemoteAddr());
+    }
+
+    @GetMapping("/{id}")
+    public NoticeResponse getNoticeDetail(@PathVariable Long id, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return noticeService.getNoticeDetail(id, loginId);
+    }
+
+    @DeleteMapping("/{id}")
+    public StatusResponse deleteNotice(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return noticeService.deleteNotice(id, loginId, request.getRemoteAddr());
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/controller/ApiExceptionHandler.java
+// ====================
+package kr.co.devsign.devsign_backend.controller;
+
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.ExceptionHandler;
+import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.MultipartException;
+
+@RestControllerAdvice
+public class ApiExceptionHandler {
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<StatusResponse> handleMaxUploadSizeExceeded() {
+        return ResponseEntity.status(HttpStatus.PAYLOAD_TOO_LARGE)
+                .body(StatusResponse.fail("파일 크기가 너무 큽니다. 파일당 최대 1GB까지 업로드할 수 있습니다."));
+    }
+
+    @ExceptionHandler(MultipartException.class)
+    public ResponseEntity<StatusResponse> handleMultipartException() {
+        return ResponseEntity.badRequest()
+                .body(StatusResponse.fail("업로드 요청 형식이 올바르지 않습니다. 파일을 다시 선택해 주세요."));
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/controller/AssemblyController.java
+// ====================
+package kr.co.devsign.devsign_backend.controller;
+
+import kr.co.devsign.devsign_backend.service.AssemblyService;
+import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
+import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
+import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
+import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
+import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesResponse;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/assembly")
+@RequiredArgsConstructor
+public class AssemblyController {
+
+    private final AssemblyService assemblyService;
+
+    @GetMapping("/my-submissions")
+    public ResponseEntity<MySubmissionsResponse> getMySubmissions(
+            @RequestParam String loginId,
+            @RequestParam int year,
+            @RequestParam int semester
+    ) {
+        MySubmissionsResponse result = assemblyService.getMySubmissions(loginId, year, semester);
+        return ResponseEntity.ok(result);
+    }
+
+    @GetMapping("/periods/{year}")
+    public ResponseEntity<List<SubmissionPeriodResponse>> getSubmissionPeriods(@PathVariable int year) {
+        return ResponseEntity.ok(assemblyService.getSubmissionPeriods(year));
+    }
+
+    @GetMapping("/download")
+    public ResponseEntity<byte[]> downloadFile(@RequestParam String path) {
+        return assemblyService.downloadFile(path);
+    }
+
+    @PostMapping("/project-title")
+    public ResponseEntity<StatusResponse> saveProjectTitle(@RequestBody SaveProjectTitleRequest params) {
+        assemblyService.saveProjectTitle(params);
+        return ResponseEntity.ok(StatusResponse.success());
+    }
+
+    @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<SubmitFilesResponse> submitFiles(
+            @RequestParam String loginId,
+            @RequestParam String reportId,
+            @RequestParam int year,
+            @RequestParam int semester,
+            @RequestParam int month,
+            @RequestParam String memo,
+            @RequestParam(required = false) MultipartFile presentation,
+            @RequestParam(required = false) MultipartFile pdf,
+            @RequestParam(required = false) MultipartFile other
+    ) {
+        try {
+            SubmitFilesCommand command = new SubmitFilesCommand(
+                    loginId,
+                    reportId,
+                    year,
+                    semester,
+                    month,
+                    memo,
+                    presentation,
+                    pdf,
+                    other
+            );
+            String message = assemblyService.submitFiles(command);
+            return ResponseEntity.ok(new SubmitFilesResponse("success", message));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(new SubmitFilesResponse("fail", "submit error: " + e.getMessage()));
+        }
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/controller/BoardController.java
+// ====================
+package kr.co.devsign.devsign_backend.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import kr.co.devsign.devsign_backend.service.BoardService;
+import kr.co.devsign.devsign_backend.util.JwtUtil;
+import kr.co.devsign.devsign_backend.dto.board.CreateCommentRequest;
+import kr.co.devsign.devsign_backend.dto.board.CreatePostRequest;
+import kr.co.devsign.devsign_backend.dto.board.PostResponse;
+import kr.co.devsign.devsign_backend.dto.board.UpdatePostRequest;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/posts")
+@RequiredArgsConstructor
+public class BoardController {
+
+    private final BoardService boardService;
+    private final JwtUtil jwtUtil;
+
+    @GetMapping
+    public List<PostResponse> getAllPosts() {
+        return boardService.getAllPosts();
+    }
+
+    @PostMapping
+    public PostResponse createPost(@RequestBody CreatePostRequest payload, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.createPost(payload, loginId, request.getRemoteAddr());
+    }
+
+    @GetMapping("/{id}")
+    public PostResponse getPostDetail(@PathVariable Long id, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.getPostDetail(id, loginId);
+    }
+
+    @PutMapping("/{id}")
+    public PostResponse updatePost(@PathVariable Long id, @RequestBody UpdatePostRequest payload, HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.updatePost(id, payload, loginId, request.getRemoteAddr());
+    }
+
+    @DeleteMapping("/{id}")
+    public StatusResponse deletePost(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.deletePost(id, loginId, request.getRemoteAddr());
+    }
+
+    @PostMapping("/{id}/like")
+    public PostResponse toggleLike(
+            @PathVariable Long id,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.toggleLike(id, loginId, request.getRemoteAddr());
+    }
+
+    @PostMapping("/{id}/comments")
+    public PostResponse addComment(
+            @PathVariable Long id,
+            @RequestBody CreateCommentRequest payload,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.addComment(id, payload, loginId, request.getRemoteAddr());
+    }
+
+    @DeleteMapping("/{postId}/comments/{commentId}")
+    public PostResponse deleteComment(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.deleteComment(postId, commentId, loginId, request.getRemoteAddr());
+    }
+
+    @PostMapping("/{postId}/comments/{commentId}/like")
+    public PostResponse toggleCommentLike(
+            @PathVariable Long postId,
+            @PathVariable Long commentId,
+            HttpServletRequest request
+    ) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.toggleCommentLike(postId, commentId, loginId);
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/controller/MemberController.java
+// ====================
+package kr.co.devsign.devsign_backend.controller;
+
+import jakarta.servlet.http.HttpServletRequest;
+import kr.co.devsign.devsign_backend.service.MemberService;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.dto.member.ChangePasswordRequest;
+import kr.co.devsign.devsign_backend.dto.member.DiscordLookupResponse;
+import kr.co.devsign.devsign_backend.dto.member.FindDiscordByInfoRequest;
+import kr.co.devsign.devsign_backend.dto.member.LoginRequest;
+import kr.co.devsign.devsign_backend.dto.member.LoginResponse;
+import kr.co.devsign.devsign_backend.dto.member.LogoutLogRequest;
+import kr.co.devsign.devsign_backend.dto.member.MemberResponse;
+import kr.co.devsign.devsign_backend.dto.member.ResetPasswordFinalRequest;
+import kr.co.devsign.devsign_backend.dto.member.SendDiscordCodeRequest;
+import kr.co.devsign.devsign_backend.dto.member.SendDiscordCodeResponse;
+import kr.co.devsign.devsign_backend.dto.member.SignupRequest;
+import kr.co.devsign.devsign_backend.dto.member.UpdateMemberRequest;
+import kr.co.devsign.devsign_backend.dto.member.VerifyCodeRequest;
+import kr.co.devsign.devsign_backend.dto.member.VerifyCodeResponse;
+import kr.co.devsign.devsign_backend.dto.member.VerifyIdPwRequest;
+import kr.co.devsign.devsign_backend.dto.member.VerifyIdPwResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping("/api/members")
+@RequiredArgsConstructor
+public class MemberController {
+
+    private final MemberService memberService;
+
+    @PostMapping("/signup")
+    public ResponseEntity<MemberResponse> signup(@RequestBody SignupRequest payload, HttpServletRequest request) {
+        MemberResponse saved = memberService.signup(payload, request.getRemoteAddr());
+        return ResponseEntity.ok(saved);
+    }
+
+    @GetMapping("/all")
+    public List<MemberResponse> getAllMembers() {
+        return memberService.getAllMembers();
+    }
+
+    @PostMapping("/login")
+    public LoginResponse login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
+        return memberService.login(loginRequest, request);
+    }
+
+    @PostMapping("/logout-log")
+    public StatusResponse logoutLog(@RequestBody LogoutLogRequest requestData, HttpServletRequest request) {
+        return memberService.logoutLog(requestData, request.getRemoteAddr());
+    }
+
+    @PutMapping("/update/{loginId}")
+    public StatusResponse updateMember(@PathVariable String loginId, @RequestBody UpdateMemberRequest updateData) {
+        return memberService.updateMember(loginId, updateData);
+    }
+
+    @PutMapping("/change-password/{loginId}")
+    public StatusResponse changePassword(@PathVariable String loginId, @RequestBody ChangePasswordRequest request) {
+        return memberService.changePassword(loginId, request);
+    }
+
+    @PostMapping("/find-discord-by-info")
+    public DiscordLookupResponse findDiscordByInfo(@RequestBody FindDiscordByInfoRequest request) {
+        return memberService.findDiscordByInfo(request);
+    }
+
+    @PostMapping("/verify-id-pw")
+    public VerifyIdPwResponse verifyIdPw(@RequestBody VerifyIdPwRequest request) {
+        return memberService.verifyIdPw(request);
+    }
+
+    @PutMapping("/reset-password-final")
+    public StatusResponse resetPasswordFinal(@RequestBody ResetPasswordFinalRequest request) {
+        return memberService.resetPasswordFinal(request);
+    }
+
+    @GetMapping("/check/{loginId}")
+    public boolean checkId(@PathVariable String loginId) {
+        return memberService.checkId(loginId);
+    }
+
+    @PostMapping("/discord-send")
+    public SendDiscordCodeResponse sendDiscordCode(@RequestBody SendDiscordCodeRequest request) {
+        return memberService.sendDiscordCode(request);
+    }
+
+    @PostMapping("/verify-code")
+    public VerifyCodeResponse verifyCode(@RequestBody VerifyCodeRequest request) {
+        return memberService.verifyCode(request);
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/BoardService.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import kr.co.devsign.devsign_backend.entity.Comment;
+import kr.co.devsign.devsign_backend.entity.CommentLike;
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.entity.Post;
+import kr.co.devsign.devsign_backend.entity.PostLike;
+import kr.co.devsign.devsign_backend.entity.PostView;
+import kr.co.devsign.devsign_backend.repository.CommentLikeRepository;
+import kr.co.devsign.devsign_backend.repository.CommentRepository;
+import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import kr.co.devsign.devsign_backend.repository.PostLikeRepository;
+import kr.co.devsign.devsign_backend.repository.PostRepository;
+import kr.co.devsign.devsign_backend.repository.PostViewRepository;
+import kr.co.devsign.devsign_backend.dto.board.CommentResponse;
+import kr.co.devsign.devsign_backend.dto.board.CreateCommentRequest;
+import kr.co.devsign.devsign_backend.dto.board.CreatePostRequest;
+import kr.co.devsign.devsign_backend.dto.board.PostResponse;
+import kr.co.devsign.devsign_backend.dto.board.UpdatePostRequest;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class BoardService {
+
+    private final PostRepository postRepository;
+    private final MemberRepository memberRepository;
+    private final CommentRepository commentRepository;
+    private final PostLikeRepository postLikeRepository;
+    private final PostViewRepository postViewRepository;
+    private final CommentLikeRepository commentLikeRepository;
+
+    private final AccessLogService accessLogService;
+
+    @PersistenceContext
+    private EntityManager entityManager;
+
+    public List<PostResponse> getAllPosts() {
+        return postRepository.findAllByOrderByIdDesc().stream()
+                .map(this::toPostResponse)
+                .toList();
+    }
+
+    public PostResponse createPost(CreatePostRequest payload, String loginId, String ip) {
+        Member member = memberRepository.findByLoginId(loginId).orElseThrow();
+
+        Post post = new Post();
+        post.setTitle(payload.title());
+        post.setContent(payload.content());
+        post.setCategory(payload.category());
+        post.setImages(payload.images() != null ? payload.images() : new ArrayList<>());
+
+        post.setAuthor(member.getName());
+        post.setLoginId(member.getLoginId());
+        post.setStudentId(member.getStudentId());
+        post.setProfileImage(member.getProfileImage());
+        post.setDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("MM.dd HH:mm")));
+
+        Post saved = postRepository.save(post);
+        accessLogService.logByLoginId(loginId, "POST_CREATE", ip);
+        return toPostResponse(saved);
+    }
+
+    @Transactional
+    public PostResponse getPostDetail(Long id, String loginId) {
+        Post post = postRepository.findById(id).orElseThrow();
+        Member member = memberRepository.findByLoginId(loginId != null ? loginId : "").orElse(null);
+
+        if (member != null) {
+            if (!postViewRepository.existsByMemberAndPost(member, post)) {
+                post.setViews(post.getViews() + 1);
+                postRepository.save(post);
+
+                PostView view = new PostView();
+                view.setMember(member);
+                view.setPost(post);
+                postViewRepository.save(view);
+            }
+            syncLikedStatus(post, member);
+        }
+        return toPostResponse(post);
+    }
+
+    public PostResponse updatePost(Long id, UpdatePostRequest payload, String loginId, String ip) {
+        Post post = postRepository.findById(id).orElseThrow();
+        validatePostOwnership(post, loginId);
+
+        post.setTitle(payload.title());
+        post.setContent(payload.content());
+        post.setCategory(payload.category());
+        post.setImages(payload.images() != null ? payload.images() : new ArrayList<>());
+
+        accessLogService.logByLoginId(loginId, "POST_UPDATE", ip);
+        return toPostResponse(postRepository.save(post));
+    }
+
+    @Transactional
+    public StatusResponse deletePost(Long id, String loginId, String ip) {
+        Post post = postRepository.findById(id).orElseThrow();
+        validatePostOwnership(post, loginId);
+
+        postLikeRepository.deleteByPost(post);
+        postViewRepository.deleteByPost(post);
+
+        for (Comment comment : post.getCommentsList()) {
+            commentLikeRepository.deleteByComment(comment);
+        }
+        commentRepository.deleteByPost(post);
+        postRepository.delete(post);
+
+        accessLogService.logByLoginId(loginId, "POST_DELETE", ip);
+        return StatusResponse.success();
+    }
+
+    @Transactional
+    public PostResponse toggleLike(Long id, String loginId, String ip) {
+        Post post = postRepository.findById(id).orElseThrow();
+        Member member = memberRepository.findByLoginId(loginId).orElseThrow();
+
+        Optional<PostLike> existingLike = postLikeRepository.findByMemberAndPost(member, post);
+
+        if (existingLike.isPresent()) {
+            postLikeRepository.delete(existingLike.get());
+            post.setLikes(Math.max(0, post.getLikes() - 1));
+        } else {
+            PostLike newLike = new PostLike();
+            newLike.setMember(member);
+            newLike.setPost(post);
+            postLikeRepository.save(newLike);
+            post.setLikes(post.getLikes() + 1);
+            accessLogService.logByLoginId(loginId, "LIKE", ip);
+        }
+
+        postRepository.save(post);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Post updatedPost = postRepository.findById(id).orElseThrow();
+        Member freshMember = memberRepository.findByLoginId(loginId).orElseThrow();
+        syncLikedStatus(updatedPost, freshMember);
+        return toPostResponse(updatedPost);
+    }
+
+    @Transactional
+    public PostResponse addComment(Long postId, CreateCommentRequest payload, String loginId, String ip) {
+        Post post = postRepository.findById(postId).orElseThrow();
+        Member member = memberRepository.findByLoginId(loginId).orElseThrow();
+
+        Comment comment = new Comment();
+        comment.setContent(payload.content());
+        comment.setAuthor(member.getName());
+        comment.setLoginId(member.getLoginId());
+        comment.setStudentId(member.getStudentId());
+        comment.setProfileImage(member.getProfileImage());
+        comment.setDate(LocalDateTime.now().format(DateTimeFormatter.ofPattern("MM.dd HH:mm")));
+        comment.setPost(post);
+
+        if (payload.parentId() != null) {
+            Comment parent = commentRepository.findById(payload.parentId()).orElseThrow();
+            comment.setParent(parent);
+            comment.setReply(true);
+        }
+
+        commentRepository.save(comment);
+        accessLogService.logByLoginId(loginId, "COMMENT_CREATE", ip);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Post updatedPost = postRepository.findById(postId).orElseThrow();
+        Member freshMember = memberRepository.findByLoginId(loginId).orElseThrow();
+        syncLikedStatus(updatedPost, freshMember);
+        return toPostResponse(updatedPost);
+    }
+
+    @Transactional
+    public PostResponse deleteComment(Long postId, Long commentId, String loginId, String ip) {
+        Comment comment = commentRepository.findById(commentId).orElseThrow();
+        validateCommentOwnership(postId, comment, loginId);
+
+        List<Comment> deleteTargets = new ArrayList<>();
+        collectCommentsForDelete(comment, deleteTargets);
+
+        for (Comment target : deleteTargets) {
+            commentLikeRepository.deleteByComment(target);
+        }
+        for (Comment target : deleteTargets) {
+            commentRepository.delete(target);
+        }
+
+        accessLogService.logByLoginId(loginId, "COMMENT_DELETE", ip);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Post post = postRepository.findById(postId).orElseThrow();
+        Member freshMember = memberRepository.findByLoginId(loginId).orElse(null);
+        syncLikedStatus(post, freshMember);
+        return toPostResponse(post);
+    }
+
+    private void collectCommentsForDelete(Comment current, List<Comment> result) {
+        if (current.getReplies() != null && !current.getReplies().isEmpty()) {
+            for (Comment reply : current.getReplies()) {
+                collectCommentsForDelete(reply, result);
+            }
+        }
+        // Delete children first, then parent to avoid FK violations.
+        result.add(current);
+    }
+
+    @Transactional
+    public PostResponse toggleCommentLike(Long postId, Long commentId, String loginId) {
+        Comment comment = commentRepository.findById(commentId).orElseThrow();
+        Member member = memberRepository.findByLoginId(loginId).orElseThrow();
+
+        Optional<CommentLike> existing = commentLikeRepository.findByMemberAndComment(member, comment);
+
+        if (existing.isPresent()) {
+            commentLikeRepository.delete(existing.get());
+            comment.setLikes(Math.max(0, comment.getLikes() - 1));
+        } else {
+            CommentLike cl = new CommentLike();
+            cl.setMember(member);
+            cl.setComment(comment);
+            commentLikeRepository.save(cl);
+            comment.setLikes(comment.getLikes() + 1);
+        }
+        commentRepository.save(comment);
+
+        entityManager.flush();
+        entityManager.clear();
+
+        Post post = postRepository.findById(postId).orElseThrow();
+        Member freshMember = memberRepository.findByLoginId(loginId).orElseThrow();
+        syncLikedStatus(post, freshMember);
+        return toPostResponse(post);
+    }
+
+    private void syncLikedStatus(Post post, Member member) {
+        if (member == null) return;
+
+        post.setLikedByMe(postLikeRepository.existsByMemberAndPost(member, post));
+
+        if (post.getCommentsList() != null) {
+            post.getCommentsList().forEach(comment -> {
+                comment.setLikedByMe(commentLikeRepository.existsByMemberAndComment(member, comment));
+
+                if (comment.getReplies() != null) {
+                    comment.getReplies().forEach(reply ->
+                            reply.setLikedByMe(commentLikeRepository.existsByMemberAndComment(member, reply))
+                    );
+                }
+            });
+        }
+    }
+
+    private void validatePostOwnership(Post post, String loginId) {
+        if (loginId == null || loginId.isBlank() || !loginId.equals(post.getLoginId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 글만 수정/삭제할 수 있습니다.");
+        }
+    }
+
+    private void validateCommentOwnership(Long postId, Comment comment, String loginId) {
+        if (comment.getPost() == null || !comment.getPost().getId().equals(postId)) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "해당 게시글의 댓글이 아닙니다.");
+        }
+
+        if (loginId == null || loginId.isBlank() || !loginId.equals(comment.getLoginId())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "본인 댓글/대댓글만 삭제할 수 있습니다.");
+        }
+    }
+
+    private PostResponse toPostResponse(Post post) {
+        List<CommentResponse> comments = post.getCommentsList() == null
+                ? List.of()
+                : post.getCommentsList().stream().map(this::toCommentResponse).toList();
+
+        return new PostResponse(
+                post.getId(),
+                post.getTitle(),
+                post.getContent(),
+                post.getCategory(),
+                post.getAuthor(),
+                post.getLoginId(),
+                post.getStudentId(),
+                post.getProfileImage(),
+                post.getViews(),
+                post.getLikes(),
+                post.isLikedByMe(),
+                post.getImages() == null ? List.of() : post.getImages(),
+                comments,
+                post.getCreatedAt(),
+                post.getDate()
+        );
+    }
+
+    private CommentResponse toCommentResponse(Comment comment) {
+        List<CommentResponse> replies = comment.getReplies() == null
+                ? List.of()
+                : comment.getReplies().stream().map(this::toCommentResponse).toList();
+
+        return new CommentResponse(
+                comment.getId(),
+                comment.getContent(),
+                comment.getAuthor(),
+                comment.getLoginId(),
+                comment.getStudentId(),
+                comment.getProfileImage(),
+                comment.getDate(),
+                comment.getCreatedAt(),
+                comment.getLikes(),
+                comment.isLikedByMe(),
+                comment.isReply(),
+                replies
+        );
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/AccessLogService.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import kr.co.devsign.devsign_backend.entity.AccessLog;
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.repository.AccessLogRepository;
+import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+
+import java.time.LocalDateTime;
+
+@Service
+@RequiredArgsConstructor
+public class AccessLogService {
+
+    private final MemberRepository memberRepository;
+    private final AccessLogRepository accessLogRepository;
+
+    public void logByLoginId(String loginId, String type, String ip) {
+        if (loginId == null || loginId.isBlank()) return;
+
+        memberRepository.findByLoginId(loginId).ifPresent(member -> {
+            AccessLog log = new AccessLog();
+            log.setName(member.getName());
+            log.setStudentId(member.getStudentId());
+            log.setType(type);
+            log.setIp(ip);
+            log.setTimestamp(LocalDateTime.now());
+            accessLogRepository.save(log);
+        });
+    }
+
+    public void logByMember(Member member, String type, String ip) {
+        if (member == null) return;
+
+        AccessLog log = new AccessLog();
+        log.setName(member.getName());
+        log.setStudentId(member.getStudentId());
+        log.setType(type);
+        log.setIp(ip);
+        log.setTimestamp(LocalDateTime.now());
+        accessLogRepository.save(log);
+    }
+
+    public void logRaw(String name, String studentId, String type, String ip) {
+        AccessLog log = new AccessLog();
+        log.setName(name);
+        log.setStudentId(studentId);
+        log.setType(type);
+        log.setIp(ip);
+        log.setTimestamp(LocalDateTime.now());
+        accessLogRepository.save(log);
+    }
+}
+
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/EventService.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import kr.co.devsign.devsign_backend.entity.Event;
+import kr.co.devsign.devsign_backend.entity.EventLike;
+import kr.co.devsign.devsign_backend.entity.EventView;
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.repository.EventLikeRepository;
+import kr.co.devsign.devsign_backend.repository.EventRepository;
+import kr.co.devsign.devsign_backend.repository.EventViewRepository;
+import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.dto.event.EventDetailResponse;
+import kr.co.devsign.devsign_backend.dto.event.EventLikeResponse;
+import kr.co.devsign.devsign_backend.dto.event.EventRequest;
+import kr.co.devsign.devsign_backend.dto.event.EventResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class EventService {
+
+    private final EventRepository eventRepository;
+    private final MemberRepository memberRepository;
+    private final EventViewRepository eventViewRepository;
+    private final EventLikeRepository eventLikeRepository;
+
+    private final AccessLogService accessLogService;
+
+    public List<EventResponse> getAllEvents() {
+        return eventRepository.findAll().stream()
+                .map(this::toEventResponse)
+                .toList();
+    }
+
+    public EventResponse createEvent(EventRequest payload, String loginId, String ip) {
+        Event event = new Event();
+        event.setCategory(payload.category());
+        event.setTitle(payload.title());
+        event.setDate(payload.date());
+        event.setLocation(payload.location());
+        event.setContent(payload.content());
+        event.setImage(payload.image());
+        event.setViews(0);
+        event.setLikes(0);
+
+        Event saved = eventRepository.save(event);
+        accessLogService.logByLoginId(loginId, "EVENT_CREATE", ip);
+        return toEventResponse(saved);
+    }
+
+    public EventResponse updateEvent(Long id, EventRequest payload, String loginId, String ip) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("event not found"));
+
+        event.setCategory(payload.category());
+        event.setTitle(payload.title());
+        event.setDate(payload.date());
+        event.setLocation(payload.location());
+        event.setContent(payload.content());
+        event.setImage(payload.image());
+
+        accessLogService.logByLoginId(loginId, "EVENT_UPDATE", ip);
+        return toEventResponse(eventRepository.save(event));
+    }
+
+    public EventDetailResponse getEventDetail(Long id, String loginId) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("event not found"));
+
+        boolean isLiked = false;
+
+        if (loginId != null && !loginId.isBlank()) {
+            Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
+            if (memberOpt.isPresent()) {
+                Member member = memberOpt.get();
+
+                if (!eventViewRepository.existsByMemberAndEvent(member, event)) {
+                    event.setViews(event.getViews() + 1);
+                    eventRepository.save(event);
+
+                    EventView view = new EventView();
+                    view.setMember(member);
+                    view.setEvent(event);
+                    eventViewRepository.save(view);
+                }
+
+                isLiked = eventLikeRepository.existsByMemberAndEvent(member, event);
+            }
+        }
+
+        return new EventDetailResponse(toEventResponse(event), isLiked);
+    }
+
+    @Transactional
+    public EventLikeResponse toggleLike(Long id, String loginId) {
+        if (loginId == null || loginId.isBlank()) {
+            return new EventLikeResponse("error", "login required", null, null);
+        }
+
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("event not found"));
+        Member member = memberRepository.findByLoginId(loginId)
+                .orElseThrow(() -> new RuntimeException("member not found"));
+
+        boolean liked;
+        if (eventLikeRepository.existsByMemberAndEvent(member, event)) {
+            eventLikeRepository.deleteByMemberAndEvent(member, event);
+            event.setLikes(Math.max(0, event.getLikes() - 1));
+            liked = false;
+        } else {
+            EventLike like = new EventLike();
+            like.setMember(member);
+            like.setEvent(event);
+            eventLikeRepository.save(like);
+
+            event.setLikes(event.getLikes() + 1);
+            liked = true;
+        }
+
+        eventRepository.save(event);
+        return new EventLikeResponse("success", null, liked, event.getLikes());
+    }
+
+    @Transactional
+    public StatusResponse deleteEvent(Long id, String loginId, String ip) {
+        Event event = eventRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("event not found"));
+
+        accessLogService.logByLoginId(loginId, "EVENT_DELETE", ip);
+
+        eventLikeRepository.deleteByEvent(event);
+        eventViewRepository.deleteByEvent(event);
+
+        eventRepository.delete(event);
+
+        return StatusResponse.success();
+    }
+
+    private EventResponse toEventResponse(Event event) {
+        return new EventResponse(
+                event.getId(),
+                event.getCategory(),
+                event.getTitle(),
+                event.getDate(),
+                event.getLocation(),
+                event.getContent(),
+                event.getImage(),
+                event.getViews(),
+                event.getLikes()
+        );
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/DiscordBotClient.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestTemplate;
+
+import java.util.HashMap;
+import java.util.Map;
+
+@Component
+@RequiredArgsConstructor
+public class DiscordBotClient {
+
+    private final RestTemplate restTemplate;
+
+    // 도커 컨테이너 간 통신을 위해 localhost(127.0.0.1) 대신 서비스 이름인 discord-bot을 사용합니다.
+    private static final String BOT_BASE = "http://discord-bot:8000";
+
+    public Map<String, Object> getAvatar(String discordTag) {
+        String url = BOT_BASE + "/get-avatar/" + discordTag;
+        return restTemplate.getForObject(url, Map.class);
+    }
+
+    public Map<String, Object> checkMember(String discordTag) {
+        String url = BOT_BASE + "/check-member/" + discordTag;
+        return restTemplate.getForObject(url, Map.class);
+    }
+
+    public Map<String, Object> sendCode(String discordTag, String code) {
+        String url = BOT_BASE + "/send-code";
+        Map<String, String> body = new HashMap<>();
+        body.put("discordTag", discordTag);
+        body.put("code", code);
+        return restTemplate.postForObject(url, body, Map.class);
+    }
+
+    public Map<String, Object> syncAllMembers() {
+        String url = BOT_BASE + "/sync-all-members";
+        return restTemplate.getForObject(url, Map.class);
+    }
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/MemberService.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import jakarta.servlet.http.HttpServletRequest;
+import kr.co.devsign.devsign_backend.entity.AccessLog;
+import kr.co.devsign.devsign_backend.entity.DiscordAuth;
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.repository.AccessLogRepository;
+import kr.co.devsign.devsign_backend.repository.DiscordAuthRepository;
+import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import kr.co.devsign.devsign_backend.util.JwtUtil;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.dto.member.ChangePasswordRequest;
+import kr.co.devsign.devsign_backend.dto.member.DiscordLookupResponse;
+import kr.co.devsign.devsign_backend.dto.member.FindDiscordByInfoRequest;
+import kr.co.devsign.devsign_backend.dto.member.LoginRequest;
+import kr.co.devsign.devsign_backend.dto.member.LoginResponse;
+import kr.co.devsign.devsign_backend.dto.member.LogoutLogRequest;
+import kr.co.devsign.devsign_backend.dto.member.MemberResponse;
+import kr.co.devsign.devsign_backend.dto.member.ResetPasswordFinalRequest;
+import kr.co.devsign.devsign_backend.dto.member.SendDiscordCodeRequest;
+import kr.co.devsign.devsign_backend.dto.member.SendDiscordCodeResponse;
+import kr.co.devsign.devsign_backend.dto.member.SignupRequest;
+import kr.co.devsign.devsign_backend.dto.member.UpdateMemberRequest;
+import kr.co.devsign.devsign_backend.dto.member.VerifyCodeRequest;
+import kr.co.devsign.devsign_backend.dto.member.VerifyCodeResponse;
+import kr.co.devsign.devsign_backend.dto.member.VerifyIdPwRequest;
+import kr.co.devsign.devsign_backend.dto.member.VerifyIdPwResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestTemplate;
+
+import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class MemberService {
+    private static final String DEFAULT_AVATAR_URL = "https://cdn.discordapp.com/embed/avatars/0.png";
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Autowired
+    private AccessLogRepository accessLogRepository;
+
+    @Autowired
+    private RestTemplate restTemplate;
+
+    private final MemberRepository memberRepository;
+    private final DiscordAuthRepository discordAuthRepository;
+    private final BCryptPasswordEncoder passwordEncoder;
+
+    private final AccessLogService accessLogService;
+    private final DiscordBotClient discordBotClient;
+
+    public MemberResponse signup(SignupRequest payload, String ip) {
+        String authCode = payload.authCode();
+
+        DiscordAuth auth = discordAuthRepository.findByCode(authCode)
+                .orElseThrow(() -> new RuntimeException("invalid or expired auth code"));
+
+        Map<String, String> discordInfo = parseDiscordNickname(auth.getDiscordNickname());
+
+        Member member = new Member();
+        member.setLoginId(payload.loginId());
+        member.setPassword(passwordEncoder.encode(payload.password()));
+        member.setDept(payload.dept());
+        member.setInterests(payload.interests());
+
+        member.setName(discordInfo.get("name"));
+        member.setStudentId(discordInfo.get("studentId"));
+        member.setDiscordTag(auth.getDiscordTag());
+
+        member.setRole(auth.getRole() != null ? auth.getRole() : "USER");
+        member.setUserStatus(auth.getUserStatus() != null ? auth.getUserStatus() : "ATTENDING");
+        member.setProfileImage(auth.getAvatarUrl());
+
+        Member saved = memberRepository.save(member);
+
+        accessLogService.logByMember(saved, "SIGNUP", ip);
+        discordAuthRepository.delete(auth);
+
+        return toMemberResponse(saved);
+    }
+
+    public List<MemberResponse> getAllMembers() {
+        return memberRepository.findByDeletedFalseOrderByStudentIdDesc().stream()
+                .map(this::toMemberResponse)
+                .toList();
+    }
+
+    public LoginResponse login(LoginRequest loginRequest, HttpServletRequest request) {
+        Optional<Member> memberOpt = memberRepository.findByLoginId(loginRequest.loginId());
+
+        if (memberOpt.isPresent() && passwordEncoder.matches(loginRequest.password(), memberOpt.get().getPassword())) {
+            Member m = memberOpt.get();
+
+            if (m.isDeleted()) {
+                return new LoginResponse(
+                        "fail",
+                        "account deleted",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                );
+            }
+
+            if (m.isSuspended()) {
+                return new LoginResponse(
+                        "suspended",
+                        "account suspended",
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null,
+                        null
+                );
+            }
+
+            String token = jwtUtil.generateToken(m.getLoginId(), m.getRole());
+
+            AccessLog log = new AccessLog();
+            log.setName(m.getName());
+            log.setStudentId(m.getStudentId());
+            log.setType("LOGIN");
+            log.setIp(request.getRemoteAddr());
+            accessLogRepository.save(log);
+
+            String avatarUrl = DEFAULT_AVATAR_URL;
+            try {
+                String botUrl = "http://127.0.0.1:8000/get-avatar/" + m.getDiscordTag();
+                Map<String, Object> botResponse = restTemplate.getForObject(botUrl, Map.class);
+                if (botResponse != null && "success".equals(botResponse.get("status"))) {
+                    avatarUrl = asString(botResponse.get("avatarUrl"));
+                }
+            } catch (Exception ignored) {
+            }
+
+            return new LoginResponse(
+                    "success",
+                    null,
+                    token,
+                    m.getRole(),
+                    m.getUserStatus(),
+                    m.getName(),
+                    m.getLoginId(),
+                    m.getStudentId(),
+                    m.getDept(),
+                    m.getDiscordTag(),
+                    avatarUrl
+            );
+        }
+
+        return new LoginResponse(
+                "fail",
+                "invalid credentials",
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+    }
+
+    public StatusResponse logoutLog(LogoutLogRequest requestData, String ip) {
+        accessLogService.logRaw(requestData.name(), requestData.studentId(), "LOGOUT", ip);
+        return StatusResponse.success();
+    }
+
+    public StatusResponse updateMember(String loginId, UpdateMemberRequest updateData) {
+        Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
+        if (memberOpt.isEmpty()) {
+            return StatusResponse.fail("member not found");
+        }
+
+        String newDiscordTag = updateData.discordTag();
+
+        try {
+            Map<String, Object> botRes = discordBotClient.checkMember(newDiscordTag);
+            boolean exists = botRes != null && Boolean.TRUE.equals(botRes.get("exists"));
+            if (!exists) {
+                return StatusResponse.fail("discord member not found");
+            }
+        } catch (Exception e) {
+            return StatusResponse.error("discord verification failed");
+        }
+
+        Member member = memberOpt.get();
+        member.setDept(updateData.dept());
+        member.setDiscordTag(newDiscordTag);
+        memberRepository.save(member);
+
+        return StatusResponse.success();
+    }
+
+    public StatusResponse changePassword(String loginId, ChangePasswordRequest request) {
+        Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
+
+        if (memberOpt.isEmpty()) {
+            return StatusResponse.fail("member not found");
+        }
+
+        Member member = memberOpt.get();
+        if (!passwordEncoder.matches(request.currentPassword(), member.getPassword())) {
+            return StatusResponse.fail("current password mismatch");
+        }
+
+        member.setPassword(passwordEncoder.encode(request.newPassword()));
+        memberRepository.save(member);
+
+        return StatusResponse.success();
+    }
+
+    public DiscordLookupResponse findDiscordByInfo(FindDiscordByInfoRequest request) {
+        return memberRepository.findByNameAndStudentId(request.name(), request.studentId())
+                .map(m -> new DiscordLookupResponse("success", m.getDiscordTag()))
+                .orElseGet(() -> new DiscordLookupResponse("fail", null));
+    }
+
+    public VerifyIdPwResponse verifyIdPw(VerifyIdPwRequest request) {
+        Optional<Member> memberOpt = memberRepository.findByNameAndStudentId(request.name(), request.studentId());
+        if (memberOpt.isEmpty()) {
+            return new VerifyIdPwResponse("fail", null);
+        }
+
+        String discordTag = memberOpt.get().getDiscordTag();
+        boolean ok = checkVerificationInternal(discordTag, request.code());
+        if (!ok) {
+            return new VerifyIdPwResponse("fail", null);
+        }
+
+        return new VerifyIdPwResponse("success", memberOpt.get().getLoginId());
+    }
+
+    public StatusResponse resetPasswordFinal(ResetPasswordFinalRequest request) {
+        Optional<Member> memberOpt = memberRepository.findByNameAndStudentId(request.name(), request.studentId());
+        if (memberOpt.isEmpty()) {
+            return StatusResponse.fail("member not found");
+        }
+
+        Member member = memberOpt.get();
+        member.setPassword(passwordEncoder.encode(request.newPassword()));
+        memberRepository.save(member);
+
+        return StatusResponse.success();
+    }
+
+    public boolean checkId(String loginId) {
+        return memberRepository.findByLoginId(loginId).isPresent();
+    }
+
+    public SendDiscordCodeResponse sendDiscordCode(SendDiscordCodeRequest request) {
+        String discordTag = request.discordTag();
+        String randomCode = String.format("%06d", (int) (Math.random() * 1000000));
+
+        try {
+            Map<String, Object> botRes = discordBotClient.sendCode(discordTag, randomCode);
+
+            if (botRes != null && "success".equals(botRes.get("status"))) {
+                DiscordAuth auth = new DiscordAuth();
+                auth.setDiscordTag(discordTag);
+                auth.setCode(randomCode);
+                auth.setExpiry(LocalDateTime.now().plusMinutes(5));
+
+                String nickname = botRes.get("studentId") + " " + botRes.get("name");
+                auth.setDiscordNickname(nickname);
+                auth.setRole((String) botRes.get("role"));
+                auth.setUserStatus((String) botRes.get("userStatus"));
+                auth.setAvatarUrl((String) botRes.get("avatarUrl"));
+
+                discordAuthRepository.save(auth);
+            }
+
+            return new SendDiscordCodeResponse(
+                    asString(botRes != null ? botRes.get("status") : null),
+                    asString(botRes != null ? botRes.get("message") : null),
+                    asString(botRes != null ? botRes.get("name") : null),
+                    asString(botRes != null ? botRes.get("studentId") : null),
+                    asString(botRes != null ? botRes.get("userStatus") : null),
+                    asString(botRes != null ? botRes.get("role") : null),
+                    asString(botRes != null ? botRes.get("avatarUrl") : null)
+            );
+
+        } catch (Exception e) {
+            return new SendDiscordCodeResponse("bot_error", null, null, null, null, null, null);
+        }
+    }
+
+    public VerifyCodeResponse verifyCode(VerifyCodeRequest request) {
+        Optional<DiscordAuth> authOpt =
+                discordAuthRepository.findTopByDiscordTagOrderByExpiryDesc(request.discordTag().trim());
+
+        if (authOpt.isPresent()) {
+            DiscordAuth auth = authOpt.get();
+            boolean ok = auth.getCode().equals(request.code().trim())
+                    && auth.getExpiry().isAfter(LocalDateTime.now());
+
+            if (ok) {
+                Map<String, String> discordInfo = parseDiscordNickname(auth.getDiscordNickname());
+                return new VerifyCodeResponse(
+                        "success",
+                        discordInfo.get("name"),
+                        discordInfo.get("studentId"),
+                        auth.getUserStatus(),
+                        auth.getRole()
+                );
+            }
+        }
+
+        return new VerifyCodeResponse("fail", null, null, null, null);
+    }
+
+    private boolean checkVerificationInternal(String discordTag, String code) {
+        return discordAuthRepository.findTopByDiscordTagOrderByExpiryDesc(discordTag.trim())
+                .map(auth -> auth.getCode().equals(code.trim()) && auth.getExpiry().isAfter(LocalDateTime.now()))
+                .orElse(false);
+    }
+
+    private Map<String, String> parseDiscordNickname(String nickname) {
+        Map<String, String> info = new HashMap<>();
+        if (nickname != null && nickname.contains(" ")) {
+            String[] parts = nickname.split(" ", 2);
+            info.put("studentId", parts[0]);
+            info.put("name", parts[1]);
+        } else {
+            info.put("studentId", "Unknown");
+            info.put("name", nickname != null ? nickname : "Unknown");
+        }
+        return info;
+    }
+
+    private MemberResponse toMemberResponse(Member member) {
+        return new MemberResponse(
+                member.getId(),
+                member.getLoginId(),
+                member.getName(),
+                member.getStudentId(),
+                member.getDept(),
+                member.getInterests(),
+                member.getDiscordTag(),
+                member.getUserStatus(),
+                member.getRole(),
+                member.isSuspended(),
+                member.getProfileImage()
+        );
+    }
+
+    private String asString(Object value) {
+        return value == null ? null : value.toString();
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/NoticeService.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.entity.Notice;
+import kr.co.devsign.devsign_backend.entity.NoticeView;
+import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import kr.co.devsign.devsign_backend.repository.NoticeRepository;
+import kr.co.devsign.devsign_backend.repository.NoticeViewRepository;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.dto.notice.NoticePinResponse;
+import kr.co.devsign.devsign_backend.dto.notice.NoticeRequest;
+import kr.co.devsign.devsign_backend.dto.notice.NoticeResponse;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class NoticeService {
+
+    private final NoticeRepository noticeRepository;
+    private final MemberRepository memberRepository;
+    private final NoticeViewRepository noticeViewRepository;
+    private final AccessLogService accessLogService;
+
+    public List<NoticeResponse> getAllNotices() {
+        return noticeRepository.findAll(Sort.by(Sort.Order.desc("pinned"), Sort.Order.desc("id"))).stream()
+                .map(this::toNoticeResponse)
+                .toList();
+    }
+
+    public NoticePinResponse togglePin(Long id, String loginId, String ip) {
+        Notice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("notice not found"));
+
+        if (!notice.isPinned()) {
+            long pinnedCount = noticeRepository.findAll().stream().filter(Notice::isPinned).count();
+            if (pinnedCount >= 3) {
+                return new NoticePinResponse("error", "maximum pinned notices is 3", null);
+            }
+            notice.setPinned(true);
+            accessLogService.logByLoginId(loginId, "NOTICE_PIN", ip);
+        } else {
+            notice.setPinned(false);
+            accessLogService.logByLoginId(loginId, "NOTICE_UNPIN", ip);
+        }
+
+        noticeRepository.save(notice);
+        return new NoticePinResponse("success", null, notice.isPinned());
+    }
+
+    public NoticeResponse createNotice(NoticeRequest payload, String loginId, String ip) {
+        Notice notice = new Notice();
+        notice.setTitle(payload.title());
+        notice.setContent(payload.content());
+
+        String category = payload.category();
+        notice.setCategory(category);
+        notice.setTag(category);
+
+        notice.setImages(payload.images());
+        notice.setImportant(Boolean.TRUE.equals(payload.important()));
+        notice.setViews(0);
+        notice.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
+        notice.setPinned(false);
+
+        if (loginId != null) {
+            memberRepository.findByLoginId(loginId).ifPresent(m -> notice.setAuthor(m.getName()));
+        } else {
+            notice.setAuthor("ADMIN");
+        }
+
+        Notice saved = noticeRepository.save(notice);
+        accessLogService.logByLoginId(loginId, "NOTICE_CREATE", ip);
+        return toNoticeResponse(saved);
+    }
+
+    public NoticeResponse updateNotice(Long id, NoticeRequest payload, String loginId, String ip) {
+        Notice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("notice not found"));
+
+        notice.setTitle(payload.title());
+        notice.setContent(payload.content());
+
+        String category = payload.category();
+        notice.setCategory(category);
+        notice.setTag(category);
+
+        notice.setImages(payload.images());
+        notice.setImportant(Boolean.TRUE.equals(payload.important()));
+
+        accessLogService.logByLoginId(loginId, "NOTICE_UPDATE", ip);
+        return toNoticeResponse(noticeRepository.save(notice));
+    }
+
+    public NoticeResponse getNoticeDetail(Long id, String loginId) {
+        Notice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("notice not found"));
+
+        if (loginId != null) {
+            Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
+            if (memberOpt.isPresent()) {
+                Member member = memberOpt.get();
+
+                if (!noticeViewRepository.existsByMemberAndNotice(member, notice)) {
+                    notice.setViews(notice.getViews() + 1);
+                    noticeRepository.save(notice);
+
+                    NoticeView view = new NoticeView();
+                    view.setMember(member);
+                    view.setNotice(notice);
+                    noticeViewRepository.save(view);
+                }
+            }
+        }
+
+        return toNoticeResponse(notice);
+    }
+
+    @Transactional
+    public StatusResponse deleteNotice(Long id, String loginId, String ip) {
+        Notice notice = noticeRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("notice not found"));
+
+        accessLogService.logByLoginId(loginId, "NOTICE_DELETE", ip);
+        noticeViewRepository.deleteByNotice(notice);
+        noticeRepository.delete(notice);
+
+        return StatusResponse.success();
+    }
+
+    private NoticeResponse toNoticeResponse(Notice notice) {
+        return new NoticeResponse(
+                notice.getId(),
+                notice.getTag(),
+                notice.getCategory(),
+                notice.getTitle(),
+                notice.getContent(),
+                notice.getAuthor(),
+                notice.getViews(),
+                notice.getDate(),
+                notice.getImages(),
+                notice.isImportant(),
+                notice.isPinned(),
+                notice.getCreatedAt()
+        );
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/AssemblyService.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
+import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
+import kr.co.devsign.devsign_backend.entity.AssemblyProject;
+import kr.co.devsign.devsign_backend.entity.AssemblyReport;
+import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
+import kr.co.devsign.devsign_backend.repository.AssemblyProjectRepository;
+import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
+import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
+import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
+import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
+import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
+
+import java.io.File;
+import java.io.IOException;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+@Service
+@RequiredArgsConstructor
+public class AssemblyService {
+
+    private static final int[] ACTIVE_MONTHS = new int[]{3, 4, 5, 6, 9, 10, 11, 12};
+
+    private final AssemblyPeriodRepository periodRepository;
+    private final AssemblyReportRepository reportRepository;
+    private final AssemblyProjectRepository projectRepository;
+    @Value("${app.upload.base-dir:uploads}")
+    private String uploadBaseDir;
+
+    public List<SubmissionPeriodResponse> getSubmissionPeriods(int year) {
+        List<AssemblyPeriod> savedPeriods = periodRepository.findByYearOrderByMonthAsc(year);
+        Map<Integer, AssemblyPeriod> periodByMonth = savedPeriods.stream()
+                .collect(java.util.stream.Collectors.toMap(AssemblyPeriod::getMonth, p -> p, (a, b) -> a));
+
+        return Arrays.stream(ACTIVE_MONTHS)
+                .mapToObj(month -> {
+                    int semester = month <= 6 ? 1 : 2;
+                    AssemblyPeriod period = periodByMonth.get(month);
+
+                    String type = period != null && StringUtils.hasText(period.getType())
+                            ? period.getType()
+                            : resolveType(month);
+                    LocalDate startDate = period != null && period.getStartDate() != null
+                            ? period.getStartDate()
+                            : LocalDate.of(year, month, 1);
+                    LocalDate endDate = period != null && period.getEndDate() != null
+                            ? period.getEndDate()
+                            : LocalDate.of(year, month, 28);
+
+                    return new SubmissionPeriodResponse(
+                            period != null ? period.getId() : null,
+                            month,
+                            year,
+                            semester,
+                            type,
+                            startDate.toString(),
+                            endDate.toString()
+                    );
+                })
+                .toList();
+    }
+
+    public MySubmissionsResponse getMySubmissions(String loginId, int year, int semester) {
+        List<AssemblyReport> reports =
+                reportRepository.findByLoginIdAndYearAndSemesterOrderByMonthAsc(loginId, year, semester);
+
+        if (reports.isEmpty()) {
+            int[] months = (semester == 1) ? new int[]{3, 4, 5, 6} : new int[]{9, 10, 11, 12};
+            for (int month : months) {
+                AssemblyReport r = new AssemblyReport();
+                r.setLoginId(loginId);
+                r.setYear(year);
+                r.setSemester(semester);
+                r.setMonth(month);
+                r.setStatus("NOT_SUBMITTED");
+                r.setType(resolveType(month));
+                reportRepository.save(r);
+            }
+            reports = reportRepository.findByLoginIdAndYearAndSemesterOrderByMonthAsc(loginId, year, semester);
+        }
+
+        String projectTitle = projectRepository.findByLoginIdAndYearAndSemester(loginId, year, semester)
+                .map(AssemblyProject::getTitle)
+                .orElse("");
+
+        List<AssemblyReportResponse> reportResponses = reports.stream()
+                .map(this::toReportResponse)
+                .toList();
+
+        return new MySubmissionsResponse(reportResponses, projectTitle);
+    }
+
+    public void saveProjectTitle(SaveProjectTitleRequest params) {
+        String loginId = params.loginId();
+        int year = params.year();
+        int semester = params.semester();
+        String title = params.title();
+
+        AssemblyProject project = projectRepository.findByLoginIdAndYearAndSemester(loginId, year, semester)
+                .orElse(new AssemblyProject());
+
+        project.setLoginId(loginId);
+        project.setYear(year);
+        project.setSemester(semester);
+        project.setTitle(title);
+
+        projectRepository.save(project);
+    }
+
+    public String submitFiles(SubmitFilesCommand command) throws Exception {
+        String loginId = command.loginId();
+        String reportId = command.reportId();
+        int year = command.year();
+        int semester = command.semester();
+        int month = command.month();
+        String memo = command.memo();
+        MultipartFile presentation = command.presentation();
+        MultipartFile pdf = command.pdf();
+        MultipartFile other = command.other();
+
+        AssemblyReport report = null;
+
+        if (reportId != null && !reportId.equals("0") && !reportId.startsWith("temp")) {
+            report = reportRepository.findById(Long.parseLong(reportId)).orElse(null);
+        }
+
+        if (report == null) {
+            List<AssemblyReport> existing =
+                    reportRepository.findByLoginIdAndYearAndSemesterOrderByMonthAsc(loginId, year, semester);
+
+            report = existing.stream()
+                    .filter(r -> r.getMonth() == month)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (report == null) {
+            report = new AssemblyReport();
+            report.setLoginId(loginId);
+            report.setYear(year);
+            report.setSemester(semester);
+            report.setMonth(month);
+            report.setStatus("NOT_SUBMITTED");
+            report.setType(resolveType(month));
+        }
+
+        validateUploadFiles(presentation, pdf, other, report);
+
+        Path uploadBasePath = getUploadBasePath();
+        Path userPath = uploadBasePath.resolve(loginId).resolve(String.valueOf(month)).normalize();
+        validateWithinBase(userPath, uploadBasePath);
+        Files.createDirectories(userPath);
+
+        if (presentation != null && !presentation.isEmpty()) {
+            String fileName = buildStorageFileName("pres_", presentation);
+            Path targetPath = userPath.resolve(fileName).normalize();
+            validateWithinBase(targetPath, uploadBasePath);
+            presentation.transferTo(targetPath.toFile());
+            report.setPresentationPath(toStoredPath(uploadBasePath, targetPath));
+        }
+
+        if (pdf != null && !pdf.isEmpty()) {
+            String fileName = buildStorageFileName("pdf_", pdf);
+            Path targetPath = userPath.resolve(fileName).normalize();
+            validateWithinBase(targetPath, uploadBasePath);
+            pdf.transferTo(targetPath.toFile());
+            report.setPdfPath(toStoredPath(uploadBasePath, targetPath));
+        }
+
+        if (other != null && !other.isEmpty()) {
+            String fileName = buildStorageFileName("other_", other);
+            Path targetPath = userPath.resolve(fileName).normalize();
+            validateWithinBase(targetPath, uploadBasePath);
+            other.transferTo(targetPath.toFile());
+            report.setOtherPath(toStoredPath(uploadBasePath, targetPath));
+        }
+
+        report.setMemo(memo);
+        report.setStatus("SUBMITTED");
+        report.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
+
+        reportRepository.save(report);
+        return "submitted";
+    }
+
+    public ResponseEntity<byte[]> downloadFile(String path) {
+        try {
+            if (!StringUtils.hasText(path)) {
+                return ResponseEntity.badRequest().body(new byte[0]);
+            }
+
+            Path uploadBasePath = getUploadBasePath();
+            Path resolvedPath = resolveUploadPath(path, uploadBasePath);
+
+            if (resolvedPath == null || !isAllowedUploadPath(resolvedPath, uploadBasePath)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).body(new byte[0]);
+            }
+
+            if (!Files.exists(resolvedPath) || !Files.isRegularFile(resolvedPath)) {
+                return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new byte[0]);
+            }
+
+            byte[] data = Files.readAllBytes(resolvedPath);
+            String fileName = resolvedPath.getFileName().toString();
+
+            HttpHeaders headers = new HttpHeaders();
+            headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            headers.setContentDisposition(ContentDisposition.attachment()
+                    .filename(fileName, StandardCharsets.UTF_8)
+                    .build());
+
+            return new ResponseEntity<>(data, headers, HttpStatus.OK);
+        } catch (IOException e) {
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new byte[0]);
+        }
+    }
+
+    private void validateUploadFiles(
+            MultipartFile presentation,
+            MultipartFile pdf,
+            MultipartFile other,
+            AssemblyReport report
+    ) {
+        validateExtension(
+                presentation,
+                Set.of("ppt", "pptx"),
+                "발표자료는 .ppt 또는 .pptx 파일만 업로드할 수 있습니다."
+        );
+        validateExtension(
+                pdf,
+                Set.of("pdf"),
+                "PDF 항목에는 .pdf 파일만 업로드할 수 있습니다."
+        );
+
+        boolean hasNewFile = hasUpload(presentation) || hasUpload(pdf) || hasUpload(other);
+        boolean hasExistingFile = hasAnyExistingFile(report);
+
+        if (!hasNewFile && !hasExistingFile) {
+            throw new IllegalArgumentException("발표자료, PDF, 기타자료 중 하나 이상 업로드해야 합니다.");
+        }
+    }
+
+    private boolean hasUpload(MultipartFile file) {
+        return file != null && !file.isEmpty();
+    }
+
+    private boolean hasAnyExistingFile(AssemblyReport report) {
+        return StringUtils.hasText(report.getPresentationPath())
+                || StringUtils.hasText(report.getPdfPath())
+                || StringUtils.hasText(report.getOtherPath());
+    }
+
+    private void validateExtension(MultipartFile file, Set<String> allowedExtensions, String message) {
+        if (!hasUpload(file)) {
+            return;
+        }
+
+        String originalFilename = file.getOriginalFilename();
+        if (!StringUtils.hasText(originalFilename)) {
+            throw new IllegalArgumentException(message);
+        }
+
+        int lastDot = originalFilename.lastIndexOf('.');
+        if (lastDot < 0 || lastDot == originalFilename.length() - 1) {
+            throw new IllegalArgumentException(message);
+        }
+
+        String extension = originalFilename.substring(lastDot + 1).toLowerCase();
+        if (!allowedExtensions.contains(extension)) {
+            throw new IllegalArgumentException(message);
+        }
+    }
+
+    private String resolveType(int month) {
+        if (month == 3 || month == 9) {
+            return "PLAN";
+        }
+        if (month == 6 || month == 12) {
+            return "RESULT";
+        }
+        return "PROGRESS";
+    }
+
+    private AssemblyReportResponse toReportResponse(AssemblyReport report) {
+        return new AssemblyReportResponse(
+                report.getId(),
+                report.getLoginId(),
+                report.getYear(),
+                report.getSemester(),
+                report.getMonth(),
+                report.getType(),
+                report.getStatus(),
+                report.getTitle(),
+                report.getMemo(),
+                report.getDate(),
+                report.getDeadline(),
+                report.getPresentationPath(),
+                report.getPdfPath(),
+                report.getOtherPath()
+        );
+    }
+
+    private Path getUploadBasePath() {
+        Path configured = Paths.get(uploadBaseDir);
+        if (!configured.isAbsolute()) {
+            configured = Paths.get(System.getProperty("user.dir")).resolve(configured);
+        }
+        return configured.toAbsolutePath().normalize();
+    }
+
+    private String buildStorageFileName(String prefix, MultipartFile file) {
+        String original = StringUtils.cleanPath(file.getOriginalFilename() == null ? "" : file.getOriginalFilename());
+        String fileName = Paths.get(original).getFileName().toString();
+        if (!StringUtils.hasText(fileName)) {
+            fileName = "file";
+        }
+        return prefix + fileName;
+    }
+
+    private String toStoredPath(Path uploadBasePath, Path targetPath) {
+        return uploadBasePath.relativize(targetPath).toString().replace(File.separatorChar, '/');
+    }
+
+    private void validateWithinBase(Path targetPath, Path basePath) {
+        if (!targetPath.startsWith(basePath)) {
+            throw new IllegalArgumentException("invalid upload path");
+        }
+    }
+
+    private Path resolveUploadPath(String rawPath, Path uploadBasePath) {
+        String normalized = rawPath.replace("\\", "/").trim();
+        if (!StringUtils.hasText(normalized)) {
+            return null;
+        }
+
+        if (normalized.startsWith("/uploads/") || normalized.startsWith("uploads/")) {
+            String relative = normalized.replaceFirst("^/?uploads/", "");
+            return uploadBasePath.resolve(relative).normalize();
+        }
+
+        Path requested = Paths.get(rawPath);
+        if (requested.isAbsolute()) {
+            return requested.toAbsolutePath().normalize();
+        }
+
+        return uploadBasePath.resolve(requested).normalize();
+    }
+
+    private boolean isAllowedUploadPath(Path resolvedPath, Path uploadBasePath) {
+        if (resolvedPath.startsWith(uploadBasePath)) {
+            return true;
+        }
+
+        Path currentUploadsBase = Paths.get(System.getProperty("user.dir"), "uploads").toAbsolutePath().normalize();
+        if (resolvedPath.startsWith(currentUploadsBase)) {
+            return true;
+        }
+
+        Path userDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        if (userDir.getParent() != null) {
+            Path parentUploadsBase = userDir.getParent().resolve("uploads").toAbsolutePath().normalize();
+            return resolvedPath.startsWith(parentUploadsBase);
+        }
+
+        return false;
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/service/AdminService.java
+// ====================
+package kr.co.devsign.devsign_backend.service;
+
+import jakarta.transaction.Transactional;
+import kr.co.devsign.devsign_backend.dto.admin.AccessLogResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminMemberResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPasswordVerifyRequest;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodSaveRequest;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodSubmissionResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodZipRequest;
+import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsRequest;
+import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsResponse;
+import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
+import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
+import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
+import kr.co.devsign.devsign_backend.entity.AssemblyReport;
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.repository.AccessLogRepository;
+import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
+import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
+import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
+
+import java.io.*;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipOutputStream;
+
+@Service
+@RequiredArgsConstructor
+public class AdminService {
+
+    private static final int[] ACTIVE_MONTHS = new int[]{3, 4, 5, 6, 9, 10, 11, 12};
+    private static final String SUBMITTED = "SUBMITTED";
+
+    private final MemberRepository memberRepository;
+    private final AccessLogRepository accessLogRepository;
+    private final AssemblyPeriodRepository assemblyPeriodRepository;
+    private final AssemblyReportRepository assemblyReportRepository;
+    private final AccessLogService accessLogService;
+    private final DiscordBotClient discordBotClient;
+    private final BCryptPasswordEncoder passwordEncoder;
+    @Value("${app.upload.base-dir:uploads}")
+    private String uploadBaseDir;
+
+    private static final Map<String, String> heroSettings = new ConcurrentHashMap<>();
+
+    static {
+        heroSettings.put("recruitmentText", "2026 recruitment open");
+        heroSettings.put("applyLink", "https://open.kakao.com/o/example");
+    }
+
+    public List<AdminMemberResponse> getAllMembers() {
+        return memberRepository.findByDeletedFalseOrderByStudentIdDesc().stream()
+                .map(this::toAdminMemberResponse)
+                .toList();
+    }
+
+    public List<AdminMemberResponse> getDeletedMembers() {
+        return memberRepository.findByDeletedTrueOrderByDeletedAtDesc().stream()
+                .map(this::toAdminMemberResponse)
+                .toList();
+    }
+
+    public List<AccessLogResponse> getAllLogs() {
+        return accessLogRepository.findAllByOrderByTimestampDesc().stream()
+                .map(log -> new AccessLogResponse(
+                        log.getId(),
+                        log.getName(),
+                        log.getStudentId(),
+                        log.getType(),
+                        log.getIp(),
+                        log.getTimestamp()
+                ))
+                .toList();
+    }
+
+    public HeroSettingsResponse getHeroSettings() {
+        return new HeroSettingsResponse(heroSettings.get("recruitmentText"), heroSettings.get("applyLink"));
+    }
+
+    public StatusResponse updateHeroSettings(HeroSettingsRequest settings) {
+        heroSettings.put("recruitmentText", settings.recruitmentText());
+        heroSettings.put("applyLink", settings.applyLink());
+        return StatusResponse.success();
+    }
+
+    public List<AdminPeriodResponse> getPeriods(int year) {
+        List<AssemblyPeriod> savedPeriods = assemblyPeriodRepository.findByYearOrderByMonthAsc(year);
+        Map<Integer, AssemblyPeriod> periodByMonth = savedPeriods.stream()
+                .collect(java.util.stream.Collectors.toMap(AssemblyPeriod::getMonth, p -> p, (a, b) -> a));
+
+        long totalCount = memberRepository.countByDeletedFalse();
+
+        return java.util.Arrays.stream(ACTIVE_MONTHS)
+                .mapToObj(month -> {
+                    int semester = month <= 6 ? 1 : 2;
+                    AssemblyPeriod period = periodByMonth.get(month);
+
+                    String type = period != null && StringUtils.hasText(period.getType())
+                            ? period.getType()
+                            : resolveType(month);
+
+                    LocalDate startDate = period != null && period.getStartDate() != null
+                            ? period.getStartDate()
+                            : LocalDate.of(year, month, 1);
+
+                    LocalDate endDate = period != null && period.getEndDate() != null
+                            ? period.getEndDate()
+                            : LocalDate.of(year, month, 28);
+
+                    long submittedCount = assemblyReportRepository
+                            .countByYearAndSemesterAndMonthAndStatus(year, semester, month, SUBMITTED);
+
+                    return new AdminPeriodResponse(
+                            period != null ? period.getId() : null,
+                            month,
+                            year,
+                            semester,
+                            type,
+                            startDate.toString(),
+                            endDate.toString(),
+                            submittedCount,
+                            totalCount
+                    );
+                })
+                .toList();
+    }
+
+    @Transactional
+    public StatusResponse saveAllPeriods(List<AdminPeriodSaveRequest> periods) {
+        if (periods == null || periods.isEmpty()) {
+            return StatusResponse.fail("period list is empty");
+        }
+
+        try {
+            for (AdminPeriodSaveRequest request : periods) {
+                if (request.year() == null || request.semester() == null || request.month() == null) {
+                    return StatusResponse.fail("year, semester, month are required");
+                }
+                if (!StringUtils.hasText(request.startDate()) || !StringUtils.hasText(request.endDate())) {
+                    return StatusResponse.fail("startDate and endDate are required");
+                }
+
+                LocalDate startDate = LocalDate.parse(request.startDate());
+                LocalDate endDate = LocalDate.parse(request.endDate());
+                if (endDate.isBefore(startDate)) {
+                    return StatusResponse.fail("endDate must be on or after startDate");
+                }
+
+                AssemblyPeriod period = assemblyPeriodRepository
+                        .findByYearAndSemesterAndMonth(request.year(), request.semester(), request.month())
+                        .orElseGet(AssemblyPeriod::new);
+
+                period.setYear(request.year());
+                period.setSemester(request.semester());
+                period.setMonth(request.month());
+                period.setType(StringUtils.hasText(request.type()) ? request.type() : resolveType(request.month()));
+                period.setStartDate(startDate);
+                period.setEndDate(endDate);
+                assemblyPeriodRepository.save(period);
+            }
+            return StatusResponse.success();
+        } catch (Exception e) {
+            return StatusResponse.fail("save periods failed: " + e.getMessage());
+        }
+    }
+
+    public List<AdminPeriodSubmissionResponse> getSubmittedMembers(int year, int semester, int month) {
+        List<AssemblyReport> reports = assemblyReportRepository
+                .findByYearAndSemesterAndMonthAndStatusOrderByIdDesc(year, semester, month, SUBMITTED);
+
+        return reports.stream()
+                .map(report -> {
+                    Optional<Member> member = memberRepository.findByLoginId(report.getLoginId());
+                    String name = member.map(Member::getName).orElse(report.getLoginId());
+                    String studentId = member.map(Member::getStudentId).orElse("");
+                    return new AdminPeriodSubmissionResponse(
+                            report.getLoginId(),
+                            name,
+                            studentId,
+                            report.getDate(),
+                            report.getPresentationPath(),
+                            report.getPdfPath(),
+                            report.getOtherPath(),
+                            report.getMemo()
+                    );
+                })
+                .toList();
+    }
+
+    public ResponseEntity<byte[]> downloadPeriodZip(AdminPeriodZipRequest request) {
+        if (request == null || request.year() == null || request.month() == null
+                || request.userIds() == null || request.userIds().isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        String fileType = normalizeFileType(request.fileType());
+        List<AssemblyReport> reports = assemblyReportRepository.findByLoginIdInAndYearAndMonthAndStatus(
+                request.userIds(),
+                request.year(),
+                request.month(),
+                SUBMITTED
+        );
+
+        try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
+             ZipOutputStream zipOut = new ZipOutputStream(buffer)) {
+
+            for (AssemblyReport report : reports) {
+                boolean includePresentation = "all".equals(fileType) || "ppt".equals(fileType);
+                boolean includePdf = "all".equals(fileType) || "pdf".equals(fileType);
+                boolean includeOther = "all".equals(fileType);
+
+                addFileToZip(
+                        zipOut,
+                        report.getLoginId(),
+                        "presentation",
+                        report.getPresentationPath(),
+                        includePresentation,
+                        Set.of("ppt", "pptx")
+                );
+                addFileToZip(
+                        zipOut,
+                        report.getLoginId(),
+                        "pdf",
+                        report.getPdfPath(),
+                        includePdf,
+                        Set.of("pdf")
+                );
+                addFileToZip(
+                        zipOut,
+                        report.getLoginId(),
+                        "other",
+                        report.getOtherPath(),
+                        includeOther,
+                        Collections.emptySet()
+                );
+            }
+
+            zipOut.finish();
+
+            String fileName = String.format("assembly_%d_%02d_%s.zip", request.year(), request.month(), fileType);
+            return ResponseEntity.ok()
+                    .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"" + fileName + "\"")
+                    .contentType(MediaType.APPLICATION_OCTET_STREAM)
+                    .body(buffer.toByteArray());
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().build();
+        }
+    }
+
+    public SyncDiscordResponse syncDiscord() {
+        try {
+            Map<String, Object> botRes = discordBotClient.syncAllMembers();
+
+            if (botRes != null && "success".equals(botRes.get("status"))) {
+                List<Map<String, String>> discordMembers =
+                        (List<Map<String, String>>) botRes.get("members");
+
+                int updateCount = 0;
+
+                for (Map<String, String> d : discordMembers) {
+                    String tag = d.get("discordTag");
+
+                    Optional<Member> opt = memberRepository.findByDiscordTag(tag);
+                    if (opt.isPresent()) {
+                        Member m = opt.get();
+                        m.setName(d.get("name"));
+                        m.setStudentId(d.get("studentId"));
+                        m.setUserStatus(d.get("userStatus"));
+                        m.setRole(d.get("role"));
+                        m.setProfileImage(d.get("avatarUrl"));
+                        memberRepository.save(m);
+                        updateCount++;
+                    }
+                }
+
+                return new SyncDiscordResponse("success", updateCount + " members synchronized");
+            }
+
+            return new SyncDiscordResponse("fail", "failed to receive data from bot server");
+
+        } catch (Exception e) {
+            return new SyncDiscordResponse("error", "sync error: " + e.getMessage());
+        }
+    }
+
+    public StatusResponse toggleSuspension(Long id, String ip) {
+        return memberRepository.findById(id)
+                .map(m -> {
+                    m.setSuspended(!m.isSuspended());
+                    memberRepository.save(m);
+
+                    accessLogService.logByMember(
+                            m,
+                            m.isSuspended() ? "ACCOUNT_SUSPEND" : "ACCOUNT_UNSUSPEND",
+                            ip
+                    );
+                    return StatusResponse.success();
+                })
+                .orElseGet(() -> StatusResponse.fail("member not found"));
+    }
+
+    public StatusResponse restoreMember(RestoreMemberRequest request, String ip) {
+        try {
+            if (request == null) {
+                return StatusResponse.fail("request is required");
+            }
+
+            Optional<Member> deletedMemberOpt = Optional.empty();
+            if (request.id() != null) {
+                deletedMemberOpt = memberRepository.findByIdAndDeletedTrue(request.id());
+            }
+            if (deletedMemberOpt.isEmpty() && StringUtils.hasText(request.loginId())) {
+                deletedMemberOpt = memberRepository.findByLoginIdAndDeletedTrue(request.loginId());
+            }
+            if (deletedMemberOpt.isEmpty()) {
+                return StatusResponse.fail("deleted member not found");
+            }
+
+            Member member = deletedMemberOpt.get();
+            member.setDeleted(false);
+            member.setDeletedAt(null);
+            memberRepository.save(member);
+
+            accessLogService.logByMember(member, "ACCOUNT_RESTORE", ip);
+            return StatusResponse.success();
+
+        } catch (Exception e) {
+            return StatusResponse.fail("restore failed: " + e.getMessage());
+        }
+    }
+
+    public StatusResponse deleteMember(Long id, boolean hard, String ip) {
+        return memberRepository.findById(id)
+                .map(m -> {
+                    accessLogService.logByMember(
+                            m,
+                            hard ? "ACCOUNT_PERMANENT_DELETE" : "ACCOUNT_DELETE",
+                            ip
+                    );
+
+                    if (hard) {
+                        memberRepository.deleteById(id);
+                    } else {
+                        m.setDeleted(true);
+                        m.setDeletedAt(LocalDateTime.now());
+                        memberRepository.save(m);
+                    }
+                    return StatusResponse.success();
+                })
+                .orElseGet(() -> StatusResponse.fail("member not found"));
+    }
+
+    public StatusResponse verifyAdminPassword(Authentication authentication, AdminPasswordVerifyRequest request) {
+        if (authentication == null || authentication.getPrincipal() == null) {
+            return StatusResponse.fail("unauthorized");
+        }
+        if (request == null || !StringUtils.hasText(request.password())) {
+            return StatusResponse.fail("password is required");
+        }
+
+        String loginId = authentication.getName();
+        return memberRepository.findByLoginId(loginId)
+                .map(member -> passwordEncoder.matches(request.password(), member.getPassword())
+                        ? StatusResponse.success()
+                        : StatusResponse.fail("password mismatch"))
+                .orElseGet(() -> StatusResponse.fail("member not found"));
+    }
+
+    private String resolveType(int month) {
+        if (month == 3 || month == 9) {
+            return "PLAN";
+        }
+        if (month == 6 || month == 12) {
+            return "RESULT";
+        }
+        return "PROGRESS";
+    }
+
+    private String normalizeFileType(String fileType) {
+        if (!StringUtils.hasText(fileType)) {
+            return "all";
+        }
+        String normalized = fileType.trim().toLowerCase();
+        if (!normalized.equals("all") && !normalized.equals("ppt") && !normalized.equals("pdf")) {
+            return "all";
+        }
+        return normalized;
+    }
+
+    private void addFileToZip(
+            ZipOutputStream zipOut,
+            String loginId,
+            String type,
+            String originalPath,
+            boolean include,
+            Set<String> allowedExtensions
+    ) throws IOException {
+        if (!include || !StringUtils.hasText(originalPath)) {
+            return;
+        }
+
+        File file = resolveFile(originalPath);
+        if (file == null || !file.exists() || !file.isFile()) {
+            return;
+        }
+
+        if (allowedExtensions != null && !allowedExtensions.isEmpty()) {
+            String extension = getExtension(file.getName());
+            if (!allowedExtensions.contains(extension)) {
+                return;
+            }
+        }
+
+        String entryName = loginId + "/" + type + "_" + file.getName();
+        zipOut.putNextEntry(new ZipEntry(entryName));
+        try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file))) {
+            in.transferTo(zipOut);
+        }
+        zipOut.closeEntry();
+    }
+
+    private File resolveFile(String path) {
+        if (!StringUtils.hasText(path)) {
+            return null;
+        }
+
+        Path uploadBasePath = getUploadBasePath();
+        Path resolvedPath = resolveUploadPath(path, uploadBasePath);
+
+        if (resolvedPath == null || !isAllowedUploadPath(resolvedPath, uploadBasePath)) {
+            return null;
+        }
+        return resolvedPath.toFile();
+    }
+
+    private String getExtension(String fileName) {
+        if (!StringUtils.hasText(fileName)) {
+            return "";
+        }
+        int dot = fileName.lastIndexOf('.');
+        if (dot < 0 || dot == fileName.length() - 1) {
+            return "";
+        }
+        return fileName.substring(dot + 1).toLowerCase();
+    }
+
+    private Path getUploadBasePath() {
+        Path configured = Paths.get(uploadBaseDir);
+        if (!configured.isAbsolute()) {
+            configured = Paths.get(System.getProperty("user.dir")).resolve(configured);
+        }
+        return configured.toAbsolutePath().normalize();
+    }
+
+    private Path resolveUploadPath(String rawPath, Path uploadBasePath) {
+        String normalized = rawPath.replace("\\", "/").trim();
+        if (!StringUtils.hasText(normalized)) {
+            return null;
+        }
+
+        if (normalized.startsWith("/uploads/") || normalized.startsWith("uploads/")) {
+            String relative = normalized.replaceFirst("^/?uploads/", "");
+            return uploadBasePath.resolve(relative).normalize();
+        }
+
+        Path requested = Paths.get(rawPath);
+        if (requested.isAbsolute()) {
+            return requested.toAbsolutePath().normalize();
+        }
+
+        return uploadBasePath.resolve(requested).normalize();
+    }
+
+    private boolean isAllowedUploadPath(Path resolvedPath, Path uploadBasePath) {
+        if (resolvedPath.startsWith(uploadBasePath)) {
+            return true;
+        }
+
+        Path currentUploadsBase = Paths.get(System.getProperty("user.dir"), "uploads").toAbsolutePath().normalize();
+        if (resolvedPath.startsWith(currentUploadsBase)) {
+            return true;
+        }
+
+        Path userDir = Paths.get(System.getProperty("user.dir")).toAbsolutePath().normalize();
+        if (userDir.getParent() != null) {
+            Path parentUploadsBase = userDir.getParent().resolve("uploads").toAbsolutePath().normalize();
+            return resolvedPath.startsWith(parentUploadsBase);
+        }
+
+        return false;
+    }
+
+    private AdminMemberResponse toAdminMemberResponse(Member member) {
+        return new AdminMemberResponse(
+                member.getId(),
+                member.getLoginId(),
+                member.getName(),
+                member.getStudentId(),
+                member.getDept(),
+                member.getInterests(),
+                member.getDiscordTag(),
+                member.getUserStatus(),
+                member.getRole(),
+                member.isSuspended(),
+                member.getProfileImage(),
+                member.getDeletedAt() == null ? null : member.getDeletedAt().toString()
+        );
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/config/SecurityConfig.java
+// ====================
+package kr.co.devsign.devsign_backend.config;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpMethod;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
+import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
+import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.client.RestTemplate;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import org.springframework.beans.factory.annotation.Value;
+import java.util.Arrays;
+import java.util.List;
+
+@Configuration
+@EnableWebSecurity
+public class SecurityConfig {
+
+    @Value("${app.cors.allowed-origins}")
+    private String allowedOrigins;
+
+    @Autowired
+    private JwtAuthenticationFilter jwtAuthenticationFilter;
+
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration config = new CorsConfiguration();
+        config.setAllowedOrigins(Arrays.asList(allowedOrigins.split(",")));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"));
+        config.setAllowedHeaders(List.of("*"));
+        config.setAllowCredentials(true);
+        config.setMaxAge(3600L); // preflight 캐시 1시간
+
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/api/**", config);
+        return source;
+    }
+
+    @Bean
+    public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
+        http
+                // 1. CORS 설정 적용
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
+
+                // 2. CSRF 보안 해제
+                .csrf(csrf -> csrf.disable())
+
+                // 3. 세션을 사용하지 않음 (JWT 방식)
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                )
+
+                // 4. 요청별 권한 설정
+                .authorizeHttpRequests(auth -> auth
+                        // OPTIONS preflight 요청은 무조건 허용
+                        .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
+                        // 인증 없이 접근 가능한 경로
+                        .requestMatchers(
+                                "/api/members/login",
+                                "/api/members/signup",
+                                "/api/members/send-code",        // 인증번호 발송 경로 추가
+                                "/api/members/discord-send",
+                                "/api/members/verify-code",
+                                "/api/members/find-discord-by-info",
+                                "/api/members/verify-id-pw",
+                                "/api/members/reset-password-final",
+                                "/api/members/check/**",
+                                "/h2-console/**",
+                                "/favicon.ico",
+                                "/error"                         // 에러 페이지 허용 (무한 루프 방지)
+                        ).permitAll()
+                        // GET 요청은 비로그인도 허용
+                        .requestMatchers(HttpMethod.GET,
+                                "/api/posts/**",
+                                "/api/notices/**",
+                                "/api/events/**"
+                        ).permitAll()
+                        // 관리자 전용 경로
+                        .requestMatchers("/api/admin/**").hasRole("ADMIN")
+                        // 나머지 모든 요청은 인증 필요
+                        .anyRequest().authenticated()
+                )
+
+                // 5. JWT 필터 배치
+                .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+
+                // 6. 헤더 및 프레임 허용
+                .headers(headers -> headers.frameOptions(frame -> frame.disable()));
+
+        return http.build();
+    }
+
+    // 기본 시큐리티 비밀번호 생성을 방지하기 위한 빈 등록
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration authenticationConfiguration) throws Exception {
+        return authenticationConfiguration.getAuthenticationManager();
+    }
+
+    @Bean
+    public RestTemplate restTemplate() {
+        return new RestTemplate();
+    }
+
+    @Bean
+    public BCryptPasswordEncoder bCryptPasswordEncoder() {
+        return new BCryptPasswordEncoder();
+    }
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/config/UserStatusInterceptor.java
+// ====================
+package kr.co.devsign.devsign_backend.config;
+
+import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.servlet.HandlerInterceptor;
+
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Optional;
+
+@Component
+public class UserStatusInterceptor implements HandlerInterceptor {
+
+    @Autowired
+    private MemberRepository memberRepository;
+
+    @Override
+    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+        // SecurityContext에서 인증된 사용자 정보 가져오기 (JWT 필터에서 설정됨)
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+
+        if (authentication != null && authentication.isAuthenticated()
+                && authentication.getPrincipal() != null
+                && !authentication.getPrincipal().equals("anonymousUser")) {
+
+            String loginId = (String) authentication.getPrincipal();
+            Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
+
+            if (memberOpt.isPresent() && memberOpt.get().isSuspended()) {
+                // ✨ 정지된 유저라면 요청을 차단하고 JSON 응답을 보냅니다.
+                response.setStatus(HttpServletResponse.SC_FORBIDDEN); // 403 에러
+                response.setContentType("application/json;charset=UTF-8");
+
+                Map<String, Object> data = new HashMap<>();
+                data.put("status", "suspended");
+                data.put("message", "정지된 계정입니다. 즉시 로그아웃됩니다.");
+
+                ObjectMapper mapper = new ObjectMapper();
+                response.getWriter().write(mapper.writeValueAsString(data));
+
+                return false; // 컨트롤러로 요청을 보내지 않음
+            }
+        }
+
+        return true; // 정상 유저라면 요청 허용
+    }
+}// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/config/WebConfig.java
+// ====================
+package kr.co.devsign.devsign_backend.config;
+
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.InterceptorRegistry;
+import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
+
+@Configuration
+public class WebConfig implements WebMvcConfigurer {
+
+    @Autowired
+    private UserStatusInterceptor userStatusInterceptor;
+
+    @Override
+    public void addInterceptors(InterceptorRegistry registry) {
+        registry.addInterceptor(userStatusInterceptor)
+                .addPathPatterns("/api/**")
+                .excludePathPatterns("/api/members/login", "/api/members/signup");
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/config/JwtAuthenticationFilter.java
+// ====================
+package kr.co.devsign.devsign_backend.config;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
+import kr.co.devsign.devsign_backend.util.JwtUtil;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.stereotype.Component;
+import org.springframework.web.filter.OncePerRequestFilter;
+
+import java.io.IOException;
+import java.util.Collections;
+
+@Component
+public class JwtAuthenticationFilter extends OncePerRequestFilter {
+
+    @Autowired
+    private JwtUtil jwtUtil;
+
+    @Override
+    protected void doFilterInternal(HttpServletRequest request,
+                                    HttpServletResponse response,
+                                    FilterChain filterChain) throws ServletException, IOException {
+
+        // Authorization 헤더에서 JWT 토큰 추출
+        String authHeader = request.getHeader("Authorization");
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7); // "Bearer " 제거
+
+            // 토큰 유효성 검증
+            if (jwtUtil.validateToken(token)) {
+                String loginId = jwtUtil.getLoginIdFromToken(token);
+                String role = jwtUtil.getRoleFromToken(token);
+
+                // Spring Security 인증 객체 생성 (ROLE_ 접두사 추가)
+                SimpleGrantedAuthority authority = new SimpleGrantedAuthority("ROLE_" + role);
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                loginId,
+                                null,
+                                Collections.singletonList(authority)
+                        );
+
+                // SecurityContext에 인증 정보 저장
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
+        }
+
+        // 다음 필터로 요청 전달
+        filterChain.doFilter(request, response);
+    }
+}
+// ====================
+// File: backend/src/main/java/kr/co/devsign/devsign_backend/util/JwtUtil.java
+// ====================
+package kr.co.devsign.devsign_backend.util;
+
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import io.jsonwebtoken.JwtException;
+import jakarta.servlet.http.HttpServletRequest;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+
+import javax.crypto.SecretKey;
+import java.util.Date;
+
+@Component
+public class JwtUtil {
+
+    @Value("${jwt.secret}")
+    private String secret;
+
+    @Value("${jwt.expiration}")
+    private Long expiration;
+
+    // SecretKey 생성 헬퍼 메서드
+    private SecretKey getSigningKey() {
+        return Keys.hmacShaKeyFor(secret.getBytes());
+    }
+
+    // JWT 토큰 생성
+    public String generateToken(String loginId, String role) {
+        Date now = new Date();
+        Date expiryDate = new Date(now.getTime() + expiration);
+
+        return Jwts.builder()
+                .subject(loginId)
+                .claim("role", role)
+                .issuedAt(now)
+                .expiration(expiryDate)
+                .signWith(getSigningKey())
+                .compact();
+    }
+
+    // 토큰에서 loginId 추출
+    public String getLoginIdFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.getSubject();
+    }
+
+    // 토큰에서 role 추출
+    public String getRoleFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        return claims.get("role", String.class);
+    }
+
+    // 토큰 유효성 검증
+    public boolean validateToken(String token) {
+        try {
+            Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token);
+            return true;
+        } catch (JwtException | IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    // 토큰 만료 확인
+    public boolean isTokenExpired(String token) {
+        try {
+            Claims claims = Jwts.parser()
+                    .verifyWith(getSigningKey())
+                    .build()
+                    .parseSignedClaims(token)
+                    .getPayload();
+
+            return claims.getExpiration().before(new Date());
+        } catch (JwtException | IllegalArgumentException e) {
+            return true;
+        }
+    }
+
+    // HttpServletRequest에서 loginId 추출 (컨트롤러 편의 메서드)
+    public String getLoginIdFromRequest(HttpServletRequest request) {
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            String token = authHeader.substring(7);
+            if (validateToken(token)) {
+                return getLoginIdFromToken(token);
+            }
+        }
+        return null;
+    }
+}

@@ -3,11 +3,21 @@ devsign.co.kr {
 
     # 백엔드 API
     handle /api/* {
-        reverse_proxy devsign-backend:8080
+        reverse_proxy devsign-backend:8080 {
+            header_up Host {host}
+            header_up X-Real-IP {remote_host}
+            header_up X-Forwarded-For {remote_host}
+            header_up X-Forwarded-Proto {scheme}
+        }
     }
 
     # 프론트엔드 (Vite default port 5173)
     handle {
         reverse_proxy devsign-frontend:5173
     }
+}
+
+oj.devsign.co.kr {
+    # 172.17.0.1은 우분투 본체로 나가는 '내부 비밀 통로'입니다.
+    reverse_proxy 172.17.0.1:8001
 }

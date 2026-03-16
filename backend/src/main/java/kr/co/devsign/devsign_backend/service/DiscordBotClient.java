@@ -1,6 +1,7 @@
 package kr.co.devsign.devsign_backend.service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
@@ -13,21 +14,22 @@ public class DiscordBotClient {
 
     private final RestTemplate restTemplate;
 
-    // 필요하면 application.yml로 빼서 @Value로 주입 추천
-    private static final String BOT_BASE = "http://127.0.0.1:8000";
+    // application.properties에 설정된 주소(http://discord-bot:8000)를 주입받아 사용합니다.
+    @Value("${discord.bot.url}")
+    private String botBaseUrl;
 
     public Map<String, Object> getAvatar(String discordTag) {
-        String url = BOT_BASE + "/get-avatar/" + discordTag;
+        String url = botBaseUrl + "/get-avatar/" + discordTag;
         return restTemplate.getForObject(url, Map.class);
     }
 
     public Map<String, Object> checkMember(String discordTag) {
-        String url = BOT_BASE + "/check-member/" + discordTag;
+        String url = botBaseUrl + "/check-member/" + discordTag;
         return restTemplate.getForObject(url, Map.class);
     }
 
     public Map<String, Object> sendCode(String discordTag, String code) {
-        String url = BOT_BASE + "/send-code";
+        String url = botBaseUrl + "/send-code";
         Map<String, String> body = new HashMap<>();
         body.put("discordTag", discordTag);
         body.put("code", code);
@@ -35,8 +37,7 @@ public class DiscordBotClient {
     }
 
     public Map<String, Object> syncAllMembers() {
-        String url = BOT_BASE + "/sync-all-members";
+        String url = botBaseUrl + "/sync-all-members";
         return restTemplate.getForObject(url, Map.class);
     }
 }
-
