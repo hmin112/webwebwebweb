@@ -12,6 +12,8 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
   const [content, setContent] = useState("");
   const [tag, setTag] = useState("공지");
   const [images, setImages] = useState<string[]>([]);
+  // ✨ 실제 서버 전송용 파일 객체를 담는 state
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -26,7 +28,13 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
+      const fileArray = Array.from(files);
+      
+      // 실제 파일 객체 저장
+      setImageFiles(prev => [...prev, ...fileArray]);
+
+      // 화면 미리보기용 Base64 생성
+      fileArray.forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
           setImages(prev => [...prev, reader.result as string]);
@@ -37,7 +45,14 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
   };
 
   const removeImage = (index: number) => {
+    const removedImage = images[index];
     setImages(prev => prev.filter((_, i) => i !== index));
+
+    // 삭제된 이미지가 기존 서버에 있던 사진(http)이 아닌 새로 추가한 파일인 경우
+    if (!removedImage.startsWith('http')) {
+      const newFileIndex = images.slice(0, index).filter(img => !img.startsWith('http')).length;
+      setImageFiles(prev => prev.filter((_, i) => i !== newFileIndex));
+    }
   };
 
   const handlePublish = async (e: React.FormEvent) => {
@@ -48,19 +63,29 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
     }
 
     try {
-      const payload = {
-        title,
-        content,
-        tag: tag,
-        category: tag,
-        images
-      };
+      // ✨ JSON 객체 대신 FormData 사용 (파일 전송을 위함)
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("content", content);
+      formData.append("tag", tag);
+      formData.append("category", tag);
+
+      // 실제 이미지 파일들 첨부
+      imageFiles.forEach(file => {
+        formData.append("files", file);
+      });
+
+      // 기존에 올라가 있던 이미지 URL 유지 (수정 시)
+      const existingImages = images.filter(img => img.startsWith('http'));
+      formData.append("existingImages", JSON.stringify(existingImages));
 
       let response;
       if (notice && notice.id) {
-        response = await api.put(`/notices/${notice.id}`, payload);
+        // ✨ 헤더 삭제 완료
+        response = await api.put(`/notices/${notice.id}`, formData);
       } else {
-        response = await api.post("/notices", payload);
+        // ✨ 헤더 삭제 완료
+        response = await api.post("/notices", formData);
       }
 
       if (response.status === 200 || response.status === 201) {

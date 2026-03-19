@@ -14,11 +14,18 @@ import kr.co.devsign.devsign_backend.dto.event.EventLikeResponse;
 import kr.co.devsign.devsign_backend.dto.event.EventRequest;
 import kr.co.devsign.devsign_backend.dto.event.EventResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.File;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -31,20 +38,30 @@ public class EventService {
 
     private final AccessLogService accessLogService;
 
+    // ✨ 설정파일의 저장 경로(/app/uploads)를 가져옵니다.
+    @Value("${app.upload.base-dir}")
+    private String uploadDir;
+
     public List<EventResponse> getAllEvents() {
         return eventRepository.findAll().stream()
                 .map(this::toEventResponse)
                 .toList();
     }
 
-    public EventResponse createEvent(EventRequest payload, String loginId, String ip) {
+    // ✨ [수정] 파일 업로드 로직 통합
+    @Transactional
+    public EventResponse createEvent(EventRequest payload, List<MultipartFile> files, String loginId, String ip) {
         Event event = new Event();
         event.setCategory(payload.category());
         event.setTitle(payload.title());
         event.setDate(payload.date());
         event.setLocation(payload.location());
         event.setContent(payload.content());
-        event.setImage(payload.image());
+        
+        // 🚀 포스터 이미지 저장 (파일이 있으면 저장하고 경로 반환)
+        String imageUrl = saveFile(files);
+        event.setImage(imageUrl);
+        
         event.setViews(0);
         event.setLikes(0);
 
@@ -53,7 +70,9 @@ public class EventService {
         return toEventResponse(saved);
     }
 
-    public EventResponse updateEvent(Long id, EventRequest payload, String loginId, String ip) {
+    // ✨ [수정] 수정 시 기존 이미지 유지 혹은 새 이미지 교체 로직 반영
+    @Transactional
+    public EventResponse updateEvent(Long id, EventRequest payload, List<MultipartFile> files, String loginId, String ip) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("event not found"));
 
@@ -62,12 +81,43 @@ public class EventService {
         event.setDate(payload.date());
         event.setLocation(payload.location());
         event.setContent(payload.content());
-        event.setImage(payload.image());
+
+        // 🚀 새 파일이 들어왔다면 교체, 없다면 기존 URL(payload.image) 유지
+        String newImageUrl = saveFile(files);
+        if (newImageUrl != null) {
+            event.setImage(newImageUrl);
+        } else {
+            event.setImage(payload.image());
+        }
 
         accessLogService.logByLoginId(loginId, "EVENT_UPDATE", ip);
         return toEventResponse(eventRepository.save(event));
     }
 
+    // ✨ [신규] 파일을 서버에 물리적으로 저장하는 공통 메서드
+    private String saveFile(List<MultipartFile> files) {
+        if (files == null || files.isEmpty() || files.get(0).isEmpty()) {
+            return null;
+        }
+
+        File directory = new File(uploadDir);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
+        MultipartFile file = files.get(0); // 행사는 대표 이미지 하나만 사용
+        String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+        File dest = new File(directory, fileName);
+
+        try {
+            file.transferTo(dest);
+            return "/uploads/" + fileName;
+        } catch (IOException e) {
+            throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "행사 이미지 저장 중 오류가 발생했습니다.");
+        }
+    }
+
+    @Transactional
     public EventDetailResponse getEventDetail(Long id, String loginId) {
         Event event = eventRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("event not found"));

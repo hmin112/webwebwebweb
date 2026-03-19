@@ -9,6 +9,7 @@ import kr.co.devsign.devsign_backend.dto.notice.NoticeRequest;
 import kr.co.devsign.devsign_backend.dto.notice.NoticeResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -34,16 +35,28 @@ public class NoticeController {
         return noticeService.togglePin(id, loginId, request.getRemoteAddr());
     }
 
+    // ✨ 공지사항 내 이미지를 FormData 형식으로 빠르고 안정적으로 처리합니다.
     @PostMapping
-    public NoticeResponse createNotice(@RequestBody NoticeRequest payload, HttpServletRequest request) {
+    public NoticeResponse createNotice(
+            @ModelAttribute NoticeRequest payload, 
+            @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            HttpServletRequest request
+    ) {
         String loginId = jwtUtil.getLoginIdFromRequest(request);
-        return noticeService.createNotice(payload, loginId, request.getRemoteAddr());
+        // Service 단에서 파일을 저장할 수 있도록 files 인자를 추가 전달합니다.
+        return noticeService.createNotice(payload, files, loginId, request.getRemoteAddr());
     }
 
+    // ✨ 수정 시에도 새로운 이미지 파일을 처리할 수 있도록 적용되어 있습니다.
     @PutMapping("/{id}")
-    public NoticeResponse updateNotice(@PathVariable Long id, @RequestBody NoticeRequest payload, HttpServletRequest request) {
+    public NoticeResponse updateNotice(
+            @PathVariable Long id, 
+            @ModelAttribute NoticeRequest payload, 
+            @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            HttpServletRequest request
+    ) {
         String loginId = jwtUtil.getLoginIdFromRequest(request);
-        return noticeService.updateNotice(id, payload, loginId, request.getRemoteAddr());
+        return noticeService.updateNotice(id, payload, files, loginId, request.getRemoteAddr());
     }
 
     @GetMapping("/{id}")

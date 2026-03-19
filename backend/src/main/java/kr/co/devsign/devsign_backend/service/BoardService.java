@@ -21,16 +21,21 @@ import kr.co.devsign.devsign_backend.dto.board.PostResponse;
 import kr.co.devsign.devsign_backend.dto.board.UpdatePostRequest;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -45,6 +50,10 @@ public class BoardService {
 
     private final AccessLogService accessLogService;
 
+    // ✨ application.properties에서 설정한 저장 경로를 가져옵니다.
+    @Value("${app.upload.base-dir}")
+    private String uploadDir;
+
     @PersistenceContext
     private EntityManager entityManager;
 
@@ -54,14 +63,19 @@ public class BoardService {
                 .toList();
     }
 
-    public PostResponse createPost(CreatePostRequest payload, String loginId, String ip) {
+    // ✨ [수정] MultipartFile 리스트를 받아 파일로 저장하는 로직이 추가되었습니다.
+    @Transactional
+    public PostResponse createPost(CreatePostRequest payload, List<MultipartFile> files, String loginId, String ip) {
         Member member = memberRepository.findByLoginId(loginId).orElseThrow();
 
         Post post = new Post();
         post.setTitle(payload.title());
         post.setContent(payload.content());
         post.setCategory(payload.category());
-        post.setImages(payload.images() != null ? payload.images() : new ArrayList<>());
+
+        // 🚀 이미지 파일 저장 처리
+        List<String> imageUrls = saveFiles(files);
+        post.setImages(imageUrls);
 
         post.setAuthor(member.getName());
         post.setLoginId(member.getLoginId());
@@ -94,17 +108,49 @@ public class BoardService {
         return toPostResponse(post);
     }
 
-    public PostResponse updatePost(Long id, UpdatePostRequest payload, String loginId, String ip) {
+    // ✨ [수정] 수정 시 기존 이미지 유지 + 새 파일 추가 로직이 반영되었습니다.
+    @Transactional
+    public PostResponse updatePost(Long id, UpdatePostRequest payload, List<MultipartFile> files, String loginId, String ip) {
         Post post = postRepository.findById(id).orElseThrow();
         validatePostOwnership(post, loginId);
 
         post.setTitle(payload.title());
         post.setContent(payload.content());
         post.setCategory(payload.category());
-        post.setImages(payload.images() != null ? payload.images() : new ArrayList<>());
+
+        // 🚀 이미지 수정 로직: 기존 이미지(프론트에서 남겨둔 것) + 새로 업로드한 파일
+        List<String> currentImages = payload.images() != null ? new ArrayList<>(payload.images()) : new ArrayList<>();
+        currentImages.addAll(saveFiles(files));
+        post.setImages(currentImages);
 
         accessLogService.logByLoginId(loginId, "POST_UPDATE", ip);
         return toPostResponse(postRepository.save(post));
+    }
+
+    // ✨ [신규] 파일을 물리적으로 저장하고 접근 가능한 URL 리스트를 반환하는 공통 메서드
+    private List<String> saveFiles(List<MultipartFile> files) {
+        List<String> urls = new ArrayList<>();
+        if (files == null || files.isEmpty()) return urls;
+
+        File directory = new File(uploadDir);
+        if (!directory.exists()) {
+            directory.mkdirs(); // /app/uploads 폴더가 없으면 생성
+        }
+
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                // 파일명 중복 방지를 위한 UUID 적용
+                String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+                File dest = new File(directory, fileName);
+                try {
+                    file.transferTo(dest); // 실제 서버 폴더로 파일 이동
+                    urls.add("/uploads/" + fileName); // 브라우저에서 접근할 URL 경로 저장
+                } catch (IOException e) {
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "파일 저장 중 오류가 발생했습니다.");
+                }
+            }
+        }
+        return urls;
     }
 
     @Transactional
@@ -115,8 +161,10 @@ public class BoardService {
         postLikeRepository.deleteByPost(post);
         postViewRepository.deleteByPost(post);
 
-        for (Comment comment : post.getCommentsList()) {
-            commentLikeRepository.deleteByComment(comment);
+        if (post.getCommentsList() != null) {
+            for (Comment comment : post.getCommentsList()) {
+                commentLikeRepository.deleteByComment(comment);
+            }
         }
         commentRepository.deleteByPost(post);
         postRepository.delete(post);
@@ -219,7 +267,6 @@ public class BoardService {
                 collectCommentsForDelete(reply, result);
             }
         }
-        // Delete children first, then parent to avoid FK violations.
         result.add(current);
     }
 

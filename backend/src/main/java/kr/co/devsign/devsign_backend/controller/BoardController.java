@@ -10,6 +10,7 @@ import kr.co.devsign.devsign_backend.dto.board.UpdatePostRequest;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -26,10 +27,15 @@ public class BoardController {
         return boardService.getAllPosts();
     }
 
+    // ✨ [수정] @RequestBody 대신 @ModelAttribute와 MultipartFile 리스트를 받습니다.
     @PostMapping
-    public PostResponse createPost(@RequestBody CreatePostRequest payload, HttpServletRequest request) {
+    public PostResponse createPost(
+            @ModelAttribute CreatePostRequest payload,
+            @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            HttpServletRequest request
+    ) {
         String loginId = jwtUtil.getLoginIdFromRequest(request);
-        return boardService.createPost(payload, loginId, request.getRemoteAddr());
+        return boardService.createPost(payload, files, loginId, request.getRemoteAddr());
     }
 
     @GetMapping("/{id}")
@@ -38,16 +44,22 @@ public class BoardController {
         return boardService.getPostDetail(id, loginId);
     }
 
+    // ✨ [수정] 수정 시에도 새롭게 추가된 파일들을 받을 수 있도록 변경했습니다.
     @PutMapping("/{id}")
-    public PostResponse updatePost(@PathVariable Long id, @RequestBody UpdatePostRequest payload, HttpServletRequest request) {
+    public PostResponse updatePost(
+            @PathVariable Long id,
+            @ModelAttribute UpdatePostRequest payload,
+            @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            HttpServletRequest request
+    ) {
         String loginId = jwtUtil.getLoginIdFromRequest(request);
-        return boardService.updatePost(id, payload, loginId, request.getRemoteAddr());
+        return boardService.updatePost(id, payload, files, loginId, request.getRemoteAddr());
     }
 
     @DeleteMapping("/{id}")
     public StatusResponse deletePost(
             @PathVariable Long id,
-            HttpServletRequest request
+            HttpServletRequest request // ✨ [수정 완료] @ 제거하여 컴파일 에러 해결
     ) {
         String loginId = jwtUtil.getLoginIdFromRequest(request);
         return boardService.deletePost(id, loginId, request.getRemoteAddr());

@@ -4,7 +4,6 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Save, Type, Image as ImageIcon, Link as LinkIcon, X, Upload } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
-
 // ✨ user, fetchEvents 프롭을 추가하여 로그 연동 및 목록 갱신을 처리합니다.
 export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -19,6 +18,9 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
     image: ""
   });
 
+  // ✨ 실제 서버 전송용 파일 객체를 담는 state
+  const [imageFile, setImageFile] = useState<File | null>(null);
+
   useEffect(() => {
     if (event) setFormData(event);
   }, [event]);
@@ -27,9 +29,10 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setImageFile(file); // 실제 파일 객체 저장
       const reader = new FileReader();
       reader.onloadend = () => {
-        setFormData({ ...formData, image: reader.result as string });
+        setFormData({ ...formData, image: reader.result as string }); // 화면 미리보기용
       };
       reader.readAsDataURL(file);
     }
@@ -41,15 +44,28 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
     }
 
     try {
-      const payload = {
-        ...formData
-      };
+      // ✨ JSON 객체 대신 FormData 사용 (파일 전송을 위함)
+      const submitData = new FormData();
+      submitData.append("category", formData.category);
+      submitData.append("title", formData.title);
+      submitData.append("date", formData.date);
+      submitData.append("location", formData.location);
+      submitData.append("content", formData.content);
+
+      // 1. 파일이 첨부된 경우 (✨ file -> files 로 수정 완료!)
+      if (imageFile) {
+        submitData.append("files", imageFile); 
+      } 
+      // 2. 파일 없이 직접 URL만 입력했거나, 기존 이미지가 유지된 경우
+      else if (formData.image && (formData.image.startsWith('http') || formData.image.startsWith('https'))) {
+        submitData.append("existingImage", formData.image);
+      }
 
       let response;
       if (event && event.id) {
-        response = await api.put(`/events/${event.id}`, payload);
+        response = await api.put(`/events/${event.id}`, submitData); // ✅ 뒤에 헤더 옵션 삭제 완료
       } else {
-        response = await api.post("/events", payload);
+        response = await api.post("/events", submitData); // ✅ 뒤에 헤더 옵션 삭제 완료
       }
 
       if (response.status === 200 || response.status === 201) {
@@ -153,12 +169,18 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
                   type="text"
                   placeholder="또는 이미지 주소(URL)를 입력하세요"
                   value={formData.image || ""}
-                  onChange={(e) => setFormData({ ...formData, image: e.target.value })}
+                  onChange={(e) => {
+                    setFormData({ ...formData, image: e.target.value });
+                    setImageFile(null); // URL 직접 입력 시 로컬 파일 우선순위 해제
+                  }}
                   className="w-full pl-14 pr-12 py-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500 transition-all"
                 />
                 {formData.image && (
                   <button
-                    onClick={() => setFormData({ ...formData, image: "" })}
+                    onClick={() => {
+                      setFormData({ ...formData, image: "" });
+                      setImageFile(null);
+                    }}
                     className="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 hover:text-red-500 transition-colors"
                   >
                     <X size={18} />

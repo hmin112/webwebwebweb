@@ -1,17 +1,19 @@
 FROM node:24-alpine
-#최신 LTS 버전인 24-alpine 사용합니다.
 
 WORKDIR /frontend
-#컨테이너 내 생성되는 작업폴더입니다.
 
-COPY . .
-#작동 했던 코드
-
+# 패키지 먼저 복사 후 설치 (캐시 최적화)
+COPY package*.json ./
 RUN npm ci
-#나머지 소스 코드 복사
+
+# 소스 복사 및 빌드 진행 (이때 dist 폴더가 생성됨)
+COPY . .
+RUN npm run build
+
+# 정적 파일 서빙을 위한 serve 전역 설치
+RUN npm install -g serve
 
 EXPOSE 5173
-#포트 명시 5173
 
-CMD ["npm", "run", "dev"]
-#실행 명령어
+# ✨ 핵심: 개발 서버(dev)가 아닌, 빌드된 dist 폴더를 서빙 (-s 옵션은 새로고침 시 404 에러 방지)
+CMD ["serve", "-s", "dist", "-l", "5173"]

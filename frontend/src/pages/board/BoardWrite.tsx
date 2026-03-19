@@ -10,7 +10,11 @@ import { Button } from "../../components/ui/button";
 export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any) => {
   const [title, setTitle] = useState("");
   const [content, setContent] = useState("");
+  // ✨ images: UI 프리뷰용 (Base64 or URL)
   const [images, setImages] = useState<string[]>([]);
+  // ✨ imageFiles: 서버 전송용 실제 파일 객체 저장
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
+  
   const [category, setCategory] = useState(isAdmin ? "회비" : "자유");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -20,7 +24,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
       setTitle(post.title);
       setContent(post.content);
       setCategory(post.category);
-      setImages(post.images || []);
+      setImages(post.images || []); // 기존 서버에 저장된 이미지 URL들
     }
   }, [post]);
 
@@ -33,10 +37,17 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
 
   const categories = isAdmin ? ["회비", "자유", "질문"] : ["자유", "질문"];
 
+  // ✨ 이미지 업로드 핸들러 최적화
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
-      Array.from(files).forEach(file => {
+      const fileArray = Array.from(files);
+      
+      // 1. 서버로 보낼 실제 파일 객체 추가
+      setImageFiles(prev => [...prev, ...fileArray]);
+
+      // 2. 화면에 보여줄 프리뷰 생성
+      fileArray.forEach(file => {
         const reader = new FileReader();
         reader.onloadend = () => {
           setImages(prev => [...prev, reader.result as string]);
@@ -46,10 +57,15 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
     }
   };
 
+  // ✨ 이미지 제거 핸들러
   const removeImage = (index: number) => {
+    // 프리뷰 목록에서 제거
     setImages(prev => prev.filter((_, i) => i !== index));
+    // 실제 파일 객체 목록에서도 제거 (기존 이미지는 URL이므로 제외됨)
+    setImageFiles(prev => prev.filter((_, i) => i !== index));
   };
 
+  // ✨ 제출 핸들러 (JSON 대신 FormData 사용)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (post && post.loginId !== user?.loginId) {
@@ -65,18 +81,28 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
     setIsSubmitting(true);
 
     try {
-      const payload = {
-        title,
-        content,
-        category,
-        images
-      };
+      // 🚀 Base64 텍스트 전송 방식을 버리고 FormData 객체 생성
+      const formData = new FormData();
+      formData.append("title", title);
+      formData.append("content", content);
+      formData.append("category", category);
+      
+      // 실제 파일들만 'files'라는 이름으로 추가
+      imageFiles.forEach((file) => {
+        formData.append("files", file);
+      });
+
+      // 기존 이미지를 유지해야 하는 경우(수정 시)를 위한 로직 (필요 시 추가)
+      const existingImages = images.filter(img => img.startsWith('http'));
+      formData.append("existingImages", JSON.stringify(existingImages));
 
       if (post) {
-        await api.put(`/posts/${post.id}`, payload);
+        // multipart/form-data 전송 (✨ 헤더 삭제 완료)
+        await api.put(`/posts/${post.id}`, formData);
         alert("게시글이 수정되었습니다. ✨");
       } else {
-        await api.post("/posts", payload);
+        // ✨ 헤더 삭제 완료
+        await api.post("/posts", formData);
         alert("게시글이 성공적으로 등록되었습니다. ✨");
       }
 
@@ -116,7 +142,6 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
           </div>
 
           <div className="flex gap-1.5 md:gap-3 shrink-0">
-            {/* ✨ 수정됨: md:py-3.5 적용하여 버튼들 높이 통일 */}
             <Button 
               variant="ghost" 
               onClick={() => onNavigate("board-page")} 

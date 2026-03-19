@@ -11,6 +11,12 @@ devsign.co.kr {
         }
     }
 
+    # ✨ 추가: 서버에 저장된 사진을 Caddy가 직접 빠르게 서빙
+    handle /uploads/* {
+        root * /
+        file_server
+    }
+
     # 프론트엔드 (Vite default port 5173)
     handle {
         reverse_proxy devsign-frontend:5173

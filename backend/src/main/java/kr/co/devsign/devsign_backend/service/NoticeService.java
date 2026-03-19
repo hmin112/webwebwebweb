@@ -11,14 +11,22 @@ import kr.co.devsign.devsign_backend.dto.notice.NoticePinResponse;
 import kr.co.devsign.devsign_backend.dto.notice.NoticeRequest;
 import kr.co.devsign.devsign_backend.dto.notice.NoticeResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.io.File;
+import java.io.IOException;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -28,6 +36,10 @@ public class NoticeService {
     private final MemberRepository memberRepository;
     private final NoticeViewRepository noticeViewRepository;
     private final AccessLogService accessLogService;
+
+    // ✨ application.properties에서 설정한 경로(/app/uploads)를 가져옵니다.
+    @Value("${app.upload.base-dir}")
+    private String uploadDir;
 
     public List<NoticeResponse> getAllNotices() {
         return noticeRepository.findAll(Sort.by(Sort.Order.desc("pinned"), Sort.Order.desc("id"))).stream()
@@ -55,7 +67,9 @@ public class NoticeService {
         return new NoticePinResponse("success", null, notice.isPinned());
     }
 
-    public NoticeResponse createNotice(NoticeRequest payload, String loginId, String ip) {
+    // ✨ [수정] MultipartFile 리스트를 받아 물리 파일로 저장하도록 변경
+    @Transactional
+    public NoticeResponse createNotice(NoticeRequest payload, List<MultipartFile> files, String loginId, String ip) {
         Notice notice = new Notice();
         notice.setTitle(payload.title());
         notice.setContent(payload.content());
@@ -64,7 +78,10 @@ public class NoticeService {
         notice.setCategory(category);
         notice.setTag(category);
 
-        notice.setImages(payload.images());
+        // 🚀 다중 이미지 파일 저장 처리
+        List<String> imageUrls = saveFiles(files);
+        notice.setImages(imageUrls);
+
         notice.setImportant(Boolean.TRUE.equals(payload.important()));
         notice.setViews(0);
         notice.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
@@ -81,7 +98,9 @@ public class NoticeService {
         return toNoticeResponse(saved);
     }
 
-    public NoticeResponse updateNotice(Long id, NoticeRequest payload, String loginId, String ip) {
+    // ✨ [수정] 수정 시 기존 이미지 유지 + 새 파일 추가 로직 반영
+    @Transactional
+    public NoticeResponse updateNotice(Long id, NoticeRequest payload, List<MultipartFile> files, String loginId, String ip) {
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("notice not found"));
 
@@ -92,11 +111,40 @@ public class NoticeService {
         notice.setCategory(category);
         notice.setTag(category);
 
-        notice.setImages(payload.images());
+        // 🚀 이미지 수정: 기존 이미지 URL 목록 + 새로 업로드된 파일 저장
+        List<String> currentImages = payload.images() != null ? new ArrayList<>(payload.images()) : new ArrayList<>();
+        currentImages.addAll(saveFiles(files));
+        notice.setImages(currentImages);
+
         notice.setImportant(Boolean.TRUE.equals(payload.important()));
 
         accessLogService.logByLoginId(loginId, "NOTICE_UPDATE", ip);
         return toNoticeResponse(noticeRepository.save(notice));
+    }
+
+    // ✨ [신규] 파일을 물리적으로 저장하고 URL 리스트를 반환하는 공통 메서드
+    private List<String> saveFiles(List<MultipartFile> files) {
+        List<String> urls = new ArrayList<>();
+        if (files == null || files.isEmpty()) return urls;
+
+        File directory = new File(uploadDir);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                String fileName = UUID.randomUUID().toString() + "_" + file.getOriginalFilename();
+                File dest = new File(directory, fileName);
+                try {
+                    file.transferTo(dest);
+                    urls.add("/uploads/" + fileName);
+                } catch (IOException e) {
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "공지사항 이미지 저장 중 오류가 발생했습니다.");
+                }
+            }
+        }
+        return urls;
     }
 
     public NoticeResponse getNoticeDetail(Long id, String loginId) {
@@ -145,7 +193,7 @@ public class NoticeService {
                 notice.getAuthor(),
                 notice.getViews(),
                 notice.getDate(),
-                notice.getImages(),
+                notice.getImages() == null ? List.of() : notice.getImages(),
                 notice.isImportant(),
                 notice.isPinned(),
                 notice.getCreatedAt()

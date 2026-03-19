@@ -71,17 +71,28 @@ function AppContent() {
   };
 
   const fetchData = async () => {
+    // 1. 게시글 가져오기
     try {
-      const [postsRes, noticesRes, eventsRes] = await Promise.all([
-        api.get('/posts'),
-        api.get('/notices'),
-        api.get('/events')
-      ]);
+      const postsRes = await api.get('/posts');
       if (postsRes.data) setPosts(postsRes.data);
+    } catch (error) {
+      console.error("❌ 게시글 로드 에러:", error);
+    }
+
+    // 2. 공지사항 가져오기
+    try {
+      const noticesRes = await api.get('/notices');
       if (noticesRes.data) setNotices(noticesRes.data);
+    } catch (error) {
+      console.error("❌ 공지사항 로드 에러:", error);
+    }
+
+    // 3. 행사 가져오기
+    try {
+      const eventsRes = await api.get('/events');
       if (eventsRes.data) setEvents(eventsRes.data);
     } catch (error) {
-      console.error("데이터 로드 에러", error);
+      console.error("❌ 행사 로드 에러:", error);
     }
   };
 
