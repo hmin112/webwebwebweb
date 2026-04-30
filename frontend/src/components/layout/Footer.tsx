@@ -15,7 +15,7 @@ export const Footer = ({ onNavigate }: FooterProps) => {
   const admins = [
     { role: "회장", year: "22", name: "김형민", phone: "010-9171-8162" },
     { role: "부회장", year: "22", name: "이수혁", phone: "010-6545-1948" },
-    { role: "총무", year: "23", name: "이수빈", phone: "010-8639-5557" },
+    { role: "총무", year: "24", name: "이수빈", phone: "010-8639-5557" },
   ];
 
   return (

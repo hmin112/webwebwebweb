@@ -6,6 +6,8 @@ services:
     ports:
       - "80:80"
       - "443:443"
+    environment:
+      - TZ=Asia/Seoul  # ✨ [추가] Caddy 서버 로그 한국 시간 적용
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile
       # ✨ 격리된 루트 데이터 경로
@@ -25,6 +27,8 @@ services:
     build: ./backend
     ports:
       - "8080:8080"
+    environment:
+      - TZ=Asia/Seoul  # ✨ [추가] 스프링 백엔드 서버 및 로그 한국 시간 적용
     volumes:
       # ✨ 게시글 이미지 및 파일 저장용 격리 경로
       - /devsign-data/uploads:/app/uploads
@@ -41,6 +45,8 @@ services:
     restart: always
     container_name: devsign-frontend
     build: ./frontend
+    environment:
+      - TZ=Asia/Seoul  # ✨ [추가] 프론트엔드 컨테이너 한국 시간 적용
     networks:
       - global_network
 
@@ -57,6 +63,7 @@ services:
       MYSQL_DATABASE: devsigndb 
       MYSQL_USER: devsignuser
       MYSQL_PASSWORD: devsign4122
+      TZ: Asia/Seoul  # ✨ [추가] DB 서버 시간 한국 시간으로 고정! (게시글 시간 완벽 해결)
     volumes:
       # ✨ DB 데이터를 격리된 루트 데이터 경로로 연결
       - /devsign-data/mysql:/var/lib/mysql
@@ -73,6 +80,8 @@ services:
       - "8000:8000"
     env_file:
       - /home/devsign/.env_devsign_bot
+    environment:
+      - TZ=Asia/Seoul  # ✨ [추가] 봇 서버 로그도 한국 시간으로 통일!
     networks:
       - global_network
     depends_on:

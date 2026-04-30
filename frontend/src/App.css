@@ -1,4 +1,10 @@
 @import url('https://cdn.jsdelivr.net/gh/orioncactus/pretendard/dist/web/static/pretendard.css');
+
+/* ✨ 핵심 추가: 사이트 전체 요소에 프리텐다드(애플 감성) 폰트를 최우선으로 강제 적용! */
+html, body, * {
+  font-family: 'Pretendard', -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif !important;
+}
+
 #root {
   max-width: 1280px;
   margin: 0 auto;
