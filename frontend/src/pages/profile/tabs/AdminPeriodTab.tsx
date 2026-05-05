@@ -1,10 +1,10 @@
 import { api } from "../../../api/axios";
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarRange, Save, Clock, AlertCircle,
   CheckCircle2, ChevronLeft, ChevronRight, FileText, ClipboardList, Loader2,
-  Users, Download, X, Check, FileArchive, Search
+  Users, Download, X, Check, FileArchive, Search, Filter
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
@@ -36,16 +36,28 @@ export const AdminPeriodTab = () => {
   const [periods, setPeriods] = useState<MonthPeriod[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // ✨ 제출 상세 현황 모달 상태
+  // ✨ 부원 전체 명단 (미제출자 계산용)
+  const [allMembers, setAllMembers] = useState<any[]>([]);
+
+  // 제출 상세 현황 모달 상태
   const [selectedPeriod, setSelectedPeriod] = useState<MonthPeriod | null>(null);
   const [submittedMembers, setSubmittedMembers] = useState<SubmittedMember[]>([]);
+  const [unsubmittedMembers, setUnsubmittedMembers] = useState<any[]>([]); // ✨ 미제출자 명단 상태 추가
   const [isDetailLoading, setIsDetailLoading] = useState(false);
   const [selectedUserIds, setSelectedUserIds] = useState<string[]>([]);
 
-  // ✨ 추가: 다운로드 파일 형식 옵션 ('all' | 'ppt' | 'pdf')
+  // 다운로드 파일 형식 옵션 ('all' | 'ppt' | 'pdf')
   const [downloadType, setDownloadType] = useState<string>("all");
 
+  // ✨ 정렬 옵션 상태 추가
+  const [sortOrder, setSortOrder] = useState<"latest" | "oldest" | "id_desc" | "id_asc">("latest");
+
   // 1. 서버에서 특정 연도의 제출 기간 및 현황 데이터 로드
+  useEffect(() => {
+    fetchPeriods(currentYear);
+    fetchAllMembers();
+  }, [currentYear]);
+
   const fetchPeriods = async (year: number) => {
     setIsLoading(true);
     try {
@@ -63,6 +75,15 @@ export const AdminPeriodTab = () => {
     }
   };
 
+  const fetchAllMembers = async () => {
+    try {
+      const res = await api.get("/admin/members");
+      setAllMembers(res.data || []);
+    } catch (e) {
+      console.error("전체 부원 명단 로드 실패", e);
+    }
+  };
+
   // 2. 특정 기간의 제출 인원 상세 정보 로드
   const fetchSubmittedMembers = async (period: MonthPeriod) => {
     setIsDetailLoading(true);
@@ -71,13 +92,41 @@ export const AdminPeriodTab = () => {
       const res = await api.get(`/admin/periods/submissions`, {
         params: { year: period.year, semester: period.semester, month: period.month }
       });
-      setSubmittedMembers(res.data || []);
+      const submitted = res.data || [];
+      setSubmittedMembers(submitted);
+
+      // ✨ 미제출자 계산 (재학생, 신입생 중 제출하지 않은 인원)
+      const unsubmitted = allMembers.filter(m => {
+        const isSubmitted = submitted.some((sub: SubmittedMember) => sub.loginId === m.loginId);
+        const isActiveMember = m.userStatus === "재학생" || m.userStatus === "신입생";
+        return !isSubmitted && isActiveMember;
+      });
+      setUnsubmittedMembers(unsubmitted);
     } catch (e) {
       console.error("제출 명단 로드 실패", e);
     } finally {
       setIsDetailLoading(false);
     }
   };
+
+  // ✨ 정렬 로직 적용
+  const sortedSubmittedMembers = useMemo(() => {
+    return [...submittedMembers].sort((a, b) => {
+      if (sortOrder === "latest") return new Date(b.submitDate).getTime() - new Date(a.submitDate).getTime();
+      if (sortOrder === "oldest") return new Date(a.submitDate).getTime() - new Date(b.submitDate).getTime();
+      if (sortOrder === "id_asc") return a.studentId.localeCompare(b.studentId);
+      if (sortOrder === "id_desc") return b.studentId.localeCompare(a.studentId);
+      return 0;
+    });
+  }, [submittedMembers, sortOrder]);
+
+  const sortedUnsubmittedMembers = useMemo(() => {
+    return [...unsubmittedMembers].sort((a, b) => {
+      if (sortOrder === "id_asc" || sortOrder === "oldest" || sortOrder === "latest") return a.studentId.localeCompare(b.studentId);
+      return b.studentId.localeCompare(a.studentId); // default id_desc for unsubmitted
+    });
+  }, [unsubmittedMembers, sortOrder]);
+
 
   const generateInitialPeriods = (year: number): MonthPeriod[] => {
     const activeMonths = [3, 4, 5, 6, 9, 10, 11, 12];
@@ -92,10 +141,6 @@ export const AdminPeriodTab = () => {
       totalCount: 0,
     }));
   };
-
-  useEffect(() => {
-    fetchPeriods(currentYear);
-  }, [currentYear]);
 
   const handleYearChange = (delta: number) => {
     const nextYear = currentYear + delta;
@@ -252,7 +297,7 @@ export const AdminPeriodTab = () => {
                     className="xl:w-48 w-full bg-slate-50 p-3 md:p-4 rounded-xl md:rounded-2xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors group"
                   >
                     <div className="flex justify-between items-end mb-1">
-                      <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">현황</span>
+                      <span className="text-[8px] md:text-[9px] font-black text-slate-400 uppercase tracking-widest">현황 확인</span>
                       <span className="text-[11px] md:text-xs font-black text-indigo-600 group-hover:scale-105 transition-transform">
                         {period.submittedCount || 0}/{period.totalCount || 0} 명
                       </span>
@@ -299,7 +344,7 @@ export const AdminPeriodTab = () => {
         </div>
       </header>
 
-      {/* ✨ 요청하신 전체 저장 섹션: 최상단 연도 선택 바로 밑으로 이동 */}
+      {/* 전체 저장 섹션 */}
       <div className="mb-8 md:mb-12 flex flex-col md:flex-row items-center justify-between p-5 md:p-8 bg-slate-900 rounded-2xl md:rounded-[2.5rem] shadow-xl gap-4">
         <div className="flex items-center gap-3 md:gap-4 text-white/60">
           <AlertCircle size={18} className="shrink-0" />
@@ -326,7 +371,7 @@ export const AdminPeriodTab = () => {
         </div>
       )}
 
-      {/* ✨ 상세 제출 현황 모달 */}
+      {/* ✨ 상세 제출 현황 모달 (좌우 분할 및 정렬 추가) */}
       <AnimatePresence>
         {selectedPeriod && (
           <div className="fixed inset-0 z-[500] flex items-center justify-center px-4 md:px-6">
@@ -341,7 +386,8 @@ export const AdminPeriodTab = () => {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="relative w-full max-w-4xl bg-white rounded-2xl md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[85vh]"
+              // ✨ 좌우 분할을 위해 모달 너비를 더 넓게 설정 (max-w-6xl)
+              className="relative w-full max-w-6xl bg-white rounded-2xl md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
             >
               <div className="p-5 md:p-8 pb-4 md:pb-6 border-b border-slate-100 flex justify-between items-center">
                 <div className="min-w-0">
@@ -361,8 +407,8 @@ export const AdminPeriodTab = () => {
                 </button>
               </div>
 
-              <div className="px-5 py-3 md:px-8 md:py-4 bg-slate-50/50 flex flex-col md:flex-row justify-between items-start md:items-center gap-3 border-b border-slate-100">
-                <div className="flex items-center gap-2 md:gap-3">
+              <div className="px-5 py-3 md:px-8 md:py-4 bg-slate-50/50 flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4 border-b border-slate-100">
+                <div className="flex items-center gap-2 md:gap-3 flex-wrap">
                   <button
                     onClick={() => {
                       if (selectedUserIds.length === submittedMembers.length) setSelectedUserIds([]);
@@ -371,14 +417,26 @@ export const AdminPeriodTab = () => {
                     className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold text-slate-600 flex items-center gap-1.5"
                   >
                     {selectedUserIds.length === submittedMembers.length ? <X size={12} /> : <Check size={12} />}
-                    전체 선택
+                    제출자 전체 선택
                   </button>
-                  <span className="text-[10px] md:text-xs font-bold text-slate-400">
-                    선택: <span className="text-indigo-600">{selectedUserIds.length}</span>
-                  </span>
+                  
+                  {/* ✨ 정렬 옵션 드롭다운 */}
+                  <div className="flex items-center gap-2 bg-white border border-slate-200 rounded-lg md:rounded-xl px-2 py-1">
+                    <Filter size={14} className="text-slate-400 ml-1" />
+                    <select 
+                      value={sortOrder} 
+                      onChange={(e: any) => setSortOrder(e.target.value)}
+                      className="bg-transparent border-none outline-none text-[10px] md:text-xs font-bold text-slate-600 cursor-pointer"
+                    >
+                      <option value="latest">최신순</option>
+                      <option value="oldest">오래된순</option>
+                      <option value="id_desc">학번 높은순</option>
+                      <option value="id_asc">학번 낮은순</option>
+                    </select>
+                  </div>
                 </div>
 
-                <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
+                <div className="flex items-center gap-2 md:gap-3 w-full lg:w-auto">
                   <div className="flex flex-1 md:flex-none bg-white border border-slate-200 rounded-lg p-0.5 md:p-1">
                     {[
                       { id: 'all', label: '전체' },
@@ -388,7 +446,7 @@ export const AdminPeriodTab = () => {
                       <button
                         key={opt.id}
                         onClick={() => setDownloadType(opt.id)}
-                        className={`flex-1 md:flex-none px-2.5 py-1 md:px-4 md:py-1.5 rounded-md md:rounded-lg text-[9px] md:text-[11px] font-black transition-all ${downloadType === opt.id
+                        className={`flex-1 lg:flex-none px-2.5 py-1 md:px-4 md:py-1.5 rounded-md md:rounded-lg text-[9px] md:text-[11px] font-black transition-all ${downloadType === opt.id
                             ? "bg-slate-900 text-white shadow-sm"
                             : "text-slate-400 hover:text-slate-600"
                           }`}
@@ -400,7 +458,7 @@ export const AdminPeriodTab = () => {
                   <button
                     onClick={handleDownloadZip}
                     disabled={selectedUserIds.length === 0}
-                    className={`flex items-center justify-center gap-1.5 px-4 py-2 md:px-6 md:py-2.5 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black transition-all ${selectedUserIds.length > 0
+                    className={`flex items-center justify-center gap-1.5 px-4 py-2 md:px-6 md:py-2.5 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black transition-all whitespace-nowrap ${selectedUserIds.length > 0
                         ? "bg-indigo-600 text-white shadow-md shadow-indigo-100 hover:bg-indigo-500"
                         : "bg-slate-200 text-slate-400 cursor-not-allowed"
                       }`}
@@ -411,80 +469,101 @@ export const AdminPeriodTab = () => {
                 </div>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-4 md:p-8">
-                {isDetailLoading ? (
-                  <div className="flex flex-col items-center justify-center py-10 md:py-20 text-slate-300">
-                    <Loader2 className="animate-spin mb-2" size={24} />
-                    <p className="text-xs font-bold">동기화 중...</p>
+              {/* ✨ 좌우 분할 컨테이너 */}
+              <div className="flex-1 overflow-hidden flex flex-col md:flex-row bg-slate-50/30">
+                
+                {/* 🟢 제출자 목록 (좌측) */}
+                <div className="flex-1 border-b md:border-b-0 md:border-r border-slate-200 overflow-y-auto p-4 md:p-6 bg-white">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-black text-indigo-600 flex items-center gap-1.5">
+                      <CheckCircle2 size={16} /> 제출 완료 ({sortedSubmittedMembers.length})
+                    </h4>
                   </div>
-                ) : submittedMembers.length > 0 ? (
-                  <div className="grid grid-cols-1 gap-2 md:gap-3">
-                    {submittedMembers.map((member) => (
-                      <div
-                        key={member.loginId}
-                        className={`flex flex-col md:flex-row items-start md:items-center justify-between p-3 md:p-5 rounded-2xl md:rounded-3xl border transition-all ${selectedUserIds.includes(member.loginId)
-                            ? "bg-indigo-50/50 border-indigo-200 shadow-sm"
-                            : "bg-white border-slate-100 hover:border-indigo-100"
-                          }`}
-                      >
-                        <div className="flex items-center gap-3 md:gap-5 w-full md:w-auto">
-                          <button
-                            onClick={() => {
-                              if (selectedUserIds.includes(member.loginId)) setSelectedUserIds(selectedUserIds.filter(id => id !== member.loginId));
-                              else setSelectedUserIds([...selectedUserIds, member.loginId]);
-                            }}
-                            className={`w-5 h-5 md:w-6 md:h-6 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${selectedUserIds.includes(member.loginId)
-                                ? "bg-indigo-600 border-indigo-600 text-white"
-                                : "bg-white border-slate-200"
-                              }`}
-                          >
-                            {selectedUserIds.includes(member.loginId) && <Check size={12} strokeWidth={4} />}
-                          </button>
-                          <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-2xl bg-slate-100 flex items-center justify-center text-slate-400 font-black text-[10px] md:text-xs shrink-0">
-                              {member.name.substring(0, 1)}
-                            </div>
+                  
+                  {isDetailLoading ? (
+                    <div className="flex justify-center py-10"><Loader2 className="animate-spin text-slate-300" /></div>
+                  ) : sortedSubmittedMembers.length > 0 ? (
+                    <div className="grid grid-cols-1 gap-2 md:gap-3">
+                      {sortedSubmittedMembers.map((member) => (
+                        <div
+                          key={member.loginId}
+                          className={`flex flex-col xl:flex-row xl:items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${selectedUserIds.includes(member.loginId)
+                              ? "bg-indigo-50/50 border-indigo-200 shadow-sm"
+                              : "bg-slate-50/50 border-slate-100 hover:border-indigo-100"
+                            }`}
+                        >
+                          <div className="flex items-center gap-3 w-full xl:w-auto">
+                            <button
+                              onClick={() => {
+                                if (selectedUserIds.includes(member.loginId)) setSelectedUserIds(selectedUserIds.filter(id => id !== member.loginId));
+                                else setSelectedUserIds([...selectedUserIds, member.loginId]);
+                              }}
+                              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${selectedUserIds.includes(member.loginId)
+                                  ? "bg-indigo-600 border-indigo-600 text-white"
+                                  : "bg-white border-slate-300"
+                                }`}
+                            >
+                              {selectedUserIds.includes(member.loginId) && <Check size={12} strokeWidth={4} />}
+                            </button>
                             <div className="min-w-0">
                               <p className="text-xs md:text-sm font-black text-slate-900 leading-none mb-1 truncate">{member.name}</p>
-                              <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">
-                                {member.studentId} · {member.submitDate}
+                              <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">
+                                {member.studentId} · {member.submitDate.split(' ')[0]}
                               </p>
                             </div>
                           </div>
-                        </div>
 
-                        <div className="flex items-center gap-2 mt-3 md:mt-0 w-full md:w-auto justify-end">
-                          {member.presentationPath && (downloadType === "all" || downloadType === "ppt") && (
-                            <button
-                              type="button"
-                              onClick={() => handleDownload(member.presentationPath)}
-                              className="p-2 md:p-2.5 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl hover:bg-indigo-100 transition-colors"
-                            >
-                              <FileArchive size={14} className="md:w-4 md:h-4" />
-                            </button>
-                          )}
-                          {member.pdfPath && (downloadType === "all" || downloadType === "pdf") && (
-                            <button
-                              type="button"
-                              onClick={() => handleDownload(member.pdfPath)}
-                              className="p-2 md:p-2.5 bg-pink-50 text-pink-600 rounded-lg md:rounded-xl hover:bg-pink-100 transition-colors"
-                            >
-                              <FileText size={14} className="md:w-4 md:h-4" />
-                            </button>
-                          )}
-                          <p className="text-[10px] md:text-xs font-bold text-slate-500 max-w-[100px] md:max-w-[150px] truncate italic ml-1">
-                            {member.memo || "메모 없음"}
-                          </p>
+                          <div className="flex items-center gap-1.5 mt-3 xl:mt-0 w-full xl:w-auto justify-end">
+                            {member.presentationPath && (downloadType === "all" || downloadType === "ppt") && (
+                              <button onClick={() => handleDownload(member.presentationPath)} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
+                                <FileArchive size={14} />
+                              </button>
+                            )}
+                            {member.pdfPath && (downloadType === "all" || downloadType === "pdf") && (
+                              <button onClick={() => handleDownload(member.pdfPath)} className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100">
+                                <FileText size={14} />
+                              </button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 text-slate-300 text-xs font-bold">제출자가 없습니다.</div>
+                  )}
+                </div>
+
+                {/* 🔴 미제출자 목록 (우측) */}
+                <div className="flex-1 overflow-y-auto p-4 md:p-6 bg-slate-50/50">
+                  <div className="flex items-center justify-between mb-4">
+                    <h4 className="text-sm font-black text-rose-500 flex items-center gap-1.5">
+                      <AlertCircle size={16} /> 미제출 ({sortedUnsubmittedMembers.length})
+                    </h4>
                   </div>
-                ) : (
-                  <div className="flex flex-col items-center justify-center py-10 md:py-20 text-slate-300">
-                    <Users size={32} className="mb-2 opacity-20" />
-                    <p className="text-sm font-black opacity-30 tracking-tight">제출 인원 없음</p>
-                  </div>
-                )}
+
+                  {isDetailLoading ? (
+                    <div className="flex justify-center py-10"><Loader2 className="animate-spin text-slate-300" /></div>
+                  ) : sortedUnsubmittedMembers.length > 0 ? (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2 gap-2 md:gap-3">
+                      {sortedUnsubmittedMembers.map((member) => (
+                        <div key={member.loginId} className="flex items-center gap-3 p-3 bg-white rounded-xl md:rounded-2xl border border-slate-100 shadow-sm opacity-70 grayscale-[30%]">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center text-slate-400 font-black text-[10px] shrink-0">
+                            {member.name.substring(0, 1)}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs md:text-sm font-black text-slate-700 leading-none mb-1 truncate">{member.name}</p>
+                            <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">
+                              {member.studentId}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <div className="text-center py-10 text-slate-300 text-xs font-bold">모두 제출했습니다! 🎉</div>
+                  )}
+                </div>
+
               </div>
             </motion.div>
           </div>
