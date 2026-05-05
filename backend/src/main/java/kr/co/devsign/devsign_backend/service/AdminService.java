@@ -279,26 +279,30 @@ public class AdminService {
                 boolean includePdf = "all".equals(fileType) || "pdf".equals(fileType);
                 boolean includeOther = "all".equals(fileType);
 
+                // ✨ 멤버 정보 조회 및 폴더명 생성 (예: "22 김형민")
+                Member member = memberRepository.findByLoginId(report.getLoginId()).orElse(null);
+                String folderName = report.getLoginId(); // 기본값 설정
+                if (member != null) {
+                    folderName = formatStudentId(member.getStudentId()) + " " + member.getName();
+                }
+
                 addFileToZip(
                         zipOut,
-                        report.getLoginId(),
-                        "presentation",
+                        folderName, // ✨ loginId 대신 생성한 폴더명 전달
                         report.getPresentationPath(),
                         includePresentation,
                         Set.of("ppt", "pptx")
                 );
                 addFileToZip(
                         zipOut,
-                        report.getLoginId(),
-                        "pdf",
+                        folderName, // ✨
                         report.getPdfPath(),
                         includePdf,
                         Set.of("pdf")
                 );
                 addFileToZip(
                         zipOut,
-                        report.getLoginId(),
-                        "other",
+                        folderName, // ✨
                         report.getOtherPath(),
                         includeOther,
                         Collections.emptySet()
@@ -499,8 +503,7 @@ public class AdminService {
 
     private void addFileToZip(
             ZipOutputStream zipOut,
-            String loginId,
-            String type,
+            String folderName, // ✨ 변경됨 (기존 loginId, type 제거)
             String originalPath,
             boolean include,
             Set<String> allowedExtensions
@@ -521,7 +524,8 @@ public class AdminService {
             }
         }
 
-        String entryName = loginId + "/" + type + "_" + file.getName();
+        // ✨ 핵심: ZIP 안에서의 파일 경로를 "22 김형민/원래파일명.확장자" 형태로 지정!
+        String entryName = folderName + "/" + file.getName();
         zipOut.putNextEntry(new ZipEntry(entryName));
         try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file))) {
             in.transferTo(zipOut);
@@ -615,5 +619,23 @@ public class AdminService {
                 member.getProfileImage(),
                 member.getDeletedAt() == null ? null : member.getDeletedAt().toString()
         );
+    }
+
+    // ✨ 학번을 2자리(예: 22)로 포맷팅하는 유틸리티 메서드 추가
+    private String formatStudentId(String studentId) {
+        if (studentId == null || studentId.trim().isEmpty()) return "??";
+        String id = studentId.trim();
+        
+        // 이미 '학번'이라는 글자가 있다면 숫자만 추출
+        if (id.contains("학번")) {
+            id = id.replaceAll("[^0-9]", "");
+        }
+        
+        // 8자리 학번인 경우 (예: 20221234 -> 22)
+        if (id.length() == 8) {
+            return id.substring(2, 4);
+        }
+        
+        return id;
     }
 }
