@@ -41,13 +41,19 @@ export function Home({ isAdmin, isLoggedIn, events, notices, posts, onNavigate }
         return result;
     }, [posts]);
 
+    // ✨ 최근 행사(ID 기준 내림차순) 정렬 후 3개 추출 로직 추가
+    const recentEvents = useMemo(() => {
+        return [...events].sort((a, b) => b.id - a.id).slice(0, 3);
+    }, [events]);
+
     return (
         <>
             <div id="home">
                 <Hero isAdmin={isAdmin} />
             </div>
             <div id="events" className="scroll-mt-20">
-                <Events onNavigate={onNavigate} events={events.slice(0, 3)} />
+                {/* ✨ events.slice(0, 3) 대신 최신순으로 정렬된 recentEvents를 사용 */}
+                <Events onNavigate={onNavigate} events={recentEvents} />
             </div>
             <div id="notice" className="scroll-mt-20">
                 <Notice onNavigate={onNavigate} notices={notices} />
