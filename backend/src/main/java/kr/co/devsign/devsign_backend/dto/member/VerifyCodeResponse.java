@@ -5,6 +5,8 @@ public record VerifyCodeResponse(
         String name,
         String studentId,
         String userStatus,
-        String role
+        String role,
+        String verificationToken,
+        Long expiresInSeconds
 ) {
 }

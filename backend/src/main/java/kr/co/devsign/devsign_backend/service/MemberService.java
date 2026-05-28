@@ -1,12 +1,15 @@
 package kr.co.devsign.devsign_backend.service;
 
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.transaction.Transactional;
 import kr.co.devsign.devsign_backend.entity.AccessLog;
 import kr.co.devsign.devsign_backend.entity.DiscordAuth;
 import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.entity.VerificationGrant;
 import kr.co.devsign.devsign_backend.repository.AccessLogRepository;
 import kr.co.devsign.devsign_backend.repository.DiscordAuthRepository;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import kr.co.devsign.devsign_backend.repository.VerificationGrantRepository;
 import kr.co.devsign.devsign_backend.util.JwtUtil;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.dto.member.ChangePasswordRequest;
@@ -31,7 +34,13 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.security.SecureRandom;
+import java.time.Duration;
 import java.time.LocalDateTime;
+import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +50,9 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class MemberService {
     private static final String DEFAULT_AVATAR_URL = "https://cdn.discordapp.com/embed/avatars/0.png";
+    private static final String PURPOSE_SIGNUP = "SIGNUP";
+    private static final String PURPOSE_PASSWORD_RESET = "PASSWORD_RESET";
+    private static final long VERIFICATION_GRANT_TTL_SECONDS = 300;
 
     @Autowired
     private JwtUtil jwtUtil;
@@ -53,42 +65,35 @@ public class MemberService {
 
     private final MemberRepository memberRepository;
     private final DiscordAuthRepository discordAuthRepository;
+    private final VerificationGrantRepository verificationGrantRepository;
     private final BCryptPasswordEncoder passwordEncoder;
 
     private final AccessLogService accessLogService;
     private final DiscordBotClient discordBotClient;
 
+    @Transactional
     public MemberResponse signup(SignupRequest payload, String ip) {
-        String authCode = payload.authCode();
+        VerificationGrant grant = consumeVerificationGrant(payload.verificationToken(), PURPOSE_SIGNUP);
+        String discordTag = grant.getSubject();
 
-        DiscordAuth auth = discordAuthRepository.findByCode(authCode)
-                .orElseThrow(() -> new RuntimeException("invalid or expired auth code"));
-
-        // ✨ [추가] 1. 회원가입 시 디스코드 중복 가입 완벽 차단
-        if (memberRepository.findByDiscordTag(auth.getDiscordTag()).isPresent()) {
+        if (memberRepository.findByDiscordTag(discordTag).isPresent()) {
             throw new RuntimeException("이미 가입된 디스코드 계정입니다. 다른 계정으로 인증해주세요.");
         }
-
-        Map<String, String> discordInfo = parseDiscordNickname(auth.getDiscordNickname());
 
         Member member = new Member();
         member.setLoginId(payload.loginId());
         member.setPassword(passwordEncoder.encode(payload.password()));
         member.setDept(payload.dept());
         member.setInterests(payload.interests());
-
-        member.setName(discordInfo.get("name"));
-        member.setStudentId(discordInfo.get("studentId"));
-        member.setDiscordTag(auth.getDiscordTag());
-
-        member.setRole(auth.getRole() != null ? auth.getRole() : "USER");
-        member.setUserStatus(auth.getUserStatus() != null ? auth.getUserStatus() : "ATTENDING");
-        member.setProfileImage(auth.getAvatarUrl());
+        member.setName(grant.getNameSnapshot());
+        member.setStudentId(grant.getStudentIdSnapshot());
+        member.setDiscordTag(discordTag);
+        member.setRole(grant.getRoleSnapshot() != null ? grant.getRoleSnapshot() : "USER");
+        member.setUserStatus(grant.getUserStatusSnapshot() != null ? grant.getUserStatusSnapshot() : "ATTENDING");
+        member.setProfileImage(grant.getAvatarUrlSnapshot());
 
         Member saved = memberRepository.save(member);
-
         accessLogService.logByMember(saved, "SIGNUP", ip);
-        discordAuthRepository.delete(auth);
 
         return toMemberResponse(saved);
     }
@@ -190,7 +195,6 @@ public class MemberService {
         return StatusResponse.success();
     }
 
-    // ✨ [추가] 2. 프로필 변경 시 인증번호(authCode)를 받아서 검증하도록 파라미터 및 로직 추가
     public StatusResponse updateMember(String loginId, UpdateMemberRequest updateData, String authCode) {
         Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
         if (memberOpt.isEmpty()) {
@@ -200,20 +204,16 @@ public class MemberService {
         Member member = memberOpt.get();
         String newDiscordTag = updateData.discordTag();
 
-        // 사용자가 디스코드 태그를 변경하려고 시도할 때만 검증 로직 실행
         if (newDiscordTag != null && !newDiscordTag.equals(member.getDiscordTag())) {
             
-            // 1단계: 변경하려는 디스코드 태그가 이미 다른 회원의 것인지 중복 검사
             if (memberRepository.findByDiscordTag(newDiscordTag).isPresent()) {
                 return StatusResponse.fail("이미 다른 사용자가 등록한 디스코드 계정입니다.");
             }
 
-            // 2단계: 인증번호 필수 확인
             if (authCode == null || authCode.trim().isEmpty()) {
                 return StatusResponse.fail("디스코드 계정 변경을 위한 인증번호가 필요합니다.");
             }
 
-            // 3단계: 인증번호 일치 여부 및 만료 확인
             Optional<DiscordAuth> authOpt = discordAuthRepository.findByCode(authCode);
             if (authOpt.isEmpty() || 
                 !authOpt.get().getDiscordTag().equals(newDiscordTag) || 
@@ -221,7 +221,6 @@ public class MemberService {
                 return StatusResponse.fail("유효하지 않거나 만료된 인증번호입니다.");
             }
 
-            // 인증 완료 후 사용된 인증 코드는 즉시 폐기
             discordAuthRepository.delete(authOpt.get());
         }
 
@@ -259,25 +258,54 @@ public class MemberService {
     public VerifyIdPwResponse verifyIdPw(VerifyIdPwRequest request) {
         Optional<Member> memberOpt = memberRepository.findByNameAndStudentId(request.name(), request.studentId());
         if (memberOpt.isEmpty()) {
-            return new VerifyIdPwResponse("fail", null);
+            return new VerifyIdPwResponse("fail", null, null, null);
         }
 
-        String discordTag = memberOpt.get().getDiscordTag();
-        boolean ok = checkVerificationInternal(discordTag, request.code());
+        Member member = memberOpt.get();
+        boolean ok = checkVerificationInternal(member.getDiscordTag(), request.code());
         if (!ok) {
-            return new VerifyIdPwResponse("fail", null);
+            return new VerifyIdPwResponse("fail", null, null, null);
         }
 
-        return new VerifyIdPwResponse("success", memberOpt.get().getLoginId());
+        if ("id".equalsIgnoreCase(request.type())) {
+            return new VerifyIdPwResponse("success", member.getLoginId(), null, null);
+        }
+
+        VerificationTokenIssue issued = issueVerificationGrant(
+                PURPOSE_PASSWORD_RESET,
+                String.valueOf(member.getId()),
+                member.getName(),
+                member.getStudentId(),
+                member.getRole(),
+                member.getUserStatus(),
+                member.getProfileImage()
+        );
+
+        return new VerifyIdPwResponse("success", member.getLoginId(), issued.token(), issued.expiresInSeconds());
     }
 
+    @Transactional
     public StatusResponse resetPasswordFinal(ResetPasswordFinalRequest request) {
+        VerificationGrant grant = consumeVerificationGrant(request.verificationToken(), PURPOSE_PASSWORD_RESET);
+
         Optional<Member> memberOpt = memberRepository.findByNameAndStudentId(request.name(), request.studentId());
         if (memberOpt.isEmpty()) {
             return StatusResponse.fail("member not found");
         }
 
         Member member = memberOpt.get();
+        if (!String.valueOf(member.getId()).equals(grant.getSubject())) {
+            return StatusResponse.fail("verification mismatch");
+        }
+
+        if (grant.getNameSnapshot() != null && !grant.getNameSnapshot().equals(request.name())) {
+            return StatusResponse.fail("verification mismatch");
+        }
+
+        if (grant.getStudentIdSnapshot() != null && !grant.getStudentIdSnapshot().equals(request.studentId())) {
+            return StatusResponse.fail("verification mismatch");
+        }
+
         member.setPassword(passwordEncoder.encode(request.newPassword()));
         memberRepository.save(member);
 
@@ -336,17 +364,29 @@ public class MemberService {
 
             if (ok) {
                 Map<String, String> discordInfo = parseDiscordNickname(auth.getDiscordNickname());
+                VerificationTokenIssue issued = issueVerificationGrant(
+                        PURPOSE_SIGNUP,
+                        auth.getDiscordTag(),
+                        discordInfo.get("name"),
+                        discordInfo.get("studentId"),
+                        auth.getRole(),
+                        auth.getUserStatus(),
+                        auth.getAvatarUrl()
+                );
+
                 return new VerifyCodeResponse(
                         "success",
                         discordInfo.get("name"),
                         discordInfo.get("studentId"),
                         auth.getUserStatus(),
-                        auth.getRole()
+                        auth.getRole(),
+                        issued.token(),
+                        issued.expiresInSeconds()
                 );
             }
         }
 
-        return new VerifyCodeResponse("fail", null, null, null, null);
+        return new VerifyCodeResponse("fail", null, null, null, null, null, null);
     }
 
     private boolean checkVerificationInternal(String discordTag, String code) {
@@ -354,6 +394,77 @@ public class MemberService {
                 .map(auth -> auth.getCode().equals(code.trim()) && auth.getExpiry().isAfter(LocalDateTime.now()))
                 .orElse(false);
     }
+
+    private VerificationTokenIssue issueVerificationGrant(
+            String purpose,
+            String subject,
+            String nameSnapshot,
+            String studentIdSnapshot,
+            String roleSnapshot,
+            String userStatusSnapshot,
+            String avatarUrlSnapshot
+    ) {
+        String rawToken = generateRawToken();
+        VerificationGrant grant = new VerificationGrant();
+        grant.setPurpose(purpose);
+        grant.setSubject(subject);
+        grant.setTokenHash(hashToken(rawToken));
+        grant.setNameSnapshot(nameSnapshot);
+        grant.setStudentIdSnapshot(studentIdSnapshot);
+        grant.setRoleSnapshot(roleSnapshot);
+        grant.setUserStatusSnapshot(userStatusSnapshot);
+        grant.setAvatarUrlSnapshot(avatarUrlSnapshot);
+        grant.setCreatedAt(LocalDateTime.now());
+        grant.setExpiresAt(LocalDateTime.now().plusSeconds(VERIFICATION_GRANT_TTL_SECONDS));
+        verificationGrantRepository.save(grant);
+
+        return new VerificationTokenIssue(rawToken, VERIFICATION_GRANT_TTL_SECONDS);
+    }
+
+    @Transactional
+    private VerificationGrant consumeVerificationGrant(String verificationToken, String requiredPurpose) {
+        if (verificationToken == null || verificationToken.trim().isEmpty()) {
+            throw new RuntimeException("verification token required");
+        }
+
+        String tokenHash = hashToken(verificationToken.trim());
+        VerificationGrant grant = verificationGrantRepository.findByTokenHash(tokenHash)
+                .orElseThrow(() -> new RuntimeException("invalid verification token"));
+
+        if (!requiredPurpose.equals(grant.getPurpose())) {
+            throw new RuntimeException("invalid verification token");
+        }
+
+        if (grant.getUsedAt() != null) {
+            throw new RuntimeException("verification token");
+        }
+
+        if (grant.getExpiresAt().isBefore(LocalDateTime.now())) {
+            throw new RuntimeException("verification token");
+        }
+
+        grant.setUsedAt(LocalDateTime.now());
+        verificationGrantRepository.save(grant);
+        return grant;
+    }
+
+    private String generateRawToken() {
+        byte[] bytes = new byte[32];
+        new SecureRandom().nextBytes(bytes);
+        return Base64.getUrlEncoder().withoutPadding().encodeToString(bytes);
+    }
+
+    private String hashToken(String rawToken) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hashed = digest.digest(rawToken.getBytes(StandardCharsets.UTF_8));
+            return Base64.getUrlEncoder().withoutPadding().encodeToString(hashed);
+        } catch (NoSuchAlgorithmException e) {
+            throw new RuntimeException("unable to hash verification token", e);
+        }
+    }
+
+    private record VerificationTokenIssue(String token, Long expiresInSeconds) {}
 
     private Map<String, String> parseDiscordNickname(String nickname) {
         Map<String, String> info = new HashMap<>();
@@ -388,3 +499,4 @@ public class MemberService {
         return value == null ? null : value.toString();
     }
 }
+

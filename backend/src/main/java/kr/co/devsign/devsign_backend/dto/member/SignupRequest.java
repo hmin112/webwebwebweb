@@ -5,6 +5,6 @@ public record SignupRequest(
         String password,
         String dept,
         String interests,
-        String authCode
+        String verificationToken
 ) {
 }
