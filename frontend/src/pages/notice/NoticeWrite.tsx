@@ -106,8 +106,12 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
       });
 
       // 기존에 올라가 있던 이미지 URL 유지 (수정 시)
-      const existingImages = images.filter(img => img.startsWith('http'));
-      formData.append("existingImages", JSON.stringify(existingImages));
+      // ✨ [수정] 백엔드 NoticeRequest의 필드명("images")과 일치시켜 실제로 바인딩되도록 수정.
+      // 문자열이 아닌 값이 섞여 있어도 죽지 않도록 방어적으로 필터링.
+      const existingImages = images.filter(img => typeof img === "string" && img.startsWith('http'));
+      existingImages.forEach(img => {
+        formData.append("images", img);
+      });
 
       // ✨ [신규] 다운로드용 첨부파일: 기존 파일 유지 + 새 파일 전송
       const existingAttachments = attachments.filter(a => a.url);
