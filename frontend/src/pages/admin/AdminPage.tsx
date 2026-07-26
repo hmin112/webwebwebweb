@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ClipboardList, ShieldCheck, RefreshCcw,
@@ -8,7 +8,7 @@ import {
   Trash2, ShieldAlert, Lock, History, RotateCcw, BookOpen, ShieldBan, LogIn,
   FileText, Heart, PlusCircle, UserPlus, Globe, Calendar, Clock, AlertTriangle,
   Phone, Hash, BadgeCheck, Info, Search, Edit, FilePlus, FileX, MessageSquare, LogOut, Activity,
-  UserX, CheckCircle2, Loader2
+  UserX, CheckCircle2, Loader2, Check
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
@@ -22,7 +22,7 @@ type LogType = "LOGIN" | "LOGOUT" | "SIGNUP"
   | "COMMENT_CREATE" | "COMMENT_DELETE" | "LIKE"
   | "EVENT_CREATE" | "EVENT_UPDATE" | "EVENT_DELETE"
   | "NOTICE_CREATE" | "NOTICE_UPDATE" | "NOTICE_DELETE"
-  | "ACCOUNT_SUSPEND" | "ACCOUNT_UNSUSPEND" | "ACCOUNT_RESTORE" | "ACCOUNT_DELETE" | "ACCOUNT_PERMANENT_DELETE";
+  | "ACCOUNT_SUSPEND" | "ACCOUNT_UNSUSPEND" | "ACCOUNT_RESTORE" | "ACCOUNT_DELETE" | "ACCOUNT_PERMANENT_DELETE" | "ACCOUNT_DISCORD_UPDATE";
 
 interface Member {
   id: number;
@@ -78,12 +78,20 @@ export const AdminPage = () => {
   const [selectedDate, setSelectedDate] = useState<string>("ALL");
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("ALL");
 
+  // ✨ [신규] 통합 로그 페이지네이션
+  const [logsPage, setLogsPage] = useState(0);
+  const LOGS_PER_PAGE = 50;
+
   const [searchQuery, setSearchQuery] = useState("");
 
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [isHardDelete, setIsHardDelete] = useState(false);
   const [memberToDelete, setMemberToDelete] = useState<Member | null>(null);
   const [adminPassword, setAdminPassword] = useState("");
+
+  // ✨ [신규] 관리자가 회원의 디스코드 태그를 직접 수정
+  const [editingDiscordId, setEditingDiscordId] = useState<number | null>(null);
+  const [discordTagDraft, setDiscordTagDraft] = useState("");
 
   // --- 3. 데이터 로딩 ---
   useEffect(() => {
@@ -137,11 +145,11 @@ export const AdminPage = () => {
     return timePart ? timePart.split('.')[0] : timestamp;
   };
 
-  const groupLogsByDate = (logs: AccessLog[]) => {
-    const groups: { [key: string]: AccessLog[] } = {};
+  // ✨ [수정] 날짜/시간대 필터링만 담당 (그룹핑은 별도 함수로 분리 — 페이지네이션 적용을 위해)
+  const filteredLogsFlat = useMemo(() => {
     let filtered = selectedDate === "ALL"
-      ? logs
-      : logs.filter(log => log.timestamp.includes(selectedDate));
+      ? accessLogs
+      : accessLogs.filter(log => log.timestamp.includes(selectedDate));
 
     if (selectedTimeRange !== "ALL") {
       filtered = filtered.filter(log => {
@@ -155,7 +163,25 @@ export const AdminPage = () => {
       });
     }
 
-    filtered.forEach(log => {
+    return [...filtered].sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+  }, [accessLogs, selectedDate, selectedTimeRange]);
+
+  // ✨ [신규] 통합 로그가 너무 많아지는 문제 해결을 위한 페이지네이션
+  const totalLogsPages = Math.max(1, Math.ceil(filteredLogsFlat.length / LOGS_PER_PAGE));
+
+  const pagedLogs = useMemo(() => {
+    const start = logsPage * LOGS_PER_PAGE;
+    return filteredLogsFlat.slice(start, start + LOGS_PER_PAGE);
+  }, [filteredLogsFlat, logsPage]);
+
+  // 필터가 바뀌면 페이지를 처음으로 되돌림
+  useEffect(() => {
+    setLogsPage(0);
+  }, [selectedDate, selectedTimeRange]);
+
+  const groupLogsByDate = (logs: AccessLog[]) => {
+    const groups: { [key: string]: AccessLog[] } = {};
+    logs.forEach(log => {
       const date = log.timestamp.split('T')[0] || log.timestamp.split(' ')[0];
       if (!groups[date]) groups[date] = [];
       groups[date].push(log);
@@ -190,6 +216,7 @@ export const AdminPage = () => {
       case "ACCOUNT_RESTORE": return { icon: <RotateCcw size={12} />, label: "계정 복구", color: "bg-indigo-50 text-indigo-600 border-indigo-100" };
       case "ACCOUNT_DELETE": return { icon: <Trash2 size={12} />, label: "삭제 이동", color: "bg-amber-50 text-amber-600 border-amber-100" };
       case "ACCOUNT_PERMANENT_DELETE": return { icon: <ShieldBan size={12} />, label: "영구 삭제", color: "bg-slate-900 text-white border-slate-900" };
+      case "ACCOUNT_DISCORD_UPDATE": return { icon: <MessageSquare size={12} />, label: "디스코드 수정", color: "bg-indigo-50 text-indigo-600 border-indigo-100" };
       default: return { icon: <Activity size={12} />, label: "기타 활동", color: "bg-slate-50 text-slate-500 border-slate-100" };
     }
   };
@@ -340,6 +367,25 @@ export const AdminPage = () => {
     }
   };
 
+  // ✨ [신규] 관리자가 직접 회원의 디스코드 태그 수정
+  const handleSaveDiscordTag = async (member: Member) => {
+    if (!discordTagDraft.trim()) {
+      alert("디스코드 태그를 입력해주세요.");
+      return;
+    }
+    try {
+      const res = await api.put(`/admin/members/${member.id}/discord-tag`, { discordTag: discordTagDraft.trim() });
+      if (res.data.status === "success") {
+        setEditingDiscordId(null);
+        await fetchAdminData();
+      } else {
+        alert(res.data.message || "수정에 실패했습니다.");
+      }
+    } catch (e) {
+      alert("디스코드 태그 수정 중 오류가 발생했습니다.");
+    }
+  };
+
   const handleDiscordSync = async () => {
     setIsSyncing(true);
     try {
@@ -401,7 +447,31 @@ export const AdminPage = () => {
                       </div>
                     </td>
                     <td className="px-4 md:px-8 py-4 md:py-6 text-slate-500 font-bold tracking-wider text-[11px] md:text-sm">{member.studentId}</td>
-                    <td className="px-4 md:px-8 py-4 md:py-6 text-indigo-600 font-bold text-[11px] md:text-sm truncate">@{member.discordTag}</td>
+                    <td className="px-4 md:px-8 py-4 md:py-6 text-indigo-600 font-bold text-[11px] md:text-sm">
+                      {editingDiscordId === member.id ? (
+                        <div className="flex items-center gap-1.5">
+                          <input
+                            autoFocus
+                            value={discordTagDraft}
+                            onChange={(e) => setDiscordTagDraft(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSaveDiscordTag(member)}
+                            className="w-full min-w-0 px-2 py-1.5 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-[11px] md:text-sm text-slate-900"
+                          />
+                          <button onClick={() => handleSaveDiscordTag(member)} className="p-1.5 bg-indigo-600 text-white rounded-lg shrink-0"><Check size={12} /></button>
+                          <button onClick={() => setEditingDiscordId(null)} className="p-1.5 bg-slate-100 text-slate-400 rounded-lg shrink-0"><X size={12} /></button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          <span className="truncate">@{member.discordTag}</span>
+                          <button
+                            onClick={() => { setEditingDiscordId(member.id); setDiscordTagDraft(member.discordTag || ""); }}
+                            className="text-slate-300 hover:text-indigo-500 shrink-0 transition-colors"
+                          >
+                            <Edit size={12} />
+                          </button>
+                        </div>
+                      )}
+                    </td>
                     <td className="px-4 md:px-8 py-4 md:py-6 text-center">
                       <div className="flex justify-center gap-1.5 md:gap-2">
                         <button onClick={() => toggleSuspension(member.id)} className={`p-1.5 md:p-2.5 rounded-lg md:rounded-xl shadow-sm transition-all ${member.suspended ? "bg-indigo-600 text-white" : "bg-white text-red-500 border border-red-100 hover:bg-red-50"}`}>{member.suspended ? <ShieldCheck size={14} /> : <ShieldAlert size={14} />}</button>
@@ -502,14 +572,20 @@ export const AdminPage = () => {
                 </div>
               </div>
             </div>
-            {Object.entries(groupLogsByDate(accessLogs)).map(([date, logs]) => (
+            <div className="flex items-center justify-between px-1 md:px-2">
+              <span className="text-[10px] md:text-xs font-bold text-slate-400">
+                전체 {filteredLogsFlat.length.toLocaleString()}건 중 {filteredLogsFlat.length === 0 ? 0 : logsPage * LOGS_PER_PAGE + 1}–{Math.min((logsPage + 1) * LOGS_PER_PAGE, filteredLogsFlat.length)}건 표시
+              </span>
+            </div>
+
+            {Object.entries(groupLogsByDate(pagedLogs)).map(([date, logs]) => (
               <div key={date} className="space-y-3 md:space-y-4">
                 <div className="flex items-center gap-3 md:gap-4 px-1 md:px-2"><div className="h-px flex-grow bg-slate-200" /><span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">{date}</span><div className="h-px flex-grow bg-slate-200" /></div>
                 <div className="bg-white rounded-xl md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
                   <div className="overflow-x-auto no-scrollbar">
                     <table className="w-full text-left table-fixed min-w-[500px]">
                       <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
-                        {logs.sort((a, b) => b.timestamp.localeCompare(a.timestamp)).map((log) => {
+                        {logs.map((log) => {
                           const style = getLogStyle(log.type);
                           return (
                             <tr key={log.id} className="hover:bg-slate-50/50 transition-colors">
@@ -526,6 +602,34 @@ export const AdminPage = () => {
                 </div>
               </div>
             ))}
+
+            {filteredLogsFlat.length === 0 && (
+              <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200">
+                <p className="text-slate-300 font-black uppercase tracking-widest text-xs md:text-sm">해당 조건의 로그가 없습니다.</p>
+              </div>
+            )}
+
+            {totalLogsPages > 1 && (
+              <div className="flex items-center justify-center gap-3 md:gap-4 pt-2 md:pt-4">
+                <button
+                  onClick={() => setLogsPage(p => Math.max(0, p - 1))}
+                  disabled={logsPage === 0}
+                  className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                >
+                  <ChevronDown className="rotate-90 w-4 h-4 md:w-5 md:h-5 text-slate-500" />
+                </button>
+                <span className="text-[11px] md:text-sm font-black text-slate-600 tracking-tight">
+                  {logsPage + 1} / {totalLogsPages} 페이지
+                </span>
+                <button
+                  onClick={() => setLogsPage(p => Math.min(totalLogsPages - 1, p + 1))}
+                  disabled={logsPage >= totalLogsPages - 1}
+                  className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                >
+                  <ChevronDown className="-rotate-90 w-4 h-4 md:w-5 md:h-5 text-slate-500" />
+                </button>
+              </div>
+            )}
           </motion.div>
         )}
 

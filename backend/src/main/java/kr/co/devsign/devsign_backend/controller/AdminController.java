@@ -14,6 +14,7 @@ import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsResponse;
 import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersRequest;
 import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
 import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
+import kr.co.devsign.devsign_backend.dto.admin.UpdateDiscordTagRequest;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.service.AdminService;
 import lombok.RequiredArgsConstructor;
@@ -107,6 +108,16 @@ public class AdminController {
     @PutMapping("/members/{id}/suspend")
     public StatusResponse toggleSuspension(@PathVariable Long id, HttpServletRequest request) {
         return adminService.toggleSuspension(id, request.getRemoteAddr());
+    }
+
+    // ✨ [신규] 관리자가 직접 회원의 디스코드 태그를 수정
+    @PutMapping("/members/{id}/discord-tag")
+    public StatusResponse updateDiscordTag(
+            @PathVariable Long id,
+            @RequestBody UpdateDiscordTagRequest request,
+            HttpServletRequest httpRequest
+    ) {
+        return adminService.updateDiscordTag(id, request.discordTag(), httpRequest.getRemoteAddr());
     }
 
     @PostMapping("/members/restore")

@@ -486,6 +486,22 @@ public class AdminService {
                 .toList();
     }
 
+    // ✨ [신규] 관리자가 직접 회원의 디스코드 태그를 수정 (본인 인증 절차 없이 관리자가 즉시 수정)
+    public StatusResponse updateDiscordTag(Long id, String discordTag, String ip) {
+        if (!StringUtils.hasText(discordTag)) {
+            return StatusResponse.fail("디스코드 태그를 입력해주세요.");
+        }
+
+        return memberRepository.findById(id)
+                .map(m -> {
+                    m.setDiscordTag(discordTag.trim());
+                    memberRepository.save(m);
+                    accessLogService.logByMember(m, "ACCOUNT_DISCORD_UPDATE", ip);
+                    return StatusResponse.success();
+                })
+                .orElseGet(() -> StatusResponse.fail("member not found"));
+    }
+
     public StatusResponse toggleSuspension(Long id, String ip) {
         return memberRepository.findById(id)
                 .map(m -> {
