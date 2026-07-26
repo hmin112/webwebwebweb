@@ -25,9 +25,8 @@ public interface MemberRepository extends JpaRepository<Member, Long> {
 
     Optional<Member> findByLoginIdAndDeletedTrue(String loginId);
 
-    Optional<Member> findByLoginIdAndDeletedFalse(String loginId);
-
-    Optional<Member> findByDiscordTagAndDeletedFalse(String discordTag);
+    // 임원진은 이름에 "(회장)" 등 직책이 붙어 저장되므로(예: "김형민(회장)") 이름 앞부분 일치로 조회
+    List<Member> findByNameStartingWithAndStudentIdAndDeletedFalse(String name, String studentId);
 
     long countByDeletedFalse();
 }
