@@ -1,0 +1,364 @@
+import { api } from "../../../api/axios";
+import { useState, useEffect, useMemo } from "react";
+import { motion, AnimatePresence } from "framer-motion";
+import {
+  Layers, Crown, UserPlus, X, LogOut, Trash2, Loader2,
+  Mail, Search, PlusCircle, Save, Edit2
+} from "lucide-react";
+
+export const TeamTab = ({ loginId }: { loginId: string }) => {
+  const { currentYear, currentSemester } = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const semester = (month >= 2 && month <= 7) ? 1 : 2;
+    const academicYear = (month === 1) ? year - 1 : year;
+    return { currentYear: academicYear, currentSemester: semester };
+  }, []);
+
+  const [team, setTeam] = useState<any>(null);
+  const [invitations, setInvitations] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [newTeamName, setNewTeamName] = useState("");
+  const [isCreating, setIsCreating] = useState(false);
+
+  const [isInviteOpen, setIsInviteOpen] = useState(false);
+  const [allMembers, setAllMembers] = useState<any[]>([]);
+  const [inviteSearch, setInviteSearch] = useState("");
+
+  const [isEditingTitle, setIsEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
+
+  const isLeader = Boolean(team && team.leaderLoginId === loginId);
+
+  const fetchStatus = async () => {
+    if (!loginId || loginId === "undefined") return;
+    setIsLoading(true);
+    try {
+      const res = await api.get("/teams/my", {
+        params: { loginId, year: currentYear, semester: currentSemester }
+      });
+      setTeam(res.data.team);
+      setInvitations(res.data.pendingInvitations || []);
+    } catch (e) {
+      console.error("팀 정보 로드 실패:", e);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => { fetchStatus(); }, [loginId]);
+
+  const handleCreateTeam = async () => {
+    if (!newTeamName.trim()) {
+      alert("팀(프로젝트) 이름을 입력해주세요.");
+      return;
+    }
+    try {
+      await api.post("/teams", {
+        loginId,
+        year: currentYear,
+        semester: currentSemester,
+        projectTitle: newTeamName.trim()
+      });
+      setNewTeamName("");
+      setIsCreating(false);
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "팀 생성에 실패했습니다.");
+    }
+  };
+
+  const handleAccept = async (teamMemberId: number) => {
+    try {
+      await api.post(`/teams/invitations/${teamMemberId}/accept`, null, { params: { loginId } });
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "수락에 실패했습니다.");
+    }
+  };
+
+  const handleDecline = async (teamMemberId: number) => {
+    if (!confirm("초대를 거절하시겠습니까?")) return;
+    try {
+      await api.post(`/teams/invitations/${teamMemberId}/decline`, null, { params: { loginId } });
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "거절에 실패했습니다.");
+    }
+  };
+
+  const openInviteModal = async () => {
+    setIsInviteOpen(true);
+    setInviteSearch("");
+    try {
+      const res = await api.get("/members/all");
+      setAllMembers(res.data || []);
+    } catch (e) {
+      console.error("부원 목록 로드 실패:", e);
+    }
+  };
+
+  const handleInvite = async (targetLoginId: string) => {
+    try {
+      await api.post(`/teams/${team.teamId}/invite`, { requesterLoginId: loginId, targetLoginId });
+      alert("초대를 보냈습니다.");
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "초대에 실패했습니다.");
+    }
+  };
+
+  const handleRemoveMember = async (targetLoginId: string) => {
+    if (!confirm("정말 이 팀원을 내보내시겠습니까?")) return;
+    try {
+      await api.delete(`/teams/${team.teamId}/members/${targetLoginId}`, {
+        params: { requesterLoginId: loginId }
+      });
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "처리에 실패했습니다.");
+    }
+  };
+
+  const handleLeaveTeam = async () => {
+    if (!confirm("팀에서 나가시겠습니까?")) return;
+    try {
+      await api.delete(`/teams/${team.teamId}/members/${loginId}`, {
+        params: { requesterLoginId: loginId }
+      });
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "처리에 실패했습니다.");
+    }
+  };
+
+  const handleDisband = async () => {
+    if (!confirm("팀을 해체하시겠습니까? 이 작업은 되돌릴 수 없습니다.")) return;
+    try {
+      await api.delete(`/teams/${team.teamId}`, { params: { requesterLoginId: loginId } });
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "처리에 실패했습니다.");
+    }
+  };
+
+  const handleSaveTitle = async () => {
+    if (!titleDraft.trim()) {
+      alert("팀(프로젝트) 이름을 입력해주세요.");
+      return;
+    }
+    try {
+      await api.post(`/teams/${team.teamId}/title`, { requesterLoginId: loginId, projectTitle: titleDraft.trim() });
+      setIsEditingTitle(false);
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "수정에 실패했습니다.");
+    }
+  };
+
+  const teamMemberLoginIds = useMemo(
+    () => new Set((team?.members || []).map((m: any) => m.loginId)),
+    [team]
+  );
+
+  const filteredMembers = useMemo(() => {
+    return allMembers
+      .filter((m) => m.loginId !== loginId)
+      .filter((m) => !teamMemberLoginIds.has(m.loginId))
+      .filter((m) =>
+        !inviteSearch ||
+        (m.name || "").toLowerCase().includes(inviteSearch.toLowerCase()) ||
+        String(m.studentId || "").includes(inviteSearch)
+      );
+  }, [allMembers, inviteSearch, teamMemberLoginIds, loginId]);
+
+  if (isLoading) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
+        <Loader2 className="animate-spin text-indigo-600" size={32} />
+        <p className="text-slate-400 font-bold tracking-tight text-sm">팀 정보를 불러오는 중입니다...</p>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-20">
+      <div className="mb-8 md:mb-12">
+        <h1 className="text-2xl md:text-4xl font-[900] text-slate-900 tracking-tighter uppercase mb-1 md:mb-2">팀 프로젝트</h1>
+        <p className="text-slate-400 font-bold text-[11px] md:text-sm">
+          팀으로 묶이면 팀원 중 한 명만 총회자료를 제출해도 팀 전체가 제출한 것으로 처리됩니다. ({currentYear}년 {currentSemester}학기)
+        </p>
+      </div>
+
+      {invitations.length > 0 && (
+        <div className="mb-8 md:mb-10 space-y-3 md:space-y-4">
+          <h3 className="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
+            <Mail size={16} className="text-indigo-500" /> 받은 팀 초대
+          </h3>
+          {invitations.map((inv) => (
+            <div key={inv.teamMemberId} className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-indigo-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="font-black text-slate-900 text-sm md:text-base truncate">{inv.projectTitle}</p>
+                <p className="text-xs md:text-sm text-slate-400 font-bold">{inv.leaderName} 님이 팀에 초대했습니다.</p>
+              </div>
+              <div className="flex gap-2 shrink-0">
+                <button onClick={() => handleDecline(inv.teamMemberId)} className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500 font-bold text-xs md:text-sm hover:bg-slate-100 transition-all">거절</button>
+                <button onClick={() => handleAccept(inv.teamMemberId)} className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs md:text-sm shadow-md hover:bg-indigo-700 transition-all">수락</button>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {!team ? (
+        <div className="bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200 p-8 md:p-16 text-center">
+          <Layers size={40} className="mx-auto text-slate-200 mb-4" />
+          <p className="text-slate-500 font-bold mb-6 text-sm md:text-base leading-relaxed">
+            아직 소속된 팀이 없습니다.<br />팀을 만들어 팀원들과 총회자료를 함께 제출해보세요.
+          </p>
+          {!isCreating ? (
+            <button onClick={() => setIsCreating(true)} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 text-sm transition-all active:scale-95">
+              <PlusCircle size={18} /> 새 팀 만들기
+            </button>
+          ) : (
+            <div className="max-w-md mx-auto flex flex-col sm:flex-row gap-2">
+              <input
+                autoFocus
+                value={newTeamName}
+                onChange={(e) => setNewTeamName(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
+                placeholder="팀(프로젝트) 이름"
+                className="flex-1 px-4 py-3.5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+              />
+              <button onClick={handleCreateTeam} className="px-5 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-md transition-all active:scale-95">생성</button>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="bg-white rounded-2xl md:rounded-[3rem] p-6 md:p-12 border border-slate-100 shadow-sm">
+          <div className="flex items-start justify-between gap-4 mb-8 md:mb-10">
+            <div className="min-w-0 flex-1">
+              <span className="text-[10px] md:text-xs font-black text-indigo-500 uppercase tracking-widest">Team Project</span>
+              {isEditingTitle ? (
+                <div className="flex items-center gap-2 mt-2">
+                  <input
+                    autoFocus
+                    value={titleDraft}
+                    onChange={(e) => setTitleDraft(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleSaveTitle()}
+                    className="flex-1 bg-slate-50 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-lg md:text-2xl text-slate-900 min-w-0"
+                  />
+                  <button onClick={handleSaveTitle} className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shrink-0"><Save size={18} /></button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-2 mt-1">
+                  <h2 className="text-xl md:text-3xl font-black text-slate-900 truncate">{team.projectTitle}</h2>
+                  {isLeader && (
+                    <button onClick={() => { setIsEditingTitle(true); setTitleDraft(team.projectTitle); }} className="text-slate-300 hover:text-indigo-500 shrink-0 transition-colors">
+                      <Edit2 size={16} />
+                    </button>
+                  )}
+                </div>
+              )}
+            </div>
+            {isLeader ? (
+              <button onClick={handleDisband} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-pink-50 text-pink-600 font-bold text-xs md:text-sm hover:bg-pink-100 transition-all">
+                <Trash2 size={14} /> 팀 해체
+              </button>
+            ) : (
+              <button onClick={handleLeaveTeam} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500 font-bold text-xs md:text-sm hover:bg-slate-100 transition-all">
+                <LogOut size={14} /> 팀 나가기
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center justify-between mb-4">
+            <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">팀원 ({team.members.length})</p>
+            {isLeader && (
+              <button onClick={openInviteModal} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-xs hover:bg-indigo-100 transition-all">
+                <UserPlus size={14} /> 팀원 초대
+              </button>
+            )}
+          </div>
+
+          <div className="space-y-2 md:space-y-3">
+            {team.members.map((m: any) => (
+              <div key={m.teamMemberId} className="flex items-center justify-between gap-3 p-3.5 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl border border-slate-100">
+                <div className="flex items-center gap-3 min-w-0">
+                  <img
+                    src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                    className="w-9 h-9 md:w-11 md:h-11 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
+                    alt={m.name}
+                  />
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-bold text-slate-800 text-sm truncate">{m.name}</span>
+                      {m.isLeader && <Crown size={13} className="text-amber-500 shrink-0" />}
+                    </div>
+                    <span className="text-[10px] md:text-xs font-bold text-slate-400">{m.studentId}학번</span>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  <span className={`text-[9px] md:text-[10px] font-black px-2 py-1 rounded-full ${m.status === "ACCEPTED" ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-500"}`}>
+                    {m.status === "ACCEPTED" ? "수락됨" : "대기중"}
+                  </span>
+                  {isLeader && !m.isLeader && (
+                    <button onClick={() => handleRemoveMember(m.loginId)} className="p-1.5 text-slate-300 hover:text-pink-500 transition-colors">
+                      <X size={16} />
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <AnimatePresence>
+        {isInviteOpen && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsInviteOpen(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-2xl max-h-[80vh] flex flex-col">
+              <div className="flex items-center justify-between mb-4 md:mb-6">
+                <h3 className="text-lg md:text-xl font-black text-slate-900">팀원 초대</h3>
+                <button onClick={() => setIsInviteOpen(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 transition-colors"><X size={16} /></button>
+              </div>
+              <div className="relative mb-4">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <input
+                  autoFocus
+                  value={inviteSearch}
+                  onChange={(e) => setInviteSearch(e.target.value)}
+                  placeholder="이름 또는 학번 검색"
+                  className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                />
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2">
+                {filteredMembers.length === 0 && (
+                  <p className="text-center text-slate-300 font-bold text-sm py-10">검색 결과가 없습니다.</p>
+                )}
+                {filteredMembers.map((m) => (
+                  <div key={m.loginId} className="flex items-center justify-between gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <img
+                        src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                        className="w-8 h-8 rounded-full object-cover shrink-0"
+                        alt={m.name}
+                      />
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 text-sm truncate">{m.name}</p>
+                        <p className="text-[10px] text-slate-400 font-bold">{m.studentId}학번</p>
+                      </div>
+                    </div>
+                    <button onClick={() => handleInvite(m.loginId)} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs shrink-0 transition-all active:scale-95">초대</button>
+                  </div>
+                ))}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+};

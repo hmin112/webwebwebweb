@@ -2,12 +2,13 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserCircle, Users, LayoutDashboard, ChevronRight,
-  Menu as MenuIcon, X, CalendarRange
+  Menu as MenuIcon, X, CalendarRange, Layers
 } from "lucide-react";
 
 // 분리된 탭 컴포넌트 임포트 (Attendance 관련 컴포넌트 제외)
 import { MyPageTab } from "../profile/tabs/MyPageTab";
 import { CommunityTab } from "../profile/tabs/CommunityTab";
+import { TeamTab } from "../profile/tabs/TeamTab";
 import { AdminPeriodTab } from "../profile/tabs/AdminPeriodTab";
 import { MemberDetailTab } from "../profile/tabs/MemberDetailTab";
 
@@ -26,6 +27,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   const userMenus = [
     ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={18} /> }] : []),
     { id: "community", name: "커뮤니티", icon: <Users size={18} /> },
+    ...(userStatus === "ATTENDING" ? [{ id: "team", name: "팀 프로젝트", icon: <Layers size={18} /> }] : []),
   ];
 
   const adminMenus = [
@@ -58,8 +60,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
               key={menu.id}
               onClick={() => handleTabChange(menu.id)}
               className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all text-xs font-black ${
-                isActive 
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-100" 
+                isActive
+                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
                   : "bg-slate-100 text-slate-500"
               }`}
             >
@@ -113,6 +115,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
               onNavigate={(_page, identifier) => identifier ? handleShowMemberDetail(String(identifier)) : onNavigate(_page)}
             />
           )}
+
+          {activeTab === "team" && <TeamTab key="team" loginId={loginId} />}
 
           {activeTab === "member-detail" && selectedLoginId && (
             <MemberDetailTab

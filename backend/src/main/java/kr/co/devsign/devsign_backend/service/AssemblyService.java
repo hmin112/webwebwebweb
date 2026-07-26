@@ -4,9 +4,11 @@ import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
 import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
 import kr.co.devsign.devsign_backend.entity.AssemblyProject;
 import kr.co.devsign.devsign_backend.entity.AssemblyReport;
+import kr.co.devsign.devsign_backend.entity.TeamMember;
 import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyProjectRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
+import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
 import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
@@ -40,10 +42,12 @@ import java.util.Set;
 public class AssemblyService {
 
     private static final int[] ACTIVE_MONTHS = new int[]{3, 4, 5, 6, 9, 10, 11, 12};
+    private static final String TEAM_STATUS_ACCEPTED = "ACCEPTED";
 
     private final AssemblyPeriodRepository periodRepository;
     private final AssemblyReportRepository reportRepository;
     private final AssemblyProjectRepository projectRepository;
+    private final TeamMemberRepository teamMemberRepository;
     @Value("${app.upload.base-dir:uploads}")
     private String uploadBaseDir;
 
@@ -200,7 +204,60 @@ public class AssemblyService {
         report.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
 
         reportRepository.save(report);
+
+        // ✨ [신규] 같은 팀(ACCEPTED) 소속이라면, 방금 제출한 내용을 팀원 전체에게 동기화한다.
+        syncToTeammates(report);
+
         return "submitted";
+    }
+
+    // ✨ [신규] 제출자가 속한 팀의 다른 accepted 팀원들에게 제출 내용을 그대로 복사해준다.
+    // 팀이 없는 사용자는 기존과 동일하게 아무 영향이 없다.
+    private void syncToTeammates(AssemblyReport report) {
+        List<TeamMember> myMemberships = teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(
+                report.getLoginId(), report.getYear(), report.getSemester());
+
+        TeamMember myMembership = myMemberships.stream()
+                .filter(m -> TEAM_STATUS_ACCEPTED.equals(m.getStatus()))
+                .findFirst()
+                .orElse(null);
+
+        if (myMembership == null) {
+            return;
+        }
+
+        Long teamId = myMembership.getTeam().getId();
+        List<TeamMember> teammates = teamMemberRepository.findByTeam_IdAndStatus(teamId, TEAM_STATUS_ACCEPTED);
+
+        for (TeamMember teammate : teammates) {
+            if (teammate.getLoginId().equals(report.getLoginId())) {
+                continue;
+            }
+
+            AssemblyReport teammateReport = reportRepository
+                    .findByLoginIdAndYearAndSemesterOrderByMonthAsc(teammate.getLoginId(), report.getYear(), report.getSemester())
+                    .stream()
+                    .filter(r -> r.getMonth() == report.getMonth())
+                    .findFirst()
+                    .orElseGet(() -> {
+                        AssemblyReport r = new AssemblyReport();
+                        r.setLoginId(teammate.getLoginId());
+                        r.setYear(report.getYear());
+                        r.setSemester(report.getSemester());
+                        r.setMonth(report.getMonth());
+                        return r;
+                    });
+
+            teammateReport.setType(report.getType());
+            teammateReport.setStatus(report.getStatus());
+            teammateReport.setMemo(report.getMemo());
+            teammateReport.setDate(report.getDate());
+            teammateReport.setPresentationPath(report.getPresentationPath());
+            teammateReport.setPdfPath(report.getPdfPath());
+            teammateReport.setOtherPath(report.getOtherPath());
+
+            reportRepository.save(teammateReport);
+        }
     }
 
     public ResponseEntity<byte[]> downloadFile(String path) {
