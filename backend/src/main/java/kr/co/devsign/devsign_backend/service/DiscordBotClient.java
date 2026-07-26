@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Component
@@ -39,5 +40,14 @@ public class DiscordBotClient {
     public Map<String, Object> syncAllMembers() {
         String url = botBaseUrl + "/sync-all-members";
         return restTemplate.getForObject(url, Map.class);
+    }
+
+    // ✨ [신규] 여러 명에게 동일 메시지를 DM으로 일괄 발송 (예: 총회자료 미제출자 리마인드)
+    public Map<String, Object> sendBulkMessage(List<String> discordTags, String message) {
+        String url = botBaseUrl + "/send-bulk-message";
+        Map<String, Object> body = new HashMap<>();
+        body.put("discordTags", discordTags);
+        body.put("message", message);
+        return restTemplate.postForObject(url, body, Map.class);
     }
 }

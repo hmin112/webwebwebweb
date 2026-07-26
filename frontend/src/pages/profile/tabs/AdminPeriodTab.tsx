@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   CalendarRange, Save, Clock, AlertCircle,
   CheckCircle2, ChevronLeft, ChevronRight, FileText, ClipboardList, Loader2,
-  Users, Download, X, Check, FileArchive, Search, Filter
+  Users, Download, X, Check, FileArchive, Search, Filter, MessageSquare, Send
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
@@ -53,6 +53,12 @@ export const AdminPeriodTab = () => {
 
   // ✨ 정렬 옵션 상태 추가
   const [sortOrder, setSortOrder] = useState<"latest" | "oldest" | "id_desc" | "id_asc">("latest");
+
+  // ✨ [신규] 디스코드 알림 발송 모달 상태
+  const [isNotifyOpen, setIsNotifyOpen] = useState(false);
+  const [notifyMessage, setNotifyMessage] = useState("");
+  const [notifySelectedIds, setNotifySelectedIds] = useState<string[]>([]);
+  const [isSendingNotify, setIsSendingNotify] = useState(false);
 
   // 1. 서버에서 특정 연도의 제출 기간 및 현황 데이터 로드
   useEffect(() => {
@@ -200,6 +206,71 @@ export const AdminPeriodTab = () => {
     </div>
   );
 
+  // ✨ [신규] 디스코드 알림 대상 선정을 위한 전체 인원(제출완료+미제출) 통합 목록
+  const allRelevantMembers = useMemo(() => {
+    return allMembers
+      .filter((m: any) => m.userStatus === "재학생" || m.userStatus === "신입생")
+      .map((m: any) => ({
+        ...m,
+        isSubmitted: submittedMembers.some((sub) => sub.loginId === m.loginId)
+      }))
+      .sort((a: any, b: any) => a.studentId.localeCompare(b.studentId));
+  }, [allMembers, submittedMembers]);
+
+  const openNotifyModal = () => {
+    setNotifyMessage("");
+    setNotifySelectedIds([]);
+    setIsNotifyOpen(true);
+  };
+
+  const toggleNotifyMember = (loginId: string) => {
+    setNotifySelectedIds((prev) =>
+      prev.includes(loginId) ? prev.filter((id) => id !== loginId) : [...prev, loginId]
+    );
+  };
+
+  const selectAllNotify = () => {
+    if (notifySelectedIds.length === allRelevantMembers.length) setNotifySelectedIds([]);
+    else setNotifySelectedIds(allRelevantMembers.map((m: any) => m.loginId));
+  };
+
+  const selectUnsubmittedOnlyNotify = () => {
+    setNotifySelectedIds(allRelevantMembers.filter((m: any) => !m.isSubmitted).map((m: any) => m.loginId));
+  };
+
+  const handleSendNotify = async () => {
+    if (notifySelectedIds.length === 0) {
+      alert("메시지를 보낼 인원을 선택해주세요.");
+      return;
+    }
+    if (!notifyMessage.trim()) {
+      alert("보낼 메시지를 입력해주세요.");
+      return;
+    }
+    if (!confirm(`선택한 ${notifySelectedIds.length}명에게 디스코드 DM을 발송하시겠습니까?`)) return;
+
+    setIsSendingNotify(true);
+    try {
+      const res = await api.post("/admin/notify", {
+        loginIds: notifySelectedIds,
+        message: notifyMessage.trim()
+      });
+      const { successCount, failCount, results } = res.data;
+      const failedNames = (results || [])
+        .filter((r: any) => r.status !== "success")
+        .map((r: any) => `${r.name}(${r.status === "no_discord" ? "디스코드 미연동" : r.status === "not_found" ? "회원 없음" : "발송 실패"})`)
+        .join(", ");
+      alert(
+        `발송 완료: 성공 ${successCount}건, 실패 ${failCount}건` +
+        (failedNames ? `\n\n실패: ${failedNames}` : "")
+      );
+      setIsNotifyOpen(false);
+    } catch (e: any) {
+      alert(e.response?.data?.message || "알림 발송 중 오류가 발생했습니다.");
+    } finally {
+      setIsSendingNotify(false);
+    }
+  };
 
   const generateInitialPeriods = (year: number): MonthPeriod[] => {
     const activeMonths = [3, 4, 5, 6, 9, 10, 11, 12];
@@ -539,6 +610,13 @@ export const AdminPeriodTab = () => {
                     <FileArchive size={14} className="md:w-4 md:h-4" />
                     ZIP 다운로드
                   </button>
+                  <button
+                    onClick={openNotifyModal}
+                    className="flex items-center justify-center gap-1.5 px-4 py-2 md:px-6 md:py-2.5 rounded-lg md:rounded-xl text-[10px] md:text-xs font-black transition-all whitespace-nowrap bg-slate-900 text-white shadow-md hover:bg-slate-800"
+                  >
+                    <MessageSquare size={14} className="md:w-4 md:h-4" />
+                    디스코드 알림
+                  </button>
                 </div>
               </div>
 
@@ -614,6 +692,111 @@ export const AdminPeriodTab = () => {
                   )}
                 </div>
 
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* ✨ [신규] 디스코드 알림 발송 모달 */}
+      <AnimatePresence>
+        {isNotifyOpen && (
+          <div className="fixed inset-0 z-[600] flex items-center justify-center px-4 md:px-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="absolute inset-0 bg-slate-900/60 backdrop-blur-md"
+              onClick={() => !isSendingNotify && setIsNotifyOpen(false)}
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="relative w-full max-w-2xl bg-white rounded-2xl md:rounded-[3rem] shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+            >
+              <div className="p-5 md:p-8 pb-4 md:pb-6 border-b border-slate-100 flex justify-between items-center">
+                <div className="min-w-0">
+                  <h3 className="text-lg md:text-2xl font-black text-slate-900 flex items-center gap-2 md:gap-3 truncate">
+                    <MessageSquare className="text-indigo-600 w-5 h-5 md:w-6 md:h-6 shrink-0" />
+                    디스코드 알림 보내기
+                  </h3>
+                  <p className="text-[10px] md:text-sm font-bold text-slate-400 mt-0.5 md:mt-1 truncate">
+                    {selectedPeriod?.year}년 {selectedPeriod?.month}월 · 선택 {notifySelectedIds.length}명
+                  </p>
+                </div>
+                <button
+                  onClick={() => setIsNotifyOpen(false)}
+                  disabled={isSendingNotify}
+                  className="p-2 md:p-3 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0 disabled:opacity-50"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-5 md:p-8 pt-4 md:pt-6 overflow-y-auto flex-1">
+                <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-2 block">보낼 메시지</label>
+                <textarea
+                  value={notifyMessage}
+                  onChange={(e) => setNotifyMessage(e.target.value)}
+                  placeholder="예: 아직 이번 달 총회자료를 제출하지 않으셨어요! 총회 탭에서 제출 부탁드립니다 🙏"
+                  className="w-full p-4 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm min-h-[100px] resize-none mb-5"
+                />
+
+                <div className="flex items-center justify-between mb-3">
+                  <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">받는 사람</label>
+                  <div className="flex items-center gap-2">
+                    <button onClick={selectUnsubmittedOnlyNotify} className="px-3 py-1.5 bg-rose-50 text-rose-500 rounded-lg text-[10px] md:text-xs font-bold hover:bg-rose-100">
+                      미제출자만 선택
+                    </button>
+                    <button onClick={selectAllNotify} className="px-3 py-1.5 bg-white border border-slate-200 rounded-lg text-[10px] md:text-xs font-bold text-slate-600 flex items-center gap-1">
+                      {notifySelectedIds.length === allRelevantMembers.length ? <X size={11} /> : <Check size={11} />}
+                      전체 {notifySelectedIds.length === allRelevantMembers.length ? "해제" : "선택"}
+                    </button>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 max-h-[280px] overflow-y-auto pr-1">
+                  {allRelevantMembers.map((member: any) => (
+                    <button
+                      type="button"
+                      key={member.loginId}
+                      onClick={() => toggleNotifyMember(member.loginId)}
+                      className={`flex items-center gap-2.5 p-3 rounded-xl border text-left transition-all ${notifySelectedIds.includes(member.loginId)
+                          ? "bg-indigo-50/50 border-indigo-200"
+                          : "bg-slate-50/50 border-slate-100 hover:border-indigo-100"
+                        }`}
+                    >
+                      <div className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${notifySelectedIds.includes(member.loginId)
+                          ? "bg-indigo-600 border-indigo-600 text-white"
+                          : "bg-white border-slate-300"
+                        }`}>
+                        {notifySelectedIds.includes(member.loginId) && <Check size={11} strokeWidth={4} />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-black text-slate-900 truncate">{member.name}</p>
+                        <p className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter truncate">{member.studentId}</p>
+                      </div>
+                      <span className={`text-[9px] font-black px-1.5 py-0.5 rounded-full shrink-0 ${member.isSubmitted ? "bg-green-50 text-green-600" : "bg-rose-50 text-rose-500"}`}>
+                        {member.isSubmitted ? "제출완료" : "미제출"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div className="p-5 md:p-8 pt-4 md:pt-6 border-t border-slate-100">
+                <button
+                  onClick={handleSendNotify}
+                  disabled={isSendingNotify || notifySelectedIds.length === 0 || !notifyMessage.trim()}
+                  className={`w-full flex items-center justify-center gap-2 py-3.5 md:py-4 rounded-xl md:rounded-2xl font-black text-sm transition-all ${!isSendingNotify && notifySelectedIds.length > 0 && notifyMessage.trim()
+                      ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-500"
+                      : "bg-slate-100 text-slate-400 cursor-not-allowed"
+                    }`}
+                >
+                  {isSendingNotify ? <Loader2 className="animate-spin" size={18} /> : <Send size={16} />}
+                  {isSendingNotify ? "발송 중..." : `선택한 ${notifySelectedIds.length}명에게 보내기`}
+                </button>
               </div>
             </motion.div>
           </div>

@@ -12,6 +12,9 @@ import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodSubmissionResponse;
 import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodZipRequest;
 import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsRequest;
 import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsResponse;
+import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersRequest;
+import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersResponse;
+import kr.co.devsign.devsign_backend.dto.admin.NotifyResultItem;
 import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
 import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
@@ -41,6 +44,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -388,6 +392,64 @@ public class AdminService {
         } catch (Exception e) {
             return new SyncDiscordResponse("error", "sync error: " + e.getMessage());
         }
+    }
+
+    // ✨ [신규] 선택한 회원들에게 디스코드 DM으로 동일한 안내 메시지를 일괄 발송 (예: 총회자료 제출 리마인드)
+    @SuppressWarnings("unchecked")
+    public NotifyMembersResponse notifyMembers(NotifyMembersRequest request) {
+        if (request == null || request.loginIds() == null || request.loginIds().isEmpty()) {
+            throw new IllegalArgumentException("보낼 대상을 선택해주세요.");
+        }
+        if (!StringUtils.hasText(request.message())) {
+            throw new IllegalArgumentException("보낼 메시지를 입력해주세요.");
+        }
+
+        List<NotifyResultItem> results = new ArrayList<>();
+        List<String> discordTags = new ArrayList<>();
+        Map<String, Member> tagToMember = new HashMap<>();
+
+        for (String loginId : request.loginIds()) {
+            Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
+            if (memberOpt.isEmpty()) {
+                results.add(new NotifyResultItem(loginId, loginId, "error", "존재하지 않는 회원입니다."));
+                continue;
+            }
+            Member member = memberOpt.get();
+            if (!StringUtils.hasText(member.getDiscordTag())) {
+                results.add(new NotifyResultItem(loginId, member.getName(), "no_discord", "디스코드 연동 정보가 없습니다."));
+                continue;
+            }
+            discordTags.add(member.getDiscordTag());
+            tagToMember.put(member.getDiscordTag(), member);
+        }
+
+        if (!discordTags.isEmpty()) {
+            try {
+                Map<String, Object> botResponse = discordBotClient.sendBulkMessage(discordTags, request.message());
+                List<Map<String, Object>> botResults = botResponse != null
+                        ? (List<Map<String, Object>>) botResponse.getOrDefault("results", List.of())
+                        : List.of();
+
+                for (Map<String, Object> item : botResults) {
+                    String tag = String.valueOf(item.get("discordTag"));
+                    String status = String.valueOf(item.get("status"));
+                    Member member = tagToMember.get(tag);
+                    String loginId = member != null ? member.getLoginId() : tag;
+                    String name = member != null ? member.getName() : tag;
+                    String message = item.get("message") != null ? String.valueOf(item.get("message")) : null;
+                    results.add(new NotifyResultItem(loginId, name, status, message));
+                }
+            } catch (Exception e) {
+                for (Member member : tagToMember.values()) {
+                    results.add(new NotifyResultItem(member.getLoginId(), member.getName(), "error", "봇 서버 통신 오류: " + e.getMessage()));
+                }
+            }
+        }
+
+        int successCount = (int) results.stream().filter(r -> "success".equals(r.status())).count();
+        int failCount = results.size() - successCount;
+
+        return new NotifyMembersResponse(successCount, failCount, results);
     }
 
     public StatusResponse toggleSuspension(Long id, String ip) {

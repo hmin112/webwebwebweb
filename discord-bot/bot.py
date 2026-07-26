@@ -154,10 +154,38 @@ async def sync_all_members():
             all_members_info.append(get_member_status_info(m))
             
     return {
-        "status": "success", 
+        "status": "success",
         "count": len(all_members_info),
         "members": all_members_info
     }
+
+# [기능 5] 관리자 알림 - 여러 명에게 동일 메시지를 DM으로 일괄 발송 (예: 총회자료 미제출자 리마인드)
+@app.post("/send-bulk-message")
+async def send_bulk_message(request: Request):
+    data = await request.json()
+    user_tags = data.get("discordTags", [])
+    message = data.get("message", "")
+
+    if not message or not message.strip():
+        return {"status": "error", "message": "메시지 내용이 비어있습니다."}
+
+    guild = bot.get_guild(GUILD_ID)
+    if not guild:
+        return {"status": "error", "message": "서버를 찾을 수 없습니다."}
+
+    results = []
+    for tag in user_tags:
+        member = discord.utils.get(guild.members, name=tag)
+        if not member:
+            results.append({"discordTag": tag, "status": "not_found"})
+            continue
+        try:
+            await member.send(message)
+            results.append({"discordTag": tag, "status": "success"})
+        except Exception as e:
+            results.append({"discordTag": tag, "status": "error", "message": str(e)})
+
+    return {"status": "done", "results": results}
 
 # 메인 실행 루프
 async def main():

@@ -10,6 +10,7 @@ import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodSubmissionResponse;
 import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodZipRequest;
 import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsRequest;
 import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsResponse;
+import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersRequest;
 import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
 import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
@@ -80,6 +81,16 @@ public class AdminController {
     @GetMapping("/sync-discord")
     public SyncDiscordResponse syncDiscord() {
         return adminService.syncDiscord();
+    }
+
+    // ✨ [신규] 선택한 회원들에게 디스코드 DM으로 안내 메시지 일괄 발송
+    @PostMapping("/notify")
+    public ResponseEntity<?> notifyMembers(@RequestBody NotifyMembersRequest request) {
+        try {
+            return ResponseEntity.ok(adminService.notifyMembers(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
     }
 
     @PutMapping("/members/{id}/suspend")
