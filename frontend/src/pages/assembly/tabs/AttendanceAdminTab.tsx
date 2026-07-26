@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, type CSSProperties } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { motion } from "framer-motion";
 import {
-  Timer, Users, CheckCircle2, History, X, ChevronLeft, ChevronRight,
+  Timer, Users, CheckCircle2, History, ChevronLeft, ChevronRight,
   Upload, FileSpreadsheet, AlertTriangle, Download,
 } from "lucide-react";
 import { api } from "../../../api/axios";
@@ -28,7 +28,6 @@ type AdminStatus = {
 
 type Problem = { row: number; name: string; reason: string };
 
-type HistoryTarget = { name: string; studentId: string; dept?: string; profileImage: string | null; checkedIn: boolean };
 type HistorySession = {
   sessionId: number;
   title: string;
@@ -36,7 +35,7 @@ type HistorySession = {
   closedAt: string;
   checkedCount: number;
   totalCount: number;
-  targets: HistoryTarget[];
+  targets: TargetStatus[];
 };
 
 const APPLE_GREEN = "#34C759";
@@ -59,36 +58,147 @@ const formatTime = (seconds: number) => {
   return `${mins}:${secs < 10 ? "0" : ""}${secs}`;
 };
 
-// 정사각형 아바타 그리드 — 카드마다 폭이 다른 flex-wrap 대신 고정 트랙 grid로 오와 열을 정확히 맞춘다
-const AttendeeGrid = ({ items }: { items: (TargetStatus | HistoryTarget)[] }) => (
-  <div className="grid gap-x-4 gap-y-7 [grid-template-columns:repeat(auto-fill,minmax(72px,1fr))]">
-    {items.map((m, idx) => (
-      <div key={("loginId" in m ? m.loginId : null) || idx} className="flex flex-col items-center gap-2 min-w-0">
-        <div className="relative">
-          <div
-            className={`w-14 h-14 rounded-2xl overflow-hidden transition-all ${
-              m.checkedIn ? "ring-2" : "opacity-35 grayscale ring-1 ring-slate-200"
-            }`}
-            style={m.checkedIn ? ({ "--tw-ring-color": APPLE_GREEN } as CSSProperties) : undefined}
-          >
-            <img src={avatarOf(m)} className="w-full h-full object-cover" alt={m.name} />
-          </div>
-          {m.checkedIn && (
+// 정사각형 아바타 그리드 — 카드마다 폭이 다른 flex-wrap 대신 고정 트랙 grid로 오와 열을 정확히 맞춘다.
+// sessionId가 주어지면 클릭으로 출석/미출석을 수기 토글할 수 있다(지각자 등 사후 정정용).
+const AttendeeGrid = ({
+  items,
+  sessionId,
+  onToggled,
+}: {
+  items: TargetStatus[];
+  sessionId?: number;
+  onToggled?: () => void;
+}) => {
+  const [pending, setPending] = useState<string | null>(null);
+
+  const handleToggle = async (m: TargetStatus) => {
+    if (!sessionId || pending) return;
+    setPending(m.loginId);
+    try {
+      await api.put(`/admin/attendance/${sessionId}/targets/${m.loginId}`, { checkedIn: !m.checkedIn });
+      onToggled?.();
+    } catch {
+      alert("출석 상태 변경에 실패했습니다.");
+    } finally {
+      setPending(null);
+    }
+  };
+
+  return (
+    <div className="grid gap-x-4 gap-y-7 [grid-template-columns:repeat(auto-fill,minmax(72px,1fr))]">
+      {items.map((m, idx) => (
+        <button
+          key={m.loginId || idx}
+          type="button"
+          disabled={!sessionId || pending === m.loginId}
+          onClick={() => handleToggle(m)}
+          className={`flex flex-col items-center gap-2 min-w-0 group ${sessionId ? "cursor-pointer" : "cursor-default"}`}
+          title={sessionId ? (m.checkedIn ? "클릭하면 미출석으로 변경" : "클릭하면 출석으로 변경") : undefined}
+        >
+          <div className="relative">
             <div
-              className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
-              style={{ backgroundColor: APPLE_GREEN }}
+              className={`w-14 h-14 rounded-2xl overflow-hidden transition-all ${
+                m.checkedIn ? "ring-2" : "opacity-35 grayscale ring-1 ring-slate-200"
+              } ${sessionId ? "group-hover:opacity-80 group-hover:ring-slate-400" : ""} ${pending === m.loginId ? "opacity-50" : ""}`}
+              style={m.checkedIn ? ({ "--tw-ring-color": APPLE_GREEN } as CSSProperties) : undefined}
             >
-              <CheckCircle2 size={11} className="text-white" strokeWidth={3} />
+              <img src={avatarOf(m)} className="w-full h-full object-cover" alt={m.name} />
             </div>
-          )}
-        </div>
-        <p className="text-[11px] font-medium text-slate-700 leading-tight text-center truncate w-full">
-          {formatStudentId(m.studentId)} {m.name}
-        </p>
+            {m.checkedIn && (
+              <div
+                className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full border-2 border-white flex items-center justify-center"
+                style={{ backgroundColor: APPLE_GREEN }}
+              >
+                <CheckCircle2 size={11} className="text-white" strokeWidth={3} />
+              </div>
+            )}
+          </div>
+          <p className="text-[11px] font-medium text-slate-700 leading-tight text-center truncate w-full">
+            {formatStudentId(m.studentId)} {m.name}
+          </p>
+        </button>
+      ))}
+    </div>
+  );
+};
+
+const HistoryPanel = ({
+  history,
+  onDownload,
+  onToggled,
+}: {
+  history: HistorySession[];
+  onDownload: (s: HistorySession) => void;
+  onToggled: () => void;
+}) => {
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  // history prop이 갱신될 때마다 최신 상태를 다시 찾아옴 — 스냅샷을 들고 있지 않아서
+  // 토글 직후에도 상세 화면이 즉시 최신 상태로 보인다.
+  const selected = selectedId != null ? history.find((h) => h.sessionId === selectedId) ?? null : null;
+
+  return (
+    <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-7">
+      <div className="flex items-center gap-3 mb-6">
+        {selected ? (
+          <button
+            onClick={() => setSelectedId(null)}
+            className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors -ml-1.5"
+          >
+            <ChevronLeft size={18} />
+          </button>
+        ) : (
+          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+            <History size={15} />
+          </div>
+        )}
+        <h3 className="text-[15px] font-semibold text-slate-900 tracking-[-0.01em] flex-1 truncate">
+          {selected ? selected.title : "출석 이력"}
+        </h3>
+        {selected && (
+          <button
+            onClick={() => onDownload(selected)}
+            className="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 px-3.5 py-1.5 rounded-full transition-colors shrink-0"
+          >
+            <Download size={13} /> 엑셀 다운로드
+          </button>
+        )}
       </div>
-    ))}
-  </div>
-);
+
+      {!selected &&
+        (history.length === 0 ? (
+          <div className="text-center py-14 text-slate-300 font-medium flex flex-col items-center gap-3">
+            <History size={36} className="opacity-30" />
+            <span className="text-[13px]">저장된 출석 기록이 없습니다</span>
+          </div>
+        ) : (
+          <div className="space-y-1">
+            {history.map((session) => (
+              <button
+                key={session.sessionId}
+                onClick={() => setSelectedId(session.sessionId)}
+                className="w-full flex items-center justify-between gap-4 p-3.5 rounded-2xl hover:bg-slate-50 transition-colors text-left"
+              >
+                <div className="min-w-0">
+                  <p className="text-[14px] font-medium text-slate-900 truncate">{session.title}</p>
+                  <p className="text-[12px] text-slate-400 mt-0.5">
+                    {(session.startedAt || "").slice(0, 10)} · {session.checkedCount} / {session.totalCount}명 출석
+                  </p>
+                </div>
+                <ChevronRight size={16} className="text-slate-300 shrink-0" />
+              </button>
+            ))}
+          </div>
+        ))}
+
+      {selected && (
+        <>
+          <p className="text-[12px] text-slate-400 mb-5">항목을 클릭하면 출석/미출석을 수기로 정정할 수 있습니다</p>
+          <AttendeeGrid items={selected.targets} sessionId={selected.sessionId} onToggled={onToggled} />
+        </>
+      )}
+    </div>
+  );
+};
 
 export const AttendanceAdminTab = () => {
   const [status, setStatus] = useState<AdminStatus | null>(null);
@@ -97,9 +207,7 @@ export const AttendanceAdminTab = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [problems, setProblems] = useState<Problem[] | null>(null);
   const [remaining, setRemaining] = useState(0);
-  const [showHistory, setShowHistory] = useState(false);
   const [history, setHistory] = useState<HistorySession[]>([]);
-  const [selectedSession, setSelectedSession] = useState<HistorySession | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -114,8 +222,18 @@ export const AttendanceAdminTab = () => {
     }
   };
 
+  const fetchHistory = async () => {
+    try {
+      const res = await api.get("/admin/attendance/history");
+      setHistory(res.data);
+    } catch {
+      // 조용히 무시 — 다음 갱신에서 재시도
+    }
+  };
+
   useEffect(() => {
     fetchStatus();
+    fetchHistory();
     pollRef.current = setInterval(fetchStatus, 3000);
     return () => {
       if (pollRef.current) clearInterval(pollRef.current);
@@ -163,19 +281,9 @@ export const AttendanceAdminTab = () => {
     try {
       await api.post(`/admin/attendance/${status.sessionId}/close`);
       await fetchStatus();
+      await fetchHistory();
     } catch {
       alert("출석 종료 중 오류가 발생했습니다.");
-    }
-  };
-
-  const openHistory = async () => {
-    setSelectedSession(null);
-    try {
-      const res = await api.get("/admin/attendance/history");
-      setHistory(res.data);
-      setShowHistory(true);
-    } catch {
-      alert("출석 이력을 불러오는데 실패했습니다.");
     }
   };
 
@@ -199,186 +307,101 @@ export const AttendanceAdminTab = () => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <div className="flex justify-between items-center mb-10">
-        <h1 className="text-[26px] font-semibold text-slate-900 tracking-[-0.01em]">출석 설정</h1>
-        <button
-          onClick={openHistory}
-          className="flex items-center gap-1.5 text-[13px] font-medium text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 px-4 py-2 rounded-full transition-colors"
-        >
-          <History size={15} /> 이력
-        </button>
-      </div>
+      <h1 className="text-[26px] font-semibold text-slate-900 tracking-[-0.01em] mb-8">출석 설정</h1>
 
       {!isActive && (
-        <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10 max-w-md">
-          <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-6">
-            <Timer size={20} />
-          </div>
-          <h2 className="text-[19px] font-semibold text-slate-900 tracking-[-0.01em] mb-1.5">대상자 명단 업로드</h2>
-          <p className="text-[13px] text-slate-400 leading-relaxed mb-7">
-            "이름 / 학번 / 학과" 컬럼이 포함된 .xlsx 파일을 업로드하면 해당 인원을 대상으로 출석이 시작됩니다.
-          </p>
-
-          <label className="flex items-center gap-3.5 border border-slate-200 rounded-2xl p-4 cursor-pointer hover:border-slate-300 hover:bg-slate-50/50 transition-all mb-5">
-            <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-              <FileSpreadsheet size={18} />
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr] gap-6 items-start">
+          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10">
+            <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-6">
+              <Timer size={20} />
             </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[14px] font-medium text-slate-800 truncate">{file ? file.name : "엑셀 파일 선택"}</p>
-              <p className="text-[12px] text-slate-400">.xlsx</p>
-            </div>
-            <input
-              ref={fileInputRef}
-              type="file"
-              accept=".xlsx"
-              className="hidden"
-              onChange={(e) => setFile(e.target.files?.[0] || null)}
-            />
-          </label>
+            <h2 className="text-[19px] font-semibold text-slate-900 tracking-[-0.01em] mb-1.5">대상자 명단 업로드</h2>
+            <p className="text-[13px] text-slate-400 leading-relaxed mb-7">
+              "이름 / 학번 / 학과" 컬럼이 포함된 .xlsx 파일을 업로드하면 해당 인원을 대상으로 출석이 시작됩니다.
+            </p>
 
-          {errorMsg && (
-            <div className="bg-red-50/70 border border-red-100 rounded-2xl p-4 mb-5">
-              <div className="flex items-center gap-2 text-[13px] font-semibold mb-1.5" style={{ color: "#FF3B30" }}>
-                <AlertTriangle size={14} /> {errorMsg}
+            <label className="flex items-center gap-3.5 border border-slate-200 rounded-2xl p-4 cursor-pointer hover:border-slate-300 hover:bg-slate-50/50 transition-all mb-5">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                <FileSpreadsheet size={18} />
               </div>
-              {problems && problems.length > 0 && (
-                <ul className="space-y-1 text-[12px] text-red-400 font-medium pl-1 max-h-40 overflow-y-auto">
-                  {problems.map((p, i) => (
-                    <li key={i}>
-                      {p.row}행 · {p.name} — {p.reason}
-                    </li>
-                  ))}
-                </ul>
-              )}
-            </div>
-          )}
+              <div className="min-w-0 flex-1">
+                <p className="text-[14px] font-medium text-slate-800 truncate">{file ? file.name : "엑셀 파일 선택"}</p>
+                <p className="text-[12px] text-slate-400">.xlsx</p>
+              </div>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept=".xlsx"
+                className="hidden"
+                onChange={(e) => setFile(e.target.files?.[0] || null)}
+              />
+            </label>
 
-          <Button
-            onClick={handleStart}
-            disabled={!file || starting}
-            className="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 shadow-none"
-          >
-            <Upload size={16} /> {starting ? "시작하는 중…" : "출석 시작"}
-          </Button>
+            {errorMsg && (
+              <div className="bg-red-50/70 border border-red-100 rounded-2xl p-4 mb-5">
+                <div className="flex items-center gap-2 text-[13px] font-semibold mb-1.5" style={{ color: "#FF3B30" }}>
+                  <AlertTriangle size={14} /> {errorMsg}
+                </div>
+                {problems && problems.length > 0 && (
+                  <ul className="space-y-1 text-[12px] text-red-400 font-medium pl-1 max-h-40 overflow-y-auto">
+                    {problems.map((p, i) => (
+                      <li key={i}>
+                        {p.row}행 · {p.name} — {p.reason}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+
+            <Button
+              onClick={handleStart}
+              disabled={!file || starting}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 shadow-none"
+            >
+              <Upload size={16} /> {starting ? "시작하는 중…" : "출석 시작"}
+            </Button>
+          </div>
+
+          <HistoryPanel history={history} onDownload={handleDownload} onToggled={fetchHistory} />
         </div>
       )}
 
       {isActive && status && (
         <div className="space-y-6">
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
-            <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10 flex flex-col items-center justify-center text-center relative">
-              <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-slate-100 text-slate-500 text-[13px] font-medium px-3 py-1.5 rounded-full">
-                <Timer size={13} /> {formatTime(remaining)}
-              </div>
-              <p className="text-[12px] font-medium text-slate-400 uppercase tracking-[0.12em] mb-3">인증번호</p>
-              <h2 className="text-[76px] font-semibold text-slate-900 leading-none tracking-[0.03em] tabular-nums">
-                {status.code}
-              </h2>
-              <p className="text-[13px] text-slate-400 mt-5">
-                {status.checkedCount} / {status.totalCount}명 출석
-              </p>
-              <button
-                onClick={handleClose}
-                className="mt-7 text-[13px] font-medium text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-full px-5 py-2 transition-colors"
-              >
-                출석 종료
-              </button>
+          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10 flex flex-col items-center justify-center text-center relative">
+            <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-slate-100 text-slate-500 text-[13px] font-medium px-3 py-1.5 rounded-full">
+              <Timer size={13} /> {formatTime(remaining)}
             </div>
+            <p className="text-[12px] font-medium text-slate-400 uppercase tracking-[0.12em] mb-3">인증번호</p>
+            <h2 className="text-[76px] font-semibold text-slate-900 leading-none tracking-[0.03em] tabular-nums">
+              {status.code}
+            </h2>
+            <p className="text-[13px] text-slate-400 mt-5">
+              {status.checkedCount} / {status.totalCount}명 출석
+            </p>
+            <button
+              onClick={handleClose}
+              className="mt-7 text-[13px] font-medium text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-full px-5 py-2 transition-colors"
+            >
+              출석 종료
+            </button>
           </div>
 
           <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-9">
-            <div className="flex items-center gap-2 mb-7">
-              <Users size={16} className="text-slate-400" />
-              <h3 className="text-[13px] font-semibold text-slate-500 uppercase tracking-[0.08em]">실시간 출석 현황</h3>
+            <div className="flex items-center justify-between mb-1">
+              <div className="flex items-center gap-2">
+                <Users size={16} className="text-slate-400" />
+                <h3 className="text-[13px] font-semibold text-slate-500 uppercase tracking-[0.08em]">실시간 출석 현황</h3>
+              </div>
             </div>
-            <AttendeeGrid items={status.targets} />
+            <p className="text-[12px] text-slate-400 mb-6">지각자 등은 항목을 클릭해 수기로 출석 처리할 수 있습니다</p>
+            <AttendeeGrid items={status.targets} sessionId={status.sessionId ?? undefined} onToggled={fetchStatus} />
           </div>
+
+          <HistoryPanel history={history} onDownload={handleDownload} onToggled={fetchHistory} />
         </div>
       )}
-
-      <AnimatePresence>
-        {showHistory && (
-          <div className="fixed inset-0 z-[500] flex items-center justify-center px-4">
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/20 backdrop-blur-sm"
-              onClick={() => setShowHistory(false)}
-            />
-            <motion.div
-              initial={{ opacity: 0, scale: 0.97, y: 12 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.97, y: 12 }}
-              transition={{ duration: 0.2, ease: [0.16, 1, 0.3, 1] }}
-              className="relative w-full max-w-2xl bg-white rounded-[28px] shadow-[0_20px_60px_rgba(0,0,0,0.18)] overflow-hidden flex flex-col max-h-[82vh]"
-            >
-              <div className="px-7 py-5 border-b border-slate-100 flex items-center gap-3 bg-white sticky top-0 z-10">
-                {selectedSession ? (
-                  <button
-                    onClick={() => setSelectedSession(null)}
-                    className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors -ml-1.5"
-                  >
-                    <ChevronLeft size={18} />
-                  </button>
-                ) : (
-                  <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
-                    <History size={15} />
-                  </div>
-                )}
-                <h3 className="text-[16px] font-semibold text-slate-900 tracking-[-0.01em] flex-1 truncate">
-                  {selectedSession ? selectedSession.title : "출석 이력"}
-                </h3>
-                {selectedSession && (
-                  <button
-                    onClick={() => handleDownload(selectedSession)}
-                    className="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 px-3.5 py-1.5 rounded-full transition-colors"
-                  >
-                    <Download size={13} /> 엑셀 다운로드
-                  </button>
-                )}
-                <button
-                  onClick={() => setShowHistory(false)}
-                  className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-400 transition-colors"
-                >
-                  <X size={16} />
-                </button>
-              </div>
-
-              <div className="flex-1 overflow-y-auto p-7">
-                {!selectedSession && (
-                  history.length === 0 ? (
-                    <div className="text-center py-20 text-slate-300 font-medium flex flex-col items-center gap-3">
-                      <History size={40} className="opacity-30" />
-                      저장된 출석 기록이 없습니다
-                    </div>
-                  ) : (
-                    <div className="space-y-2">
-                      {history.map((session) => (
-                        <button
-                          key={session.sessionId}
-                          onClick={() => setSelectedSession(session)}
-                          className="w-full flex items-center justify-between gap-4 p-4 rounded-2xl hover:bg-slate-50 transition-colors text-left"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-[15px] font-medium text-slate-900 truncate">{session.title}</p>
-                            <p className="text-[12px] text-slate-400 mt-0.5">
-                              {(session.startedAt || "").slice(0, 10)} · {session.checkedCount} / {session.totalCount}명 출석
-                            </p>
-                          </div>
-                          <ChevronRight size={16} className="text-slate-300 shrink-0" />
-                        </button>
-                      ))}
-                    </div>
-                  )
-                )}
-
-                {selectedSession && <AttendeeGrid items={selectedSession.targets} />}
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
     </motion.div>
   );
 };

@@ -13,4 +13,6 @@ public interface AttendanceRecordRepository extends JpaRepository<AttendanceReco
     boolean existsBySession_IdAndLoginId(Long sessionId, String loginId);
 
     void deleteBySession_Id(Long sessionId);
+
+    void deleteBySession_IdAndLoginId(Long sessionId, String loginId);
 }

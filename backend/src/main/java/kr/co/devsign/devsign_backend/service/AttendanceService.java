@@ -32,6 +32,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -299,6 +300,29 @@ public class AttendanceService {
         return new CheckInResponse("success", "출석 처리되었습니다.");
     }
 
+    // ✨ 관리자가 지각자 등을 수기로 출석/미출석 처리 — 세션이 이미 CLOSED여도 동작함
+    // (자동 만료·수동 종료 이후에도 관리자가 직접 정정할 수 있어야 하므로 상태를 가리지 않음)
+    // deleteBySession_IdAndLoginId가 파생 delete 쿼리라 트랜잭션 밖에서 호출하면
+    // TransactionRequiredException이 발생하므로 @Transactional 필요 (TeamService의 기존 관례와 동일)
+    @Transactional
+    public void setManualAttendance(Long sessionId, String loginId, boolean checkedIn) {
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("출석 세션을 찾을 수 없습니다."));
+        AttendanceTarget target = targetRepository.findBySession_IdAndLoginId(sessionId, loginId)
+                .orElseThrow(() -> new IllegalArgumentException("이 세션의 출석 대상자가 아닙니다."));
+
+        boolean exists = recordRepository.existsBySession_IdAndLoginId(sessionId, loginId);
+        if (checkedIn && !exists) {
+            AttendanceRecord record = new AttendanceRecord();
+            record.setSession(session);
+            record.setLoginId(target.getLoginId());
+            record.setCheckedInAt(LocalDateTime.now());
+            recordRepository.save(record);
+        } else if (!checkedIn && exists) {
+            recordRepository.deleteBySession_IdAndLoginId(sessionId, loginId);
+        }
+    }
+
     public List<AttendanceHistoryItem> getHistory() {
         List<AttendanceSession> sessions = sessionRepository.findByStatusOrderByStartedAtDesc(STATUS_CLOSED);
         List<AttendanceHistoryItem> items = new ArrayList<>();
@@ -309,7 +333,7 @@ public class AttendanceService {
                     .collect(Collectors.toSet());
 
             List<AttendanceHistoryTargetItem> targetItems = targets.stream()
-                    .map(t -> new AttendanceHistoryTargetItem(t.getName(), t.getStudentId(), t.getDept(), t.getProfileImage(), checkedLoginIds.contains(t.getLoginId())))
+                    .map(t -> new AttendanceHistoryTargetItem(t.getLoginId(), t.getName(), t.getStudentId(), t.getDept(), t.getProfileImage(), checkedLoginIds.contains(t.getLoginId())))
                     .toList();
 
             items.add(new AttendanceHistoryItem(

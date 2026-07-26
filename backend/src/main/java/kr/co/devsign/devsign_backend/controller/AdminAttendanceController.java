@@ -5,6 +5,7 @@ import kr.co.devsign.devsign_backend.dto.attendance.AttendanceHistoryItem;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceStartErrorResponse;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceStartResponse;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceValidationException;
+import kr.co.devsign.devsign_backend.dto.attendance.ManualAttendanceRequest;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
@@ -52,5 +53,19 @@ public class AdminAttendanceController {
     @GetMapping("/history/{sessionId}/download")
     public ResponseEntity<byte[]> downloadHistory(@PathVariable Long sessionId) {
         return attendanceService.downloadHistoryExcel(sessionId);
+    }
+
+    @PutMapping("/{sessionId}/targets/{loginId}")
+    public ResponseEntity<?> setManualAttendance(
+            @PathVariable Long sessionId,
+            @PathVariable String loginId,
+            @RequestBody ManualAttendanceRequest request
+    ) {
+        try {
+            attendanceService.setManualAttendance(sessionId, loginId, request.checkedIn());
+            return ResponseEntity.ok(StatusResponse.success());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
     }
 }
