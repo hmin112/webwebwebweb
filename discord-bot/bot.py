@@ -187,6 +187,18 @@ async def send_bulk_message(request: Request):
 
     return {"status": "done", "results": results}
 
+# [기능 6] 동아리 디스코드 서버 아이콘 URL 실시간 조회 (웹사이트 로고가 서버 아이콘 변경에 항상
+# 맞춰지도록, URL을 하드코딩하지 않고 매번 디스코드에서 최신 값을 받아온다)
+@app.get("/guild-icon")
+async def get_guild_icon():
+    guild = bot.get_guild(GUILD_ID)
+    if not guild:
+        return {"status": "error", "iconUrl": None}
+
+    if guild.icon:
+        return {"status": "success", "iconUrl": guild.icon.url}
+    return {"status": "success", "iconUrl": None}
+
 # 메인 실행 루프
 async def main():
     # 도커 컨테이너 외부에서도 접근 가능하도록 host를 "0.0.0.0"으로 변경

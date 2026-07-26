@@ -1,8 +1,11 @@
 import { motion } from "framer-motion";
+import { useState, useEffect } from "react";
 import { Phone, MapPin, Mail, ChevronRight } from "lucide-react";
+import { api } from "../../api/axios";
 
-// ✨ 여기에 디스코드 서버 아이콘 링크를 넣어주세요!
-const DISCORD_SERVER_ICON = "https://cdn.discordapp.com/icons/462157565229268993/70266f261f01165295208967e73f0555.webp?size=160&quality=lossless";
+// ✨ [수정] 서버 아이콘을 하드코딩하면 디스코드에서 아이콘을 바꿀 때마다 깨지므로,
+// 최초 렌더링 시의 임시값으로만 쓰고 실제로는 /api/guild/icon에서 실시간으로 받아온다.
+const FALLBACK_DISCORD_SERVER_ICON = "https://cdn.discordapp.com/icons/462157565229268993/70266f261f01165295208967e73f0555.webp?size=160&quality=lossless";
 
 interface FooterProps {
   onNavigate: (page: string) => void;
@@ -10,6 +13,22 @@ interface FooterProps {
 
 export const Footer = ({ onNavigate }: FooterProps) => {
   const currentYear = new Date().getFullYear();
+  const [guildIconUrl, setGuildIconUrl] = useState<string>(FALLBACK_DISCORD_SERVER_ICON);
+
+  // ✨ [신규] 디스코드 서버 아이콘을 실시간으로 조회 (아이콘이 바뀌어도 항상 최신 상태 유지)
+  useEffect(() => {
+    const fetchGuildIcon = async () => {
+      try {
+        const res = await api.get("/guild/icon");
+        if (res.data?.iconUrl) {
+          setGuildIconUrl(res.data.iconUrl);
+        }
+      } catch (e) {
+        // 조회 실패 시 기존 값(폴백)을 그대로 사용
+      }
+    };
+    fetchGuildIcon();
+  }, []);
 
   // 운영진 연락처 데이터
   const admins = [
@@ -33,7 +52,7 @@ export const Footer = ({ onNavigate }: FooterProps) => {
             >
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 bg-white flex items-center justify-center shrink-0">
                 <img 
-                  src={DISCORD_SERVER_ICON} 
+                  src={guildIconUrl}
                   alt="DEVSIGN" 
                   className="w-full h-full object-cover"
                   onError={(e: any) => {

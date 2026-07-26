@@ -50,4 +50,10 @@ public class DiscordBotClient {
         body.put("message", message);
         return restTemplate.postForObject(url, body, Map.class);
     }
+
+    // ✨ [신규] 동아리 디스코드 서버 아이콘 URL 실시간 조회 (웹사이트 로고용)
+    public Map<String, Object> getGuildIcon() {
+        String url = botBaseUrl + "/guild-icon";
+        return restTemplate.getForObject(url, Map.class);
+    }
 }

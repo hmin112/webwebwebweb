@@ -83,7 +83,8 @@ public class SecurityConfig {
                                 "/api/posts/**",
                                 "/api/notices/**",
                                 "/api/events/**",
-                                "/api/admin/settings" // ✨ 핵심 수정: 메인 화면 설정 조회(GET)는 누구나 가능하도록 예외 허용!
+                                "/api/admin/settings", // ✨ 핵심 수정: 메인 화면 설정 조회(GET)는 누구나 가능하도록 예외 허용!
+                                "/api/guild/**" // ✨ [신규] 네비게이션바 로고(디스코드 서버 아이콘)는 누구나 조회 가능
                         ).permitAll()
                         // 관리자 전용 경로
                         .requestMatchers("/api/admin/**").hasRole("ADMIN")

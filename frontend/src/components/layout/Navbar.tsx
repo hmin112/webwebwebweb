@@ -5,8 +5,9 @@ import { Menu, X, LogOut, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
 import { useLocation, useNavigate } from "react-router-dom"; // ✨ 라우터 훅 추가
 
-// ✨ 여기에 디스코드 서버 아이콘 링크를 넣어주세요!
-const DISCORD_SERVER_ICON = "https://cdn.discordapp.com/icons/462157565229268993/70266f261f01165295208967e73f0555.webp?size=160&quality=lossless";
+// ✨ [수정] 서버 아이콘을 하드코딩하면 디스코드에서 아이콘을 바꿀 때마다 깨지므로,
+// 최초 렌더링 시의 임시값으로만 쓰고 실제로는 /api/guild/icon에서 실시간으로 받아온다.
+const FALLBACK_DISCORD_SERVER_ICON = "https://cdn.discordapp.com/icons/462157565229268993/70266f261f01165295208967e73f0555.webp?size=160&quality=lossless";
 
 // 전체 메뉴 데이터
 const navLinks = [
@@ -38,9 +39,25 @@ export const Navbar = ({
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState(currentPage); // ✨ 현재 활성화된 밑줄 상태
-  
+  const [guildIconUrl, setGuildIconUrl] = useState<string>(FALLBACK_DISCORD_SERVER_ICON);
+
   const location = useLocation(); // ✨ 현재 경로 확인용
   const navigate = useNavigate(); // ✨ 페이지 이동용
+
+  // ✨ [신규] 디스코드 서버 아이콘을 실시간으로 조회 (아이콘이 바뀌어도 항상 최신 상태 유지)
+  useEffect(() => {
+    const fetchGuildIcon = async () => {
+      try {
+        const res = await api.get("/guild/icon");
+        if (res.data?.iconUrl) {
+          setGuildIconUrl(res.data.iconUrl);
+        }
+      } catch (e) {
+        // 조회 실패 시 기존 값(폴백)을 그대로 사용
+      }
+    };
+    fetchGuildIcon();
+  }, []);
 
   // ✨ 컴포넌트 마운트 시 및 로그인 상태 변경 시 사용자 정보 로드
   useEffect(() => {
@@ -159,7 +176,7 @@ export const Navbar = ({
           >
             <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl overflow-hidden shadow-lg border border-slate-100 flex items-center justify-center bg-white group hover:scale-105 transition-transform">
               <img 
-                src={DISCORD_SERVER_ICON} 
+                src={guildIconUrl} 
                 alt="DEVSIGN" 
                 className="w-full h-full object-cover"
                 onError={(e: any) => {
