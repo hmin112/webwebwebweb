@@ -6,7 +6,17 @@ import {
   Mail, Search, PlusCircle, Save, Edit2, Users
 } from "lucide-react";
 
-export const TeamTab = ({ loginId }: { loginId: string }) => {
+// ✨ CommunityTab과 동일한 학번 포맷 규칙 (8자리 학번 -> 2자리 연도 등)
+const formatStudentId = (id?: string) => {
+  if (!id) return "??";
+  const strId = String(id).trim();
+  if (strId.includes("학번")) return strId.replace(/[^0-9]/g, "");
+  if (strId.length === 8) return strId.substring(2, 4);
+  if (strId.length === 2) return strId;
+  return strId;
+};
+
+export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?: (page: string, identifier?: string) => void }) => {
   const { currentYear, currentSemester } = useMemo(() => {
     const now = new Date();
     const year = now.getFullYear();
@@ -363,15 +373,20 @@ export const TeamTab = ({ loginId }: { loginId: string }) => {
                 <p className="font-black text-slate-900 text-sm md:text-base truncate mb-3">{t.projectTitle}</p>
                 <div className="flex flex-wrap gap-2">
                   {t.members.map((m: any) => (
-                    <div key={m.teamMemberId} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-slate-50 rounded-full border border-slate-100">
+                    <button
+                      type="button"
+                      key={m.teamMemberId}
+                      onClick={() => onNavigate && onNavigate("member-detail", m.loginId)}
+                      className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-slate-50 rounded-full border border-slate-100 hover:bg-indigo-50 hover:border-indigo-100 transition-colors"
+                    >
                       <img
                         src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
                         className="w-5 h-5 rounded-full object-cover shrink-0"
                         alt={m.name}
                       />
-                      <span className="text-[11px] font-bold text-slate-600">{m.name}</span>
+                      <span className="text-[11px] font-bold text-slate-600">{formatStudentId(m.studentId)} {m.name}</span>
                       {m.isLeader && <Crown size={11} className="text-amber-500 shrink-0" />}
-                    </div>
+                    </button>
                   ))}
                 </div>
               </div>

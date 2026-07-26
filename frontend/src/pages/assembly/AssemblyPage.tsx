@@ -23,6 +23,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 기존 로직 유지를 위해 남겨둠
 
   const [selectedLoginId, setSelectedLoginId] = useState<string | null>(null);
+  // ✨ 회원 상세를 어느 탭에서 열었는지 기억해뒀다가, 뒤로가기 시 그 탭으로 복귀시키기 위함
+  const [memberDetailOrigin, setMemberDetailOrigin] = useState<string>("community");
 
   const userMenus = [
     ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={18} /> }] : []),
@@ -44,6 +46,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   };
 
   const handleShowMemberDetail = (targetLoginId: string) => {
+    setMemberDetailOrigin(activeTab);
     setSelectedLoginId(targetLoginId);
     setActiveTab("member-detail");
   };
@@ -54,7 +57,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
       {/* 📱 모바일 전용: 알약 모양 상단 탭 (Sticky) */}
       <div className="lg:hidden sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-3 overflow-x-auto no-scrollbar flex gap-2">
         {allMenus.map((menu) => {
-          const isActive = activeTab === menu.id || (menu.id === "community" && activeTab === "member-detail");
+          const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail");
           return (
             <button
               key={menu.id}
@@ -86,7 +89,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
           {userMenus.map((menu) => (
             <SidebarLink
               key={menu.id}
-              active={activeTab === menu.id || (menu.id === "community" && activeTab === "member-detail")}
+              active={activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail")}
               onClick={() => handleTabChange(menu.id)}
               icon={menu.icon}
               name={menu.name}
@@ -116,13 +119,19 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
             />
           )}
 
-          {activeTab === "team" && <TeamTab key="team" loginId={loginId} />}
+          {activeTab === "team" && (
+            <TeamTab
+              key="team"
+              loginId={loginId}
+              onNavigate={(_page, identifier) => identifier ? handleShowMemberDetail(String(identifier)) : onNavigate(_page)}
+            />
+          )}
 
           {activeTab === "member-detail" && selectedLoginId && (
             <MemberDetailTab
               key="member-detail"
               loginId={selectedLoginId}
-              onBack={() => setActiveTab("community")}
+              onBack={() => setActiveTab(memberDetailOrigin)}
             />
           )}
 
