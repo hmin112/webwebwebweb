@@ -7,6 +7,8 @@ public record NoticeRequest(
         String content,
         String category,
         List<String> images,
+        List<String> existingAttachmentNames,
+        List<String> existingAttachmentUrls,
         Boolean important
 ) {
 }

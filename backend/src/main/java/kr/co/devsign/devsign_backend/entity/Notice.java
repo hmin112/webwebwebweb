@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List; // ✨ 이미지 리스트를 위해 추가
 
 @Entity
@@ -32,6 +33,11 @@ public class Notice {
     @ElementCollection
     @Column(columnDefinition = "LONGTEXT")
     private List<String> images;
+
+    // ✨ [신규] 사진 외 일반 첨부파일(다운로드용) - 원본 파일명 + 저장 URL
+    @ElementCollection
+    @CollectionTable(name = "notice_attachments", joinColumns = @JoinColumn(name = "notice_id"))
+    private List<NoticeAttachment> attachments = new ArrayList<>();
 
     // ✨ 컨트롤러의 setImportant() 대응을 위해 추가
     private boolean important;

@@ -2,11 +2,13 @@ package kr.co.devsign.devsign_backend.service;
 
 import kr.co.devsign.devsign_backend.entity.Member;
 import kr.co.devsign.devsign_backend.entity.Notice;
+import kr.co.devsign.devsign_backend.entity.NoticeAttachment;
 import kr.co.devsign.devsign_backend.entity.NoticeView;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import kr.co.devsign.devsign_backend.repository.NoticeRepository;
 import kr.co.devsign.devsign_backend.repository.NoticeViewRepository;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.dto.notice.AttachmentResponse;
 import kr.co.devsign.devsign_backend.dto.notice.NoticePinResponse;
 import kr.co.devsign.devsign_backend.dto.notice.NoticeRequest;
 import kr.co.devsign.devsign_backend.dto.notice.NoticeResponse;
@@ -69,7 +71,7 @@ public class NoticeService {
 
     // ✨ [수정] MultipartFile 리스트를 받아 물리 파일로 저장하도록 변경
     @Transactional
-    public NoticeResponse createNotice(NoticeRequest payload, List<MultipartFile> files, String loginId, String ip) {
+    public NoticeResponse createNotice(NoticeRequest payload, List<MultipartFile> files, List<MultipartFile> attachmentFiles, String loginId, String ip) {
         Notice notice = new Notice();
         notice.setTitle(payload.title());
         notice.setContent(payload.content());
@@ -81,6 +83,9 @@ public class NoticeService {
         // 🚀 다중 이미지 파일 저장 처리
         List<String> imageUrls = saveFiles(files);
         notice.setImages(imageUrls);
+
+        // 🚀 [신규] 다운로드용 일반 첨부파일 저장 처리
+        notice.setAttachments(saveAttachments(attachmentFiles));
 
         notice.setImportant(Boolean.TRUE.equals(payload.important()));
         notice.setViews(0);
@@ -100,7 +105,7 @@ public class NoticeService {
 
     // ✨ [수정] 수정 시 기존 이미지 유지 + 새 파일 추가 로직 반영
     @Transactional
-    public NoticeResponse updateNotice(Long id, NoticeRequest payload, List<MultipartFile> files, String loginId, String ip) {
+    public NoticeResponse updateNotice(Long id, NoticeRequest payload, List<MultipartFile> files, List<MultipartFile> attachmentFiles, String loginId, String ip) {
         Notice notice = noticeRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("notice not found"));
 
@@ -115,6 +120,19 @@ public class NoticeService {
         List<String> currentImages = payload.images() != null ? new ArrayList<>(payload.images()) : new ArrayList<>();
         currentImages.addAll(saveFiles(files));
         notice.setImages(currentImages);
+
+        // 🚀 [신규] 첨부파일 수정: 기존에 유지할 첨부파일 목록 + 새로 업로드된 파일 저장
+        List<NoticeAttachment> currentAttachments = new ArrayList<>();
+        List<String> existingNames = payload.existingAttachmentNames();
+        List<String> existingUrls = payload.existingAttachmentUrls();
+        if (existingNames != null && existingUrls != null) {
+            int count = Math.min(existingNames.size(), existingUrls.size());
+            for (int i = 0; i < count; i++) {
+                currentAttachments.add(new NoticeAttachment(existingNames.get(i), existingUrls.get(i)));
+            }
+        }
+        currentAttachments.addAll(saveAttachments(attachmentFiles));
+        notice.setAttachments(currentAttachments);
 
         notice.setImportant(Boolean.TRUE.equals(payload.important()));
 
@@ -145,6 +163,32 @@ public class NoticeService {
             }
         }
         return urls;
+    }
+
+    // ✨ [신규] 다운로드용 첨부파일을 물리적으로 저장하고, 원본 파일명 + URL 목록을 반환하는 메서드
+    private List<NoticeAttachment> saveAttachments(List<MultipartFile> files) {
+        List<NoticeAttachment> result = new ArrayList<>();
+        if (files == null || files.isEmpty()) return result;
+
+        File directory = new File(uploadDir);
+        if (!directory.exists()) {
+            directory.mkdirs();
+        }
+
+        for (MultipartFile file : files) {
+            if (!file.isEmpty()) {
+                String originalName = file.getOriginalFilename();
+                String storedName = UUID.randomUUID().toString() + "_" + originalName;
+                File dest = new File(directory, storedName);
+                try {
+                    file.transferTo(dest);
+                    result.add(new NoticeAttachment(originalName, "/uploads/" + storedName));
+                } catch (IOException e) {
+                    throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "공지사항 첨부파일 저장 중 오류가 발생했습니다.");
+                }
+            }
+        }
+        return result;
     }
 
     public NoticeResponse getNoticeDetail(Long id, String loginId) {
@@ -184,6 +228,12 @@ public class NoticeService {
     }
 
     private NoticeResponse toNoticeResponse(Notice notice) {
+        List<AttachmentResponse> attachmentResponses = notice.getAttachments() == null
+                ? List.of()
+                : notice.getAttachments().stream()
+                        .map(a -> new AttachmentResponse(a.getOriginalName(), a.getUrl()))
+                        .toList();
+
         return new NoticeResponse(
                 notice.getId(),
                 notice.getTag(),
@@ -194,6 +244,7 @@ public class NoticeService {
                 notice.getViews(),
                 notice.getDate(),
                 notice.getImages() == null ? List.of() : notice.getImages(),
+                attachmentResponses,
                 notice.isImportant(),
                 notice.isPinned(),
                 notice.getCreatedAt()

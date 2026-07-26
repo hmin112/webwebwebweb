@@ -13,6 +13,7 @@ public record NoticeResponse(
         int views,
         String date,
         List<String> images,
+        List<AttachmentResponse> attachments,
         boolean important,
         boolean pinned,
         LocalDateTime createdAt

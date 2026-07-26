@@ -38,25 +38,29 @@ public class NoticeController {
     // ✨ 공지사항 내 이미지를 FormData 형식으로 빠르고 안정적으로 처리합니다.
     @PostMapping
     public NoticeResponse createNotice(
-            @ModelAttribute NoticeRequest payload, 
+            @ModelAttribute NoticeRequest payload,
             @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            // ✨ [신규] 사진과 별개의 일반 첨부파일 (다운로드용)
+            @RequestParam(value = "attachments", required = false) List<MultipartFile> attachments,
             HttpServletRequest request
     ) {
         String loginId = jwtUtil.getLoginIdFromRequest(request);
         // Service 단에서 파일을 저장할 수 있도록 files 인자를 추가 전달합니다.
-        return noticeService.createNotice(payload, files, loginId, request.getRemoteAddr());
+        return noticeService.createNotice(payload, files, attachments, loginId, request.getRemoteAddr());
     }
 
     // ✨ 수정 시에도 새로운 이미지 파일을 처리할 수 있도록 적용되어 있습니다.
     @PutMapping("/{id}")
     public NoticeResponse updateNotice(
-            @PathVariable Long id, 
-            @ModelAttribute NoticeRequest payload, 
+            @PathVariable Long id,
+            @ModelAttribute NoticeRequest payload,
             @RequestParam(value = "files", required = false) List<MultipartFile> files,
+            // ✨ [신규] 사진과 별개의 일반 첨부파일 (다운로드용)
+            @RequestParam(value = "attachments", required = false) List<MultipartFile> attachments,
             HttpServletRequest request
     ) {
         String loginId = jwtUtil.getLoginIdFromRequest(request);
-        return noticeService.updateNotice(id, payload, files, loginId, request.getRemoteAddr());
+        return noticeService.updateNotice(id, payload, files, attachments, loginId, request.getRemoteAddr());
     }
 
     @GetMapping("/{id}")

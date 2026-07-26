@@ -1,7 +1,7 @@
 import { api } from "../../api/axios";
 import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
-import { Calendar, User, ArrowLeft, Trash2, Edit3, Eye } from "lucide-react";
+import { Calendar, User, ArrowLeft, Trash2, Edit3, Eye, FileDown } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
 export const NoticeDetail = ({ onNavigate, isAdmin, isLoggedIn, notice, onDelete, user, setNotice }: any) => {
@@ -29,8 +29,8 @@ export const NoticeDetail = ({ onNavigate, isAdmin, isLoggedIn, notice, onDelete
       <div className="max-w-4xl mx-auto px-4 md:px-6">
 
         <div className="flex justify-between items-start mb-6 md:mb-8">
-          <button 
-            onClick={() => onNavigate("notice-page")} 
+          <button
+            onClick={() => onNavigate("notice-page")}
             className="flex items-center text-slate-400 font-bold text-xs md:text-sm hover:text-indigo-600 transition-colors group whitespace-nowrap mt-1 md:mt-2"
           >
             <ArrowLeft className="w-4 h-4 md:w-[18px] md:h-[18px] mr-1.5 md:mr-2 group-hover:-translate-x-1 transition-transform shrink-0" /> 목록으로 돌아가기
@@ -55,7 +55,7 @@ export const NoticeDetail = ({ onNavigate, isAdmin, isLoggedIn, notice, onDelete
                 </Button>
               </div>
             )}
-            
+
             <div className="flex items-center gap-1 md:gap-1.5 text-slate-300 font-bold text-[10px] md:text-xs pr-2 md:pr-4">
               <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" /> {notice.views || 0}
             </div>
@@ -95,6 +95,27 @@ export const NoticeDetail = ({ onNavigate, isAdmin, isLoggedIn, notice, onDelete
                 >
                   <img src={img} alt={`notice-attached-${idx}`} className="w-full h-auto object-cover" />
                 </motion.div>
+              ))}
+            </div>
+          )}
+
+          {notice.attachments && notice.attachments.length > 0 && (
+            <div className="mt-8 md:mt-12 flex flex-col gap-2 md:gap-3">
+              <div className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-1 md:mb-2">
+                첨부파일
+              </div>
+              {notice.attachments.map((att: { name: string; url: string }, idx: number) => (
+                <a
+                  key={idx}
+                  href={att.url}
+                  download={att.name}
+                  className="flex items-center gap-2 md:gap-3 px-4 py-3 md:px-6 md:py-4 bg-slate-50 hover:bg-indigo-50 rounded-xl md:rounded-2xl border border-slate-100 transition-colors group"
+                >
+                  <FileDown className="w-4 h-4 md:w-5 md:h-5 text-indigo-400 shrink-0" />
+                  <span className="text-xs md:text-sm font-bold text-slate-700 group-hover:text-indigo-600 truncate">
+                    {att.name}
+                  </span>
+                </a>
               ))}
             </div>
           )}
