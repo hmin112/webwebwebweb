@@ -314,14 +314,14 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
                     autoFocus
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
-                    placeholder="팀 이름 (팀 프로젝트 탭에만 표시)"
+                    placeholder="팀 이름"
                     className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
                   />
                   <input
                     value={newProjectTitle}
                     onChange={(e) => setNewProjectTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
-                    placeholder="프로젝트 명 (마이페이지/커뮤니티에 표시)"
+                    placeholder="프로젝트 명"
                     className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
                   />
                   <button onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-md transition-all active:scale-95">팀 생성</button>
