@@ -69,6 +69,13 @@ public class TeamService {
         return toTeamResponse(team);
     }
 
+    // ✨ [신규] 이번 학기에 존재하는 모든 팀 목록 (초대 대기중인 인원은 노출하지 않고 수락된 팀원만 공개)
+    public List<TeamResponse> getAllTeams(int year, int semester) {
+        return teamRepository.findByYearAndSemesterOrderByIdAsc(year, semester).stream()
+                .map(this::toPublicTeamResponse)
+                .toList();
+    }
+
     public MyTeamStatusResponse getMyTeamStatus(String loginId, int year, int semester) {
         List<TeamMember> memberships = teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(loginId, year, semester);
 
@@ -282,7 +289,16 @@ public class TeamService {
     }
 
     private TeamResponse toTeamResponse(Team team) {
-        List<TeamMemberResponse> members = teamMemberRepository.findByTeam_Id(team.getId()).stream()
+        return toTeamResponse(team, teamMemberRepository.findByTeam_Id(team.getId()));
+    }
+
+    // ✨ [신규] 다른 팀 목록에는 수락된(ACCEPTED) 팀원만 공개 — 초대 대기중인 인원은 비공개
+    private TeamResponse toPublicTeamResponse(Team team) {
+        return toTeamResponse(team, teamMemberRepository.findByTeam_IdAndStatus(team.getId(), STATUS_ACCEPTED));
+    }
+
+    private TeamResponse toTeamResponse(Team team, List<TeamMember> memberships) {
+        List<TeamMemberResponse> members = memberships.stream()
                 .map(m -> {
                     Optional<Member> memberInfo = memberRepository.findByLoginId(m.getLoginId());
                     return new TeamMemberResponse(

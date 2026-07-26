@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Layers, Crown, UserPlus, X, LogOut, Trash2, Loader2,
-  Mail, Search, PlusCircle, Save, Edit2
+  Mail, Search, PlusCircle, Save, Edit2, Users
 } from "lucide-react";
 
 export const TeamTab = ({ loginId }: { loginId: string }) => {
@@ -29,17 +29,22 @@ export const TeamTab = ({ loginId }: { loginId: string }) => {
   const [isEditingTitle, setIsEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
 
+  const [allTeams, setAllTeams] = useState<any[]>([]);
+  const [teamSearch, setTeamSearch] = useState("");
+
   const isLeader = Boolean(team && team.leaderLoginId === loginId);
 
   const fetchStatus = async () => {
     if (!loginId || loginId === "undefined") return;
     setIsLoading(true);
     try {
-      const res = await api.get("/teams/my", {
-        params: { loginId, year: currentYear, semester: currentSemester }
-      });
-      setTeam(res.data.team);
-      setInvitations(res.data.pendingInvitations || []);
+      const [myRes, allRes] = await Promise.all([
+        api.get("/teams/my", { params: { loginId, year: currentYear, semester: currentSemester } }),
+        api.get("/teams", { params: { year: currentYear, semester: currentSemester } })
+      ]);
+      setTeam(myRes.data.team);
+      setInvitations(myRes.data.pendingInvitations || []);
+      setAllTeams(allRes.data || []);
     } catch (e) {
       console.error("팀 정보 로드 실패:", e);
     } finally {
@@ -48,6 +53,19 @@ export const TeamTab = ({ loginId }: { loginId: string }) => {
   };
 
   useEffect(() => { fetchStatus(); }, [loginId]);
+
+  const otherTeams = useMemo(() => {
+    return allTeams
+      .filter((t) => !team || t.teamId !== team.teamId)
+      .filter((t) => {
+        if (!teamSearch) return true;
+        const q = teamSearch.toLowerCase();
+        return (
+          (t.projectTitle || "").toLowerCase().includes(q) ||
+          (t.members || []).some((m: any) => (m.name || "").toLowerCase().includes(q))
+        );
+      });
+  }, [allTeams, team, teamSearch]);
 
   const handleCreateTeam = async () => {
     if (!newTeamName.trim()) {
@@ -314,6 +332,53 @@ export const TeamTab = ({ loginId }: { loginId: string }) => {
           </div>
         </div>
       )}
+
+      {/* ✨ [신규] 다른 팀 둘러보기 — 초대 대기중인 인원은 백엔드에서부터 제외되어 내려온다 */}
+      <div className="mt-10 md:mt-14">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
+          <h3 className="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
+            <Users size={16} className="text-indigo-500" /> 다른 팀 둘러보기 <span className="text-slate-300">({otherTeams.length})</span>
+          </h3>
+          <div className="relative w-full sm:w-72">
+            <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+            <input
+              value={teamSearch}
+              onChange={(e) => setTeamSearch(e.target.value)}
+              placeholder="팀명 또는 팀원 이름 검색"
+              className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-xs shadow-sm focus:ring-2 focus:ring-indigo-100 transition-all"
+            />
+          </div>
+        </div>
+
+        {otherTeams.length === 0 ? (
+          <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200 p-8 md:p-12 text-center">
+            <p className="text-slate-300 font-bold text-sm">
+              {allTeams.length === 0 ? "이번 학기에 만들어진 팀이 아직 없습니다." : "검색 결과가 없습니다."}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+            {otherTeams.map((t) => (
+              <div key={t.teamId} className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-100 shadow-sm">
+                <p className="font-black text-slate-900 text-sm md:text-base truncate mb-3">{t.projectTitle}</p>
+                <div className="flex flex-wrap gap-2">
+                  {t.members.map((m: any) => (
+                    <div key={m.teamMemberId} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-slate-50 rounded-full border border-slate-100">
+                      <img
+                        src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                        className="w-5 h-5 rounded-full object-cover shrink-0"
+                        alt={m.name}
+                      />
+                      <span className="text-[11px] font-bold text-slate-600">{m.name}</span>
+                      {m.isLeader && <Crown size={11} className="text-amber-500 shrink-0" />}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
       <AnimatePresence>
         {isInviteOpen && (

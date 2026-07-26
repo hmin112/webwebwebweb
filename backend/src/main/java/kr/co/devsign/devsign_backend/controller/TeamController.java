@@ -11,6 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+
 @RestController
 @RequestMapping("/api/teams")
 @RequiredArgsConstructor
@@ -25,6 +27,15 @@ public class TeamController {
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
         }
+    }
+
+    // ✨ [신규] 이번 학기에 존재하는 전체 팀 목록 (다른 팀 둘러보기용, 수락된 팀원만 공개)
+    @GetMapping
+    public ResponseEntity<List<TeamResponse>> getAllTeams(
+            @RequestParam int year,
+            @RequestParam int semester
+    ) {
+        return ResponseEntity.ok(teamService.getAllTeams(year, semester));
     }
 
     @GetMapping("/my")
