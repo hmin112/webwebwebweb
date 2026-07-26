@@ -2,15 +2,17 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserCircle, Users, LayoutDashboard, ChevronRight,
-  Menu as MenuIcon, X, CalendarRange, Layers
+  Menu as MenuIcon, X, CalendarRange, Layers, CheckSquare, ClipboardCheck
 } from "lucide-react";
 
-// 분리된 탭 컴포넌트 임포트 (Attendance 관련 컴포넌트 제외)
+// 분리된 탭 컴포넌트 임포트
 import { MyPageTab } from "../profile/tabs/MyPageTab";
 import { CommunityTab } from "../profile/tabs/CommunityTab";
 import { TeamTab } from "../profile/tabs/TeamTab";
 import { AdminPeriodTab } from "../profile/tabs/AdminPeriodTab";
 import { MemberDetailTab } from "../profile/tabs/MemberDetailTab";
+import { AttendanceMemberTab } from "./tabs/AttendanceMemberTab";
+import { AttendanceAdminTab } from "./tabs/AttendanceAdminTab";
 
 export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   isAdmin: boolean,
@@ -30,10 +32,13 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
     ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={18} /> }] : []),
     { id: "community", name: "커뮤니티", icon: <Users size={18} /> },
     ...(userStatus === "ATTENDING" ? [{ id: "team", name: "팀 프로젝트", icon: <Layers size={18} /> }] : []),
+    // ✨ 출석 대상 여부는 백엔드가 업로드된 엑셀 명단으로 판단하므로 ATTENDING 게이팅 없이 항상 노출
+    { id: "attendance", name: "출석", icon: <CheckSquare size={18} /> },
   ];
 
   const adminMenus = [
     { id: "admin-period", name: "제출 / 자료", icon: <CalendarRange size={18} /> },
+    { id: "admin-attendance", name: "출석 설정", icon: <ClipboardCheck size={18} /> },
   ];
 
   // 모바일 탭 출력을 위한 통합 메뉴
@@ -135,7 +140,11 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
             />
           )}
 
+          {activeTab === "attendance" && <AttendanceMemberTab key="attendance" loginId={loginId} />}
+
           {activeTab === "admin-period" && <AdminPeriodTab key="admin-period" />}
+
+          {activeTab === "admin-attendance" && <AttendanceAdminTab key="admin-attendance" />}
         </AnimatePresence>
       </main>
     </div>
