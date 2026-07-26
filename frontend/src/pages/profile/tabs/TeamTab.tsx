@@ -417,6 +417,7 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
                     <div className="flex items-center gap-3 min-w-0">
                       <img
                         src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                        onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
                         className="w-9 h-9 md:w-11 md:h-11 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
                         alt={m.name}
                       />
@@ -482,6 +483,7 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
                         >
                           <img
                             src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                        onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
                             className="w-5 h-5 rounded-full object-cover shrink-0"
                             alt={m.name}
                           />
@@ -526,6 +528,7 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
                     <div className="flex items-center gap-2.5 min-w-0">
                       <img
                         src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                        onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
                         className="w-8 h-8 rounded-full object-cover shrink-0"
                         alt={m.name}
                       />

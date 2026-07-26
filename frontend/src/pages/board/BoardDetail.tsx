@@ -104,7 +104,12 @@ export const BoardDetail = ({
               <div className="flex items-center gap-3 md:gap-4">
                 <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-100 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm overflow-hidden shrink-0">
                   {post.profileImage ? (
-                    <img src={post.profileImage} alt="profile" className="w-full h-full object-cover" />
+                    <img
+                      src={post.profileImage}
+                      alt="profile"
+                      className="w-full h-full object-cover"
+                      onError={(e: any) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"; }}
+                    />
                   ) : (
                     <User className="w-5 h-5 md:w-7 md:h-7" />
                   )}
@@ -276,7 +281,12 @@ const CommentItem = ({
       <div className="flex gap-3 md:gap-4">
         <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-100 rounded-lg md:rounded-xl shrink-0 flex items-center justify-center text-slate-400 font-black text-[10px] md:text-xs border border-slate-200 shadow-sm overflow-hidden">
           {comment.profileImage ? (
-            <img src={comment.profileImage} alt="cm-profile" className="w-full h-full object-cover" />
+            <img
+              src={comment.profileImage}
+              alt="cm-profile"
+              className="w-full h-full object-cover"
+              onError={(e: any) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"; }}
+            />
           ) : (
             comment.author ? comment.author[0] : "U"
           )}
@@ -341,7 +351,12 @@ const CommentItem = ({
                   <div className="flex gap-2 md:gap-3 items-start">
                     <div className="w-6 h-6 md:w-8 md:h-8 bg-slate-50 rounded-md md:rounded-lg shrink-0 overflow-hidden border border-slate-100 flex items-center justify-center text-[8px] md:text-[10px] text-slate-300 font-black">
                       {reply.profileImage ? (
-                        <img src={reply.profileImage} className="w-full h-full object-cover" />
+                        <img
+                          src={reply.profileImage}
+                          alt="reply-profile"
+                          className="w-full h-full object-cover"
+                          onError={(e: any) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"; }}
+                        />
                       ) : (
                         reply.author?.[0]
                       )}

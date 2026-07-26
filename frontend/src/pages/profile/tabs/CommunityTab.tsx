@@ -201,7 +201,12 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
                   onClick={() => onNavigate("member-detail", member.loginId)}
                   className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-3 md:gap-5 cursor-pointer hover:border-indigo-200 hover:shadow-xl transition-all group"
                 >
-                  <img src={member.avatar} className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-2 border-slate-50 shrink-0 shadow-sm" alt={member.name} />
+                  <img
+                    src={member.avatar}
+                    className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-2 border-slate-50 shrink-0 shadow-sm"
+                    alt={member.name}
+                    onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random&color=6366f1`; }}
+                  />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
                       <span className="text-base md:text-lg font-black text-slate-900">{member.name}</span>

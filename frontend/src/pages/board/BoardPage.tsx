@@ -166,7 +166,12 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
                     </div>
                     <div className="w-8 h-8 md:w-10 md:h-10 bg-slate-100 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 font-black text-[10px] md:text-xs border border-slate-200 overflow-hidden shadow-inner shrink-0">
                       {post.profileImage ? (
-                        <img src={post.profileImage} alt="profile" className="w-full h-full object-cover" />
+                        <img
+                          src={post.profileImage}
+                          alt="profile"
+                          className="w-full h-full object-cover"
+                          onError={(e: any) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"; }}
+                        />
                       ) : (
                         <span>{post.author[0]}</span>
                       )}
