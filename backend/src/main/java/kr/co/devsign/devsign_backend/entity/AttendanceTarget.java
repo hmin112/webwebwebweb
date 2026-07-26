@@ -37,6 +37,8 @@ public class AttendanceTarget {
 
     private String studentId;
 
+    private String dept;
+
     @Column(columnDefinition = "LONGTEXT")
     private String profileImage;
 }

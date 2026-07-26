@@ -48,4 +48,9 @@ public class AdminAttendanceController {
     public List<AttendanceHistoryItem> history() {
         return attendanceService.getHistory();
     }
+
+    @GetMapping("/history/{sessionId}/download")
+    public ResponseEntity<byte[]> downloadHistory(@PathVariable Long sessionId) {
+        return attendanceService.downloadHistoryExcel(sessionId);
+    }
 }

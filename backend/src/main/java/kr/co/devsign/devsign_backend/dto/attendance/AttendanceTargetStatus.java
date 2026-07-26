@@ -6,6 +6,7 @@ public record AttendanceTargetStatus(
         String loginId,
         String name,
         String studentId,
+        String dept,
         String profileImage,
         boolean checkedIn,
         LocalDateTime checkedInAt

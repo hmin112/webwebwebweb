@@ -21,15 +21,24 @@ import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.xssf.usermodel.XSSFCellStyle;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -172,9 +181,10 @@ public class AttendanceService {
             target.setLoginId(m.getLoginId());
             target.setName(m.getName());
             target.setStudentId(m.getStudentId());
+            target.setDept(m.getDept());
             target.setProfileImage(m.getProfileImage());
             targets.add(target);
-            targetInfos.add(new AttendanceTargetInfo(m.getLoginId(), m.getName(), m.getStudentId(), m.getProfileImage()));
+            targetInfos.add(new AttendanceTargetInfo(m.getLoginId(), m.getName(), m.getStudentId(), m.getDept(), m.getProfileImage()));
         }
         targetRepository.saveAll(targets);
 
@@ -199,6 +209,7 @@ public class AttendanceService {
                         t.getLoginId(),
                         t.getName(),
                         t.getStudentId(),
+                        t.getDept(),
                         t.getProfileImage(),
                         checkedMap.containsKey(t.getLoginId()),
                         checkedMap.get(t.getLoginId())
@@ -298,7 +309,7 @@ public class AttendanceService {
                     .collect(Collectors.toSet());
 
             List<AttendanceHistoryTargetItem> targetItems = targets.stream()
-                    .map(t -> new AttendanceHistoryTargetItem(t.getName(), t.getStudentId(), t.getProfileImage(), checkedLoginIds.contains(t.getLoginId())))
+                    .map(t -> new AttendanceHistoryTargetItem(t.getName(), t.getStudentId(), t.getDept(), t.getProfileImage(), checkedLoginIds.contains(t.getLoginId())))
                     .toList();
 
             items.add(new AttendanceHistoryItem(
@@ -312,6 +323,62 @@ public class AttendanceService {
             ));
         }
         return items;
+    }
+
+    public ResponseEntity<byte[]> downloadHistoryExcel(Long sessionId) {
+        AttendanceSession session = sessionRepository.findById(sessionId).orElse(null);
+        if (session == null) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new byte[0]);
+        }
+
+        List<AttendanceTarget> targets = targetRepository.findBySession_Id(sessionId);
+        Map<String, LocalDateTime> checkedMap = recordRepository.findBySession_Id(sessionId).stream()
+                .collect(Collectors.toMap(AttendanceRecord::getLoginId, AttendanceRecord::getCheckedInAt, (a, b) -> a));
+
+        try (XSSFWorkbook workbook = new XSSFWorkbook(); ByteArrayOutputStream buffer = new ByteArrayOutputStream()) {
+            Sheet sheet = workbook.createSheet("출석");
+
+            Font boldFont = workbook.createFont();
+            boldFont.setBold(true);
+            XSSFCellStyle headerStyle = workbook.createCellStyle();
+            headerStyle.setFont(boldFont);
+
+            Row header = sheet.createRow(0);
+            String[] headers = {"이름", "학번", "학과", "출석여부", "체크시각"};
+            for (int i = 0; i < headers.length; i++) {
+                var cell = header.createCell(i);
+                cell.setCellValue(headers[i]);
+                cell.setCellStyle(headerStyle);
+            }
+
+            int rowIdx = 1;
+            for (AttendanceTarget target : targets) {
+                LocalDateTime checkedAt = checkedMap.get(target.getLoginId());
+                Row row = sheet.createRow(rowIdx++);
+                row.createCell(0).setCellValue(target.getName());
+                row.createCell(1).setCellValue(target.getStudentId());
+                row.createCell(2).setCellValue(target.getDept());
+                row.createCell(3).setCellValue(checkedAt != null ? "출석" : "미출석");
+                row.createCell(4).setCellValue(checkedAt != null ? checkedAt.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")) : "");
+            }
+
+            for (int i = 0; i < headers.length; i++) {
+                sheet.autoSizeColumn(i);
+            }
+
+            workbook.write(buffer);
+
+            String fileName = (StringUtils.hasText(session.getTitle()) ? session.getTitle() : "출석") + ".xlsx";
+            HttpHeaders responseHeaders = new HttpHeaders();
+            responseHeaders.setContentType(MediaType.APPLICATION_OCTET_STREAM);
+            responseHeaders.setContentDisposition(ContentDisposition.attachment()
+                    .filename(fileName, StandardCharsets.UTF_8)
+                    .build());
+
+            return new ResponseEntity<>(buffer.toByteArray(), responseHeaders, HttpStatus.OK);
+        } catch (IOException e) {
+            return ResponseEntity.internalServerError().body(new byte[0]);
+        }
     }
 
     private void autoCloseIfExpired(AttendanceSession session) {
