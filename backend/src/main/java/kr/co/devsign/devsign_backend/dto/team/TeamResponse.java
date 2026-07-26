@@ -4,6 +4,7 @@ import java.util.List;
 
 public record TeamResponse(
         Long teamId,
+        String teamName,
         String projectTitle,
         String leaderLoginId,
         int year,

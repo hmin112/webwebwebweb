@@ -4,6 +4,7 @@ public record CreateTeamRequest(
         String loginId,
         int year,
         int semester,
+        String teamName,
         String projectTitle
 ) {
 }

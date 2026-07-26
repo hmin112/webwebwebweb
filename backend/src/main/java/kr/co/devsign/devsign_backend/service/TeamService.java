@@ -44,13 +44,17 @@ public class TeamService {
         int year = req.year();
         int semester = req.semester();
 
+        if (req.teamName() == null || req.teamName().isBlank()) {
+            throw new IllegalArgumentException("팀 이름을 입력해주세요.");
+        }
         if (req.projectTitle() == null || req.projectTitle().isBlank()) {
-            throw new IllegalArgumentException("팀(프로젝트) 이름을 입력해주세요.");
+            throw new IllegalArgumentException("프로젝트 명을 입력해주세요.");
         }
 
         ensureNotAlreadyInTeam(loginId, year, semester);
 
         Team team = new Team();
+        team.setTeamName(req.teamName());
         team.setProjectTitle(req.projectTitle());
         team.setLeaderLoginId(loginId);
         team.setYear(year);
@@ -92,7 +96,7 @@ public class TeamService {
                     String leaderName = memberRepository.findByLoginId(t.getLeaderLoginId())
                             .map(Member::getName)
                             .orElse(t.getLeaderLoginId());
-                    return new TeamInvitationResponse(m.getId(), t.getId(), t.getProjectTitle(), t.getLeaderLoginId(), leaderName);
+                    return new TeamInvitationResponse(m.getId(), t.getId(), t.getTeamName(), t.getProjectTitle(), t.getLeaderLoginId(), leaderName);
                 })
                 .toList();
 
@@ -199,21 +203,33 @@ public class TeamService {
         teamRepository.delete(team);
     }
 
+    // ✨ teamName/projectTitle 중 값이 채워져 온 필드만 각각 부분 수정한다.
     @Transactional
     public TeamResponse updateTitle(Long teamId, UpdateTeamTitleRequest req) {
         Team team = getTeamOrThrow(teamId);
         requireLeader(team, req.requesterLoginId());
 
-        if (req.projectTitle() == null || req.projectTitle().isBlank()) {
-            throw new IllegalArgumentException("팀(프로젝트) 이름을 입력해주세요.");
+        boolean hasTeamName = req.teamName() != null && !req.teamName().isBlank();
+        boolean hasProjectTitle = req.projectTitle() != null && !req.projectTitle().isBlank();
+
+        if (!hasTeamName && !hasProjectTitle) {
+            throw new IllegalArgumentException("변경할 팀 이름 또는 프로젝트 명을 입력해주세요.");
         }
 
-        team.setProjectTitle(req.projectTitle());
+        if (hasTeamName) {
+            team.setTeamName(req.teamName());
+        }
+        if (hasProjectTitle) {
+            team.setProjectTitle(req.projectTitle());
+        }
         teamRepository.save(team);
 
-        List<TeamMember> accepted = teamMemberRepository.findByTeam_IdAndStatus(teamId, STATUS_ACCEPTED);
-        for (TeamMember m : accepted) {
-            syncProjectTitle(m.getLoginId(), team.getYear(), team.getSemester(), team.getProjectTitle());
+        // ✨ 프로젝트 명이 바뀐 경우에만 개인 마이페이지 프로젝트 제목을 재동기화 (팀 이름은 동기화 대상 아님)
+        if (hasProjectTitle) {
+            List<TeamMember> accepted = teamMemberRepository.findByTeam_IdAndStatus(teamId, STATUS_ACCEPTED);
+            for (TeamMember m : accepted) {
+                syncProjectTitle(m.getLoginId(), team.getYear(), team.getSemester(), team.getProjectTitle());
+            }
         }
 
         return toTeamResponse(team);
@@ -315,6 +331,7 @@ public class TeamService {
 
         return new TeamResponse(
                 team.getId(),
+                team.getTeamName() != null ? team.getTeamName() : team.getProjectTitle(),
                 team.getProjectTitle(),
                 team.getLeaderLoginId(),
                 team.getYear(),

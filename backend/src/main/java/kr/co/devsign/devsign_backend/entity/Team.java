@@ -13,6 +13,10 @@ public class Team {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    // ✨ 팀 프로젝트 탭에서만 보이는 팀 이름 (개인 마이페이지에는 노출되지 않음)
+    private String teamName;
+
+    // ✨ 마이페이지/커뮤니티의 총회 프로젝트 제목과 동기화되는 값
     private String projectTitle;
 
     private String leaderLoginId;
