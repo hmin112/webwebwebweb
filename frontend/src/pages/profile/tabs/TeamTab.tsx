@@ -124,6 +124,15 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
   };
 
   const handleAccept = async (teamMemberId: number) => {
+    // ✨ [신규] 합류 시 이번 학기 자료가 팀과 공유된다는 점을 미리 안내
+    const confirmed = confirm(
+      "팀에 합류하면 이번 학기 총회자료가 팀과 공유됩니다.\n\n" +
+      "- 아직 제출하지 않은 달은 팀에 이미 제출된 자료로 채워집니다.\n" +
+      "- 이미 개인적으로 제출한 달의 자료는 그대로 유지되니 안심하세요.\n\n" +
+      "계속해서 수락하시겠습니까?"
+    );
+    if (!confirmed) return;
+
     try {
       await api.post(`/teams/invitations/${teamMemberId}/accept`, null, { params: { loginId } });
       await fetchStatus();

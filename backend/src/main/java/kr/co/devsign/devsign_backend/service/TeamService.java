@@ -257,6 +257,8 @@ public class TeamService {
     }
 
     // ✨ 새로 팀에 합류한 멤버에게, 이미 팀원 중 누군가 제출해둔 월별 자료를 그대로 복사해준다.
+    // ⚠️ 단, 합류하는 멤버 본인이 그 달에 "이미 직접 제출해둔 자료"가 있다면 절대 덮어쓰지 않는다.
+    //    (팀 합류라는 수동적인 이벤트만으로 개인이 애써 제출한 자료가 유실되면 안 되기 때문)
     private void syncExistingSubmissionsToNewMember(Team team, String newLoginId) {
         int[] months = team.getSemester() == 1 ? new int[]{3, 4, 5, 6} : new int[]{9, 10, 11, 12};
         List<TeamMember> accepted = teamMemberRepository.findByTeam_IdAndStatus(team.getId(), STATUS_ACCEPTED);
@@ -265,6 +267,16 @@ public class TeamService {
                 .findByLoginIdAndYearAndSemesterOrderByMonthAsc(newLoginId, team.getYear(), team.getSemester());
 
         for (int month : months) {
+            AssemblyReport mine = myReports.stream()
+                    .filter(r -> r.getMonth() == month)
+                    .findFirst()
+                    .orElse(null);
+
+            // ✨ 이미 본인이 그 달에 제출해둔 자료가 있다면 스킵 (데이터 유실 방지)
+            if (mine != null && REPORT_SUBMITTED.equals(mine.getStatus())) {
+                continue;
+            }
+
             AssemblyReport source = null;
             for (TeamMember teammate : accepted) {
                 if (teammate.getLoginId().equals(newLoginId)) continue;
@@ -281,17 +293,13 @@ public class TeamService {
 
             if (source == null) continue;
 
-            AssemblyReport mine = myReports.stream()
-                    .filter(r -> r.getMonth() == month)
-                    .findFirst()
-                    .orElseGet(() -> {
-                        AssemblyReport r = new AssemblyReport();
-                        r.setLoginId(newLoginId);
-                        r.setYear(team.getYear());
-                        r.setSemester(team.getSemester());
-                        r.setMonth(month);
-                        return r;
-                    });
+            if (mine == null) {
+                mine = new AssemblyReport();
+                mine.setLoginId(newLoginId);
+                mine.setYear(team.getYear());
+                mine.setSemester(team.getSemester());
+                mine.setMonth(month);
+            }
 
             mine.setType(source.getType());
             mine.setStatus(source.getStatus());
