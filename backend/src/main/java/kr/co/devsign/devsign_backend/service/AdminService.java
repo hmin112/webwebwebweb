@@ -18,10 +18,12 @@ import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
 import kr.co.devsign.devsign_backend.entity.AssemblyReport;
 import kr.co.devsign.devsign_backend.entity.Member;
+import kr.co.devsign.devsign_backend.entity.TeamMember;
 import kr.co.devsign.devsign_backend.repository.AccessLogRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
+import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -37,13 +39,16 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties; // ✨ 추가: 자바 내장 설정 파일 도구
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.stream.Collectors;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipOutputStream;
 
@@ -58,6 +63,7 @@ public class AdminService {
     private final AccessLogRepository accessLogRepository;
     private final AssemblyPeriodRepository assemblyPeriodRepository;
     private final AssemblyReportRepository assemblyReportRepository;
+    private final TeamMemberRepository teamMemberRepository;
     private final AccessLogService accessLogService;
     private final DiscordBotClient discordBotClient;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -243,6 +249,13 @@ public class AdminService {
                     Optional<Member> member = memberRepository.findByLoginId(report.getLoginId());
                     String name = member.map(Member::getName).orElse(report.getLoginId());
                     String studentId = member.map(Member::getStudentId).orElse("");
+
+                    // ✨ [신규] 같은 팀(ACCEPTED)에 속해 있으면 팀 정보를 함께 내려줘서
+                    // 관리자 화면에서 "같은 팀=같은 파일" 임을 구분해서 보여줄 수 있게 한다.
+                    Optional<TeamMember> membership = findAcceptedTeamMembership(report.getLoginId(), report.getYear(), report.getSemester());
+                    Long teamId = membership.map(m -> m.getTeam().getId()).orElse(null);
+                    String teamName = membership.map(m -> m.getTeam().getTeamName()).orElse(null);
+
                     return new AdminPeriodSubmissionResponse(
                             report.getLoginId(),
                             name,
@@ -251,10 +264,19 @@ public class AdminService {
                             report.getPresentationPath(),
                             report.getPdfPath(),
                             report.getOtherPath(),
-                            report.getMemo()
+                            report.getMemo(),
+                            teamId,
+                            teamName
                     );
                 })
                 .toList();
+    }
+
+    // ✨ [신규] loginId가 해당 연도/학기에 속한 ACCEPTED 팀 멤버십을 찾는다 (팀 없으면 empty)
+    private Optional<TeamMember> findAcceptedTeamMembership(String loginId, int year, int semester) {
+        return teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(loginId, year, semester).stream()
+                .filter(m -> "ACCEPTED".equals(m.getStatus()))
+                .findFirst();
     }
 
     public ResponseEntity<byte[]> downloadPeriodZip(AdminPeriodZipRequest request) {
@@ -274,39 +296,50 @@ public class AdminService {
         try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
              ZipOutputStream zipOut = new ZipOutputStream(buffer)) {
 
+            boolean includePresentation = "all".equals(fileType) || "ppt".equals(fileType);
+            boolean includePdf = "all".equals(fileType) || "pdf".equals(fileType);
+            boolean includeOther = "all".equals(fileType);
+
+            // ✨ [신규] 팀 동기화로 인해 여러 팀원의 제출 기록이 같은 물리 파일을 가리키는 경우,
+            // 팀 단위로 묶어서 파일을 딱 한 번만 zip에 담는다 (중복 다운로드 방지).
+            Map<Long, List<AssemblyReport>> teamGroups = new LinkedHashMap<>();
+            List<AssemblyReport> soloReports = new ArrayList<>();
+
             for (AssemblyReport report : reports) {
-                boolean includePresentation = "all".equals(fileType) || "ppt".equals(fileType);
-                boolean includePdf = "all".equals(fileType) || "pdf".equals(fileType);
-                boolean includeOther = "all".equals(fileType);
-
-                // ✨ 멤버 정보 조회 및 폴더명 생성 (예: "22 김형민")
-                Member member = memberRepository.findByLoginId(report.getLoginId()).orElse(null);
-                String folderName = report.getLoginId(); // 기본값 설정
-                if (member != null) {
-                    folderName = formatStudentId(member.getStudentId()) + " " + member.getName();
+                Optional<TeamMember> membership = findAcceptedTeamMembership(report.getLoginId(), report.getYear(), report.getSemester());
+                if (membership.isPresent()) {
+                    teamGroups.computeIfAbsent(membership.get().getTeam().getId(), k -> new ArrayList<>()).add(report);
+                } else {
+                    soloReports.add(report);
                 }
+            }
 
-                addFileToZip(
-                        zipOut,
-                        folderName, // ✨ loginId 대신 생성한 폴더명 전달
-                        report.getPresentationPath(),
-                        includePresentation,
-                        Set.of("ppt", "pptx")
-                );
-                addFileToZip(
-                        zipOut,
-                        folderName, // ✨
-                        report.getPdfPath(),
-                        includePdf,
-                        Set.of("pdf")
-                );
-                addFileToZip(
-                        zipOut,
-                        folderName, // ✨
-                        report.getOtherPath(),
-                        includeOther,
-                        Collections.emptySet()
-                );
+            for (AssemblyReport report : soloReports) {
+                String folderName = buildMemberFolderName(report.getLoginId());
+                addFileToZip(zipOut, folderName, report.getPresentationPath(), includePresentation, Set.of("ppt", "pptx"));
+                addFileToZip(zipOut, folderName, report.getPdfPath(), includePdf, Set.of("pdf"));
+                addFileToZip(zipOut, folderName, report.getOtherPath(), includeOther, Collections.emptySet());
+            }
+
+            for (Map.Entry<Long, List<AssemblyReport>> entry : teamGroups.entrySet()) {
+                List<AssemblyReport> teamReports = entry.getValue();
+                // ✨ 팀 동기화 구조상 팀원들의 파일 경로는 모두 동일하므로, 대표로 1건만 사용한다.
+                AssemblyReport representative = teamReports.get(0);
+
+                String teamName = teamMemberRepository.findByTeam_Id(entry.getKey()).stream()
+                        .findFirst()
+                        .map(m -> m.getTeam().getTeamName())
+                        .filter(StringUtils::hasText)
+                        .orElse("팀 프로젝트");
+                String memberNames = teamReports.stream()
+                        .map(r -> buildMemberFolderName(r.getLoginId()))
+                        .distinct()
+                        .collect(Collectors.joining(", "));
+                String folderName = teamName + " (공동제출 - " + memberNames + ")";
+
+                addFileToZip(zipOut, folderName, representative.getPresentationPath(), includePresentation, Set.of("ppt", "pptx"));
+                addFileToZip(zipOut, folderName, representative.getPdfPath(), includePdf, Set.of("pdf"));
+                addFileToZip(zipOut, folderName, representative.getOtherPath(), includeOther, Collections.emptySet());
             }
 
             zipOut.finish();
@@ -637,5 +670,14 @@ public class AdminService {
         }
         
         return id;
+    }
+
+    // ✨ [신규] "22 김형민" 형태의 zip 폴더명 생성 (중복 제거 로직에서 공용으로 사용)
+    private String buildMemberFolderName(String loginId) {
+        Member member = memberRepository.findByLoginId(loginId).orElse(null);
+        if (member != null) {
+            return formatStudentId(member.getStudentId()) + " " + member.getName();
+        }
+        return loginId;
     }
 }

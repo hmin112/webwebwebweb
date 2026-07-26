@@ -29,6 +29,8 @@ interface SubmittedMember {
   pdfPath?: string;
   otherPath?: string;
   memo?: string;
+  teamId?: number | null;
+  teamName?: string | null;
 }
 
 export const AdminPeriodTab = () => {
@@ -126,6 +128,77 @@ export const AdminPeriodTab = () => {
       return b.studentId.localeCompare(a.studentId); // default id_desc for unsubmitted
     });
   }, [unsubmittedMembers, sortOrder]);
+
+  // ✨ [신규] 같은 팀 소속 제출자끼리 묶어서 보여주기 위한 그룹핑 (팀이면 같은 파일 공동제출임을 표시)
+  const groupedSubmittedMembers = useMemo(() => {
+    const groups: { key: string; teamId?: number | null; teamName?: string | null; members: SubmittedMember[] }[] = [];
+    const indexByKey = new Map<string, number>();
+    sortedSubmittedMembers.forEach((m) => {
+      const key = m.teamId ? `team-${m.teamId}` : `solo-${m.loginId}`;
+      if (!indexByKey.has(key)) {
+        indexByKey.set(key, groups.length);
+        groups.push({ key, teamId: m.teamId, teamName: m.teamName, members: [] });
+      }
+      groups[indexByKey.get(key)!].members.push(m);
+    });
+    return groups;
+  }, [sortedSubmittedMembers]);
+
+  // ✨ [신규] 팀 그룹 전체 선택/해제 토글
+  const toggleTeamSelection = (members: SubmittedMember[]) => {
+    const ids = members.map(m => m.loginId);
+    const allSelected = ids.every(id => selectedUserIds.includes(id));
+    if (allSelected) {
+      setSelectedUserIds(selectedUserIds.filter(id => !ids.includes(id)));
+    } else {
+      setSelectedUserIds(Array.from(new Set([...selectedUserIds, ...ids])));
+    }
+  };
+
+  // ✨ [신규] 제출자 한 명의 행 렌더링 (팀 그룹/개인 모두 공용으로 사용)
+  const renderMemberRow = (member: SubmittedMember) => (
+    <div
+      key={member.loginId}
+      className={`flex flex-col xl:flex-row xl:items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${selectedUserIds.includes(member.loginId)
+          ? "bg-indigo-50/50 border-indigo-200 shadow-sm"
+          : "bg-slate-50/50 border-slate-100 hover:border-indigo-100"
+        }`}
+    >
+      <div className="flex items-center gap-3 w-full xl:w-auto">
+        <button
+          onClick={() => {
+            if (selectedUserIds.includes(member.loginId)) setSelectedUserIds(selectedUserIds.filter(id => id !== member.loginId));
+            else setSelectedUserIds([...selectedUserIds, member.loginId]);
+          }}
+          className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${selectedUserIds.includes(member.loginId)
+              ? "bg-indigo-600 border-indigo-600 text-white"
+              : "bg-white border-slate-300"
+            }`}
+        >
+          {selectedUserIds.includes(member.loginId) && <Check size={12} strokeWidth={4} />}
+        </button>
+        <div className="min-w-0">
+          <p className="text-xs md:text-sm font-black text-slate-900 leading-none mb-1 truncate">{member.name}</p>
+          <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">
+            {member.studentId} · {member.submitDate.split(' ')[0]}
+          </p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-1.5 mt-3 xl:mt-0 w-full xl:w-auto justify-end">
+        {member.presentationPath && (downloadType === "all" || downloadType === "ppt") && (
+          <button onClick={() => handleDownload(member.presentationPath!)} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
+            <FileArchive size={14} />
+          </button>
+        )}
+        {member.pdfPath && (downloadType === "all" || downloadType === "pdf") && (
+          <button onClick={() => handleDownload(member.pdfPath!)} className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100">
+            <FileText size={14} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
 
   const generateInitialPeriods = (year: number): MonthPeriod[] => {
@@ -484,49 +557,26 @@ export const AdminPeriodTab = () => {
                     <div className="flex justify-center py-10"><Loader2 className="animate-spin text-slate-300" /></div>
                   ) : sortedSubmittedMembers.length > 0 ? (
                     <div className="grid grid-cols-1 gap-2 md:gap-3">
-                      {sortedSubmittedMembers.map((member) => (
-                        <div
-                          key={member.loginId}
-                          className={`flex flex-col xl:flex-row xl:items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${selectedUserIds.includes(member.loginId)
-                              ? "bg-indigo-50/50 border-indigo-200 shadow-sm"
-                              : "bg-slate-50/50 border-slate-100 hover:border-indigo-100"
-                            }`}
-                        >
-                          <div className="flex items-center gap-3 w-full xl:w-auto">
-                            <button
-                              onClick={() => {
-                                if (selectedUserIds.includes(member.loginId)) setSelectedUserIds(selectedUserIds.filter(id => id !== member.loginId));
-                                else setSelectedUserIds([...selectedUserIds, member.loginId]);
-                              }}
-                              className={`w-5 h-5 rounded-md border-2 flex items-center justify-center shrink-0 transition-all ${selectedUserIds.includes(member.loginId)
-                                  ? "bg-indigo-600 border-indigo-600 text-white"
-                                  : "bg-white border-slate-300"
-                                }`}
-                            >
-                              {selectedUserIds.includes(member.loginId) && <Check size={12} strokeWidth={4} />}
-                            </button>
-                            <div className="min-w-0">
-                              <p className="text-xs md:text-sm font-black text-slate-900 leading-none mb-1 truncate">{member.name}</p>
-                              <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tighter truncate">
-                                {member.studentId} · {member.submitDate.split(' ')[0]}
-                              </p>
+                      {groupedSubmittedMembers.map((group) =>
+                        group.teamId ? (
+                          <div key={group.key} className="p-2.5 md:p-3 rounded-xl md:rounded-2xl border-2 border-indigo-100 bg-indigo-50/30 space-y-2">
+                            <div className="flex items-center justify-between px-1">
+                              <span className="flex items-center gap-1.5 text-[10px] md:text-xs font-black text-indigo-600">
+                                <Users size={13} /> {group.teamName || "팀 프로젝트"} <span className="text-indigo-300">· 공동제출 {group.members.length}명</span>
+                              </span>
+                              <button
+                                onClick={() => toggleTeamSelection(group.members)}
+                                className="text-[9px] md:text-[10px] font-bold text-indigo-500 hover:text-indigo-700 underline underline-offset-2"
+                              >
+                                팀 전체 {group.members.every(m => selectedUserIds.includes(m.loginId)) ? "해제" : "선택"}
+                              </button>
                             </div>
+                            {group.members.map((member) => renderMemberRow(member))}
                           </div>
-
-                          <div className="flex items-center gap-1.5 mt-3 xl:mt-0 w-full xl:w-auto justify-end">
-                            {member.presentationPath && (downloadType === "all" || downloadType === "ppt") && (
-                              <button onClick={() => handleDownload(member.presentationPath)} className="p-2 bg-indigo-50 text-indigo-600 rounded-lg hover:bg-indigo-100">
-                                <FileArchive size={14} />
-                              </button>
-                            )}
-                            {member.pdfPath && (downloadType === "all" || downloadType === "pdf") && (
-                              <button onClick={() => handleDownload(member.pdfPath)} className="p-2 bg-pink-50 text-pink-600 rounded-lg hover:bg-pink-100">
-                                <FileText size={14} />
-                              </button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                        ) : (
+                          renderMemberRow(group.members[0])
+                        )
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-10 text-slate-300 text-xs font-bold">제출자가 없습니다.</div>

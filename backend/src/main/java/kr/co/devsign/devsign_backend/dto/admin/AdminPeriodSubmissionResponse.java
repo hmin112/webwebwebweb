@@ -8,6 +8,8 @@ public record AdminPeriodSubmissionResponse(
         String presentationPath,
         String pdfPath,
         String otherPath,
-        String memo
+        String memo,
+        Long teamId,
+        String teamName
 ) {
 }
