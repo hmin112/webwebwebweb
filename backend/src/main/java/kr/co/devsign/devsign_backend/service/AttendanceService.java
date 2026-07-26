@@ -323,6 +323,21 @@ public class AttendanceService {
         }
     }
 
+    // ✨ 이력에서 세션 자체를 완전히 삭제 — 진행 중인(ACTIVE) 세션은 이력 목록에 애초에 노출되지
+    // 않지만, 방어적으로 한 번 더 막는다. 연관된 target/record부터 지운 뒤 세션을 지운다
+    // (FK 제약 순서), 파생 delete 쿼리라 @Transactional 필요.
+    @Transactional
+    public void deleteHistorySession(Long sessionId) {
+        AttendanceSession session = sessionRepository.findById(sessionId)
+                .orElseThrow(() -> new IllegalArgumentException("출석 세션을 찾을 수 없습니다."));
+        if (STATUS_ACTIVE.equals(session.getStatus())) {
+            throw new IllegalArgumentException("진행 중인 출석은 삭제할 수 없습니다. 먼저 종료해주세요.");
+        }
+        recordRepository.deleteBySession_Id(sessionId);
+        targetRepository.deleteBySession_Id(sessionId);
+        sessionRepository.delete(session);
+    }
+
     public List<AttendanceHistoryItem> getHistory() {
         List<AttendanceSession> sessions = sessionRepository.findByStatusOrderByStartedAtDesc(STATUS_CLOSED);
         List<AttendanceHistoryItem> items = new ArrayList<>();

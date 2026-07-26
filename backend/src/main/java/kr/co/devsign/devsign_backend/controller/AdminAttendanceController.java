@@ -55,6 +55,16 @@ public class AdminAttendanceController {
         return attendanceService.downloadHistoryExcel(sessionId);
     }
 
+    @DeleteMapping("/history/{sessionId}")
+    public ResponseEntity<StatusResponse> deleteHistory(@PathVariable Long sessionId) {
+        try {
+            attendanceService.deleteHistorySession(sessionId);
+            return ResponseEntity.ok(StatusResponse.success());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
     @PutMapping("/{sessionId}/targets/{loginId}")
     public ResponseEntity<?> setManualAttendance(
             @PathVariable Long sessionId,

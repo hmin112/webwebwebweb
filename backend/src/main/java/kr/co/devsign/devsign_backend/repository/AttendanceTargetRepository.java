@@ -12,4 +12,6 @@ public interface AttendanceTargetRepository extends JpaRepository<AttendanceTarg
     List<AttendanceTarget> findBySession_Id(Long sessionId);
 
     Optional<AttendanceTarget> findBySession_IdAndLoginId(Long sessionId, String loginId);
+
+    void deleteBySession_Id(Long sessionId);
 }

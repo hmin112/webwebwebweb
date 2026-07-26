@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import {
   Timer, Users, CheckCircle2, History, ChevronLeft, ChevronRight,
-  Upload, FileSpreadsheet, AlertTriangle, Download,
+  Upload, FileSpreadsheet, AlertTriangle, Download, Trash2,
 } from "lucide-react";
 import { api } from "../../../api/axios";
 import { Button } from "../../../components/ui/button";
@@ -126,15 +126,30 @@ const HistoryPanel = ({
   history,
   onDownload,
   onToggled,
+  onDelete,
 }: {
   history: HistorySession[];
   onDownload: (s: HistorySession) => void;
   onToggled: () => void;
+  onDelete: (s: HistorySession) => Promise<void>;
 }) => {
   const [selectedId, setSelectedId] = useState<number | null>(null);
+  const [deleting, setDeleting] = useState(false);
   // history prop이 갱신될 때마다 최신 상태를 다시 찾아옴 — 스냅샷을 들고 있지 않아서
   // 토글 직후에도 상세 화면이 즉시 최신 상태로 보인다.
   const selected = selectedId != null ? history.find((h) => h.sessionId === selectedId) ?? null : null;
+
+  const handleDeleteClick = async () => {
+    if (!selected || deleting) return;
+    if (!window.confirm(`"${selected.title}" 출석 기록을 완전히 삭제할까요?\n삭제하면 되돌릴 수 없습니다.`)) return;
+    setDeleting(true);
+    try {
+      await onDelete(selected);
+      setSelectedId(null);
+    } finally {
+      setDeleting(false);
+    }
+  };
 
   return (
     <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-7">
@@ -155,12 +170,24 @@ const HistoryPanel = ({
           {selected ? selected.title : "출석 이력"}
         </h3>
         {selected && (
-          <button
-            onClick={() => onDownload(selected)}
-            className="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 px-3.5 py-1.5 rounded-full transition-colors shrink-0"
-          >
-            <Download size={13} /> 엑셀 다운로드
-          </button>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              onClick={() => onDownload(selected)}
+              className="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 px-3.5 py-1.5 rounded-full transition-colors"
+            >
+              <Download size={13} /> 엑셀 다운로드
+            </button>
+            <button
+              onClick={handleDeleteClick}
+              disabled={deleting}
+              className="flex items-center gap-1.5 text-[12px] font-medium disabled:opacity-50 px-3.5 py-1.5 rounded-full transition-colors"
+              style={{ color: "#FF3B30" }}
+              onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = "rgba(255,59,48,0.08)")}
+              onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = "transparent")}
+            >
+              <Trash2 size={13} /> {deleting ? "삭제 중…" : "삭제"}
+            </button>
+          </div>
         )}
       </div>
 
@@ -303,6 +330,15 @@ export const AttendanceAdminTab = () => {
     }
   };
 
+  const handleDeleteHistory = async (session: HistorySession) => {
+    try {
+      await api.delete(`/admin/attendance/history/${session.sessionId}`);
+      await fetchHistory();
+    } catch {
+      alert("출석 기록 삭제에 실패했습니다.");
+    }
+  };
+
   const isActive = status?.status === "ACTIVE";
 
   return (
@@ -363,7 +399,7 @@ export const AttendanceAdminTab = () => {
             </Button>
           </div>
 
-          <HistoryPanel history={history} onDownload={handleDownload} onToggled={fetchHistory} />
+          <HistoryPanel history={history} onDownload={handleDownload} onToggled={fetchHistory} onDelete={handleDeleteHistory} />
         </div>
       )}
 
@@ -399,7 +435,7 @@ export const AttendanceAdminTab = () => {
             <AttendeeGrid items={status.targets} sessionId={status.sessionId ?? undefined} onToggled={fetchStatus} />
           </div>
 
-          <HistoryPanel history={history} onDownload={handleDownload} onToggled={fetchHistory} />
+          <HistoryPanel history={history} onDownload={handleDownload} onToggled={fetchHistory} onDelete={handleDeleteHistory} />
         </div>
       )}
     </motion.div>
