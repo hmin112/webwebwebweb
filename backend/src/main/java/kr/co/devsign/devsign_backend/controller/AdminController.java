@@ -2,6 +2,7 @@ package kr.co.devsign.devsign_backend.controller;
 
 import jakarta.servlet.http.HttpServletRequest;
 import kr.co.devsign.devsign_backend.dto.admin.AccessLogResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminDiscordCheckResponse;
 import kr.co.devsign.devsign_backend.dto.admin.AdminMemberResponse;
 import kr.co.devsign.devsign_backend.dto.admin.AdminPasswordVerifyRequest;
 import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodResponse;
@@ -88,6 +89,16 @@ public class AdminController {
     public ResponseEntity<?> notifyMembers(@RequestBody NotifyMembersRequest request) {
         try {
             return ResponseEntity.ok(adminService.notifyMembers(request));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
+    // ✨ [신규] 웹사이트 회원들이 실제로 동아리 디스코드 서버에 남아있는지 확인 (탈퇴자 파악용)
+    @GetMapping("/discord-check")
+    public ResponseEntity<?> checkDiscordMembership() {
+        try {
+            return ResponseEntity.ok(adminService.checkDiscordMembership());
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
         }

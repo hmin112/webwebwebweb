@@ -4,6 +4,7 @@ import jakarta.annotation.PostConstruct; // ✨ 추가: 서버 켜질 때 자동
 import jakarta.persistence.EntityManager; // ✨ 추가: DB 데이터를 직접 안전하게 수정하기 위한 도구
 import jakarta.transaction.Transactional;
 import kr.co.devsign.devsign_backend.dto.admin.AccessLogResponse;
+import kr.co.devsign.devsign_backend.dto.admin.AdminDiscordCheckResponse;
 import kr.co.devsign.devsign_backend.dto.admin.AdminMemberResponse;
 import kr.co.devsign.devsign_backend.dto.admin.AdminPasswordVerifyRequest;
 import kr.co.devsign.devsign_backend.dto.admin.AdminPeriodResponse;
@@ -45,6 +46,7 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -450,6 +452,38 @@ public class AdminService {
         int failCount = results.size() - successCount;
 
         return new NotifyMembersResponse(successCount, failCount, results);
+    }
+
+    // ✨ [신규] 웹사이트에 등록된 회원들이 실제로 동아리 디스코드 서버에 남아있는지 확인
+    // (탈퇴자 파악 → 관리자가 수동으로 계정 삭제할 때 참고용)
+    @SuppressWarnings("unchecked")
+    public List<AdminDiscordCheckResponse> checkDiscordMembership() {
+        Map<String, Object> botRes = discordBotClient.syncAllMembers();
+        if (botRes == null || !"success".equals(botRes.get("status"))) {
+            throw new IllegalStateException("디스코드 봇 서버와 통신할 수 없습니다.");
+        }
+
+        List<Map<String, String>> guildMembers = (List<Map<String, String>>) botRes.getOrDefault("members", List.of());
+        Set<String> guildTags = new HashSet<>();
+        for (Map<String, String> d : guildMembers) {
+            String tag = d.get("discordTag");
+            if (StringUtils.hasText(tag)) {
+                guildTags.add(tag);
+            }
+        }
+
+        return memberRepository.findByDeletedFalseOrderByStudentIdDesc().stream()
+                .map(m -> new AdminDiscordCheckResponse(
+                        m.getId(),
+                        m.getLoginId(),
+                        m.getName(),
+                        m.getStudentId(),
+                        m.getDiscordTag(),
+                        m.getUserStatus(),
+                        m.getRole(),
+                        StringUtils.hasText(m.getDiscordTag()) && guildTags.contains(m.getDiscordTag())
+                ))
+                .toList();
     }
 
     public StatusResponse toggleSuspension(Long id, String ip) {

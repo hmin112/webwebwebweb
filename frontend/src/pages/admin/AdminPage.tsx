@@ -7,7 +7,8 @@ import {
   Download, Save, X, UserMinus, UserCheck, ChevronDown,
   Trash2, ShieldAlert, Lock, History, RotateCcw, BookOpen, ShieldBan, LogIn,
   FileText, Heart, PlusCircle, UserPlus, Globe, Calendar, Clock, AlertTriangle,
-  Phone, Hash, BadgeCheck, Info, Search, Edit, FilePlus, FileX, MessageSquare, LogOut, Activity
+  Phone, Hash, BadgeCheck, Info, Search, Edit, FilePlus, FileX, MessageSquare, LogOut, Activity,
+  UserX, CheckCircle2, Loader2
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
@@ -48,15 +49,31 @@ interface AccessLog {
   timestamp: string;
 }
 
+interface DiscordCheckItem {
+  id: number;
+  loginId: string;
+  name: string;
+  studentId: string;
+  discordTag: string;
+  userStatus: string;
+  role: string;
+  inGuild: boolean;
+}
+
 export const AdminPage = () => {
   // --- 2. 상태 관리 ---
   const [members, setMembers] = useState<Member[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [deletedMembers, setDeletedMembers] = useState<Member[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord">("members");
   const [sortBy, setSortBy] = useState<SortCriteria>("ID_DESC");
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // ✨ [신규] 디스코드 잔류 여부 확인 탭 상태
+  const [discordCheckItems, setDiscordCheckItems] = useState<DiscordCheckItem[] | null>(null);
+  const [isDiscordCheckLoading, setIsDiscordCheckLoading] = useState(false);
+  const [discordCheckError, setDiscordCheckError] = useState<string | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string>("ALL");
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("ALL");
@@ -85,6 +102,27 @@ export const AdminPage = () => {
       console.error("데이터 로드 실패", e);
     }
   };
+
+  // ✨ [신규] 디스코드 잔류 여부 확인 (탭을 열 때 / 새로고침 버튼으로 조회)
+  const fetchDiscordCheck = async () => {
+    setIsDiscordCheckLoading(true);
+    setDiscordCheckError(null);
+    try {
+      const res = await api.get("/admin/discord-check");
+      setDiscordCheckItems(res.data);
+    } catch (e: any) {
+      setDiscordCheckError(e.response?.data?.message || "디스코드 봇 서버와 통신하는 중 오류가 발생했습니다.");
+    } finally {
+      setIsDiscordCheckLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (activeTab === "discord" && discordCheckItems === null && !isDiscordCheckLoading) {
+      fetchDiscordCheck();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab]);
 
   // --- 4. 비즈니스 로직 ---
 
@@ -282,6 +320,26 @@ export const AdminPage = () => {
   const isOtherStatus = (value?: string) =>
     !isAttendingStatus(value) && !isLeaveStatus(value) && !isLabStatus(value) && !isFreshmanStatus(value) && !isGraduateStatus(value);
 
+  // ✨ [신규] 디스코드 확인 탭용 필터링 (검색어 + 잔류 여부로 분리)
+  const getFilteredDiscordItems = (items: DiscordCheckItem[]) => {
+    return items.filter(m =>
+      m.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      m.studentId.includes(searchQuery) ||
+      (m.discordTag || "").toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  };
+
+  // ✨ [신규] 디스코드 확인 목록에서 삭제 버튼을 눌렀을 때, 전체 부원 명단에서 동일 id를 찾아
+  // 기존 삭제 확인 모달(initiateDelete)을 그대로 재사용한다.
+  const handleDeleteFromDiscordCheck = (item: DiscordCheckItem) => {
+    const fullMember = members.find(m => m.id === item.id);
+    if (fullMember) {
+      initiateDelete(fullMember, false);
+    } else {
+      alert("부원 명단에서 해당 회원 정보를 찾을 수 없습니다. '부원 명단' 탭에서 새로고침 후 다시 시도해주세요.");
+    }
+  };
+
   const handleDiscordSync = async () => {
     setIsSyncing(true);
     try {
@@ -387,6 +445,7 @@ export const AdminPage = () => {
           <button onClick={() => { setActiveTab("members"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "members" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>부원 명단</button>
           <button onClick={() => { setActiveTab("access"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "access" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>통합 로그</button>
           <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>삭제 기록</button>
+          <button onClick={() => { setActiveTab("discord"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "discord" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>디스코드 확인</button>
         </div>
 
         {activeTab === "members" && (
@@ -505,6 +564,141 @@ export const AdminPage = () => {
               </div>
             ) : (
               <div className="text-center py-20 md:py-40 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200"><p className="text-slate-300 font-black uppercase tracking-widest text-xs md:text-sm">삭제된 부원 기록이 없습니다.</p></div>
+            )}
+          </motion.div>
+        )}
+
+        {/* ✨ [신규] 디스코드 확인 탭 — 웹사이트 회원이 실제로 동아리 디스코드 서버에 남아있는지 확인 */}
+        {activeTab === "discord" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-8">
+              <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-white rounded-xl md:rounded-2xl border border-slate-100 w-fit shadow-sm">
+                <UserX size={16} className="text-red-500" />
+                <span className="text-[11px] md:text-sm font-black text-slate-600 tracking-tight uppercase">
+                  디스코드에 없음: <span className="text-red-500">
+                    {discordCheckItems ? discordCheckItems.filter(m => !m.inGuild).length : "-"}
+                  </span> 명
+                </span>
+              </div>
+              <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-72">
+                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4" />
+                  <input
+                    type="text"
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    placeholder="이름, 학번 또는 태그 검색..."
+                    className="w-full pl-11 pr-4 py-3 bg-white border border-slate-100 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 shadow-sm transition-all font-bold text-xs md:text-sm"
+                  />
+                </div>
+                <button
+                  onClick={fetchDiscordCheck}
+                  disabled={isDiscordCheckLoading}
+                  className="flex items-center gap-1.5 px-4 py-3 bg-indigo-600 text-white font-black rounded-xl hover:bg-indigo-700 shadow-sm text-[11px] md:text-sm shrink-0 disabled:opacity-50"
+                >
+                  <RefreshCcw size={14} className={isDiscordCheckLoading ? "animate-spin" : ""} /> 새로고침
+                </button>
+              </div>
+            </div>
+
+            {isDiscordCheckLoading && !discordCheckItems ? (
+              <div className="flex flex-col items-center justify-center py-20 md:py-40 text-slate-400">
+                <Loader2 className="animate-spin mb-4" size={32} />
+                <p className="font-bold uppercase tracking-widest text-[10px]">디스코드 서버 확인 중...</p>
+              </div>
+            ) : discordCheckError ? (
+              <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-red-200">
+                <AlertTriangle className="mx-auto text-red-400 mb-3" size={32} />
+                <p className="text-red-500 font-bold text-sm mb-4">{discordCheckError}</p>
+                <button onClick={fetchDiscordCheck} className="px-5 py-2.5 bg-slate-900 text-white rounded-xl font-bold text-sm">다시 시도</button>
+              </div>
+            ) : discordCheckItems && (
+              <>
+                {(() => {
+                  const filtered = getFilteredDiscordItems(discordCheckItems);
+                  const left = filtered.filter(m => !m.inGuild);
+                  const inGuild = filtered.filter(m => m.inGuild);
+                  return (
+                    <>
+                      <div className="mb-8 md:mb-12">
+                        <div className="flex items-center gap-2 mb-3 md:mb-4 px-1 md:px-2">
+                          <UserX className="text-red-500 w-4 h-4 md:w-5 md:h-5" />
+                          <h3 className="text-sm md:text-lg font-black text-red-500 tracking-tight uppercase">디스코드에서 나간 것으로 추정 ({left.length})</h3>
+                        </div>
+                        {left.length > 0 ? (
+                          <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-red-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto no-scrollbar">
+                              <table className="w-full text-left border-collapse min-w-[500px]">
+                                <thead>
+                                  <tr className="bg-red-50/50 border-b border-red-100 text-[9px] md:text-[10px] font-black text-red-400 uppercase tracking-widest">
+                                    <th className="px-4 md:px-8 py-4 md:py-5 w-[35%]">부원 정보</th>
+                                    <th className="px-4 md:px-8 py-4 md:py-5 w-[20%]">학번</th>
+                                    <th className="px-4 md:px-8 py-4 md:py-5 w-[25%]">디스코드</th>
+                                    <th className="px-4 md:px-8 py-4 md:py-5 text-center w-[20%]">관리</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-red-50 text-xs md:text-sm">
+                                  {left.map((m) => (
+                                    <tr key={m.id} className="hover:bg-red-50/30 transition-colors">
+                                      <td className="px-4 md:px-8 py-4 md:py-6">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-black text-slate-900 truncate">{m.name}</span>
+                                          {m.role === "ADMIN" && <span className="px-1.5 py-0.5 bg-indigo-100 text-indigo-600 text-[7px] md:text-[9px] font-black rounded uppercase shrink-0">ADMIN</span>}
+                                        </div>
+                                        <span className="text-[9px] md:text-[11px] text-slate-400 font-bold">{m.userStatus}</span>
+                                      </td>
+                                      <td className="px-4 md:px-8 py-4 md:py-6 text-slate-500 font-bold tracking-wider text-[11px] md:text-sm">{m.studentId}</td>
+                                      <td className="px-4 md:px-8 py-4 md:py-6 text-red-500 font-bold text-[11px] md:text-sm truncate">@{m.discordTag || "미연동"}</td>
+                                      <td className="px-4 md:px-8 py-4 md:py-6 text-center">
+                                        <button onClick={() => handleDeleteFromDiscordCheck(m)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm font-black text-[10px] md:text-xs">
+                                          <Trash2 size={13} /> 계정 삭제
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="text-center py-10 bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200">
+                            <p className="text-slate-300 font-bold text-sm">디스코드를 나간 것으로 보이는 회원이 없습니다.</p>
+                          </div>
+                        )}
+                      </div>
+
+                      <div>
+                        <div className="flex items-center gap-2 mb-3 md:mb-4 px-1 md:px-2">
+                          <CheckCircle2 className="text-green-500 w-4 h-4 md:w-5 md:h-5" />
+                          <h3 className="text-sm md:text-lg font-black text-green-600 tracking-tight uppercase">정상 (디스코드 서버에 있음) ({inGuild.length})</h3>
+                        </div>
+                        <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden opacity-80">
+                          <div className="overflow-x-auto no-scrollbar max-h-[400px] overflow-y-auto">
+                            <table className="w-full text-left border-collapse min-w-[500px]">
+                              <thead className="sticky top-0 bg-white">
+                                <tr className="bg-slate-50/50 border-b border-slate-100 text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                  <th className="px-4 md:px-8 py-4 md:py-5 w-[35%]">부원 정보</th>
+                                  <th className="px-4 md:px-8 py-4 md:py-5 w-[25%]">학번</th>
+                                  <th className="px-4 md:px-8 py-4 md:py-5 w-[40%]">디스코드</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
+                                {inGuild.map((m) => (
+                                  <tr key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                                    <td className="px-4 md:px-8 py-3 md:py-4 font-bold text-slate-700 truncate">{m.name}</td>
+                                    <td className="px-4 md:px-8 py-3 md:py-4 text-slate-400 font-bold truncate">{m.studentId}</td>
+                                    <td className="px-4 md:px-8 py-3 md:py-4 text-indigo-500 font-bold truncate">@{m.discordTag}</td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          </div>
+                        </div>
+                      </div>
+                    </>
+                  );
+                })()}
+              </>
             )}
           </motion.div>
         )}
