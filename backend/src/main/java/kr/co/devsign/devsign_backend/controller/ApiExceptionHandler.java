@@ -1,6 +1,7 @@
 package kr.co.devsign.devsign_backend.controller;
 
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.service.OjClient;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -21,5 +22,10 @@ public class ApiExceptionHandler {
     public ResponseEntity<StatusResponse> handleMultipartException() {
         return ResponseEntity.badRequest()
                 .body(StatusResponse.fail("업로드 요청 형식이 올바르지 않습니다. 파일을 다시 선택해 주세요."));
+    }
+
+    @ExceptionHandler(OjClient.OjApiException.class)
+    public ResponseEntity<StatusResponse> handleOjApiException(OjClient.OjApiException e) {
+        return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
     }
 }

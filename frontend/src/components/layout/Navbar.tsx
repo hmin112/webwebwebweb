@@ -18,6 +18,7 @@ const navLinks = [
   { name: "동아리소개", id: "about" },
   { name: "자주 묻는 질문", id: "faq" },
   { name: "총회", id: "assembly" },
+  { name: "OJ", id: "oj" }, // ✨ [신규] 온라인저지 — 총회 오른쪽, 로그인 시에만 노출
   { name: "관리", id: "admin" }, // ✨ 관리자 전용 메뉴 추가
 ];
 
@@ -159,6 +160,7 @@ export const Navbar = ({
 
   const visibleLinks = navLinks.filter(link => {
     if (link.id === "assembly") return isLoggedIn;
+    if (link.id === "oj") return isLoggedIn;
     if (link.id === "admin") return isLoggedIn && userRole === "ADMIN";
     return true;
   });

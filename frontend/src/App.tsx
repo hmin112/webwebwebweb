@@ -27,6 +27,8 @@ import { BoardWrite } from "./pages/board/BoardWrite";
 import { BoardDetail } from "./pages/board/BoardDetail";
 
 import { AssemblyPage } from "./pages/assembly/AssemblyPage";
+import { OjListPage } from "./pages/oj/OjListPage";
+import { OjProblemPage } from "./pages/oj/OjProblemPage";
 import { AdminPage } from "./pages/admin/AdminPage";
 import { ContactAdmin } from "./pages/admin/ContactAdmin";
 import { MemberDetailTab } from "./pages/profile/tabs/MemberDetailTab";
@@ -291,6 +293,9 @@ function AppContent() {
 
           <Route path="/assembly" element={<AssemblyPage isAdmin={isAdmin} userStatus={userStatus} onNavigate={handleNavigateCompat} loginId={currentUser?.loginId} />} />
           <Route path="/assembly/member/:id" element={<MemberDetailTab loginId={""} onBack={() => navigate("/assembly")} />} />
+
+          <Route path="/oj" element={<OjListPage loginId={currentUser?.loginId} />} />
+          <Route path="/oj/:problemId" element={<OjProblemPage loginId={currentUser?.loginId} />} />
 
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/contact-admin" element={<ContactAdmin onNavigate={handleNavigateCompat} />} />
