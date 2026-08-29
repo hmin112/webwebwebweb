@@ -154,25 +154,7 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
             </button>
           )}
         </div>
-        <p className="text-[13px] text-slate-400 mb-7">
-          {showFolderGrid ? "폴더를 눌러 문제를 확인하세요" : "문제를 풀고 바로 채점 결과를 확인하세요"}
-        </p>
-
-        <div className="flex items-center gap-2 mb-4">
-          {DIFFICULTY_FILTERS.map((d) => (
-            <button
-              key={d.value}
-              onClick={() => setDifficulty(d.value)}
-              className={`px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
-                difficulty === d.value
-                  ? "bg-slate-900 text-white"
-                  : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
+        <p className="text-[13px] text-slate-400 mb-7">폴더를 눌러 문제를 확인하세요</p>
 
         {errorMsg && <p className="text-[13px] font-medium text-center py-6" style={{ color: "#FF3B30" }}>{errorMsg}</p>}
 
@@ -236,6 +218,22 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
                 <ChevronLeft size={16} /> 폴더 목록
               </button>
               <span className="text-[13px] font-medium text-slate-400">{currentFolderLabel}</span>
+            </div>
+
+            <div className="flex items-center gap-2 mb-4">
+              {DIFFICULTY_FILTERS.map((d) => (
+                <button
+                  key={d.value}
+                  onClick={() => setDifficulty(d.value)}
+                  className={`px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
+                    difficulty === d.value
+                      ? "bg-slate-900 text-white"
+                      : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
+                  }`}
+                >
+                  {d.label}
+                </button>
+              ))}
             </div>
 
             <div className="relative mb-4">
