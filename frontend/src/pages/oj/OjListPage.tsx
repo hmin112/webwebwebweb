@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Search, Code2, Settings, Folder } from "lucide-react";
+import { CheckCircle2, Search, Code2, Settings, Folder, ChevronLeft, ChevronRight } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/axios";
 
@@ -12,6 +12,7 @@ type OjProblem = {
   submission_number: number;
   accepted_number: number;
   my_status: number | null;
+  tags?: string[];
 };
 
 const DIFFICULTY_STYLE: Record<string, { label: string; color: string }> = {
@@ -27,6 +28,9 @@ const DIFFICULTY_FILTERS: { value: string; label: string }[] = [
   { value: "High", label: "어려움" },
 ];
 
+const ALL_FOLDER = "__all__";
+const UNTAGGED_FOLDER = "__untagged__";
+
 export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: boolean }) => {
   const navigate = useNavigate();
   const [problems, setProblems] = useState<OjProblem[]>([]);
@@ -34,15 +38,8 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
   const [errorMsg, setErrorMsg] = useState("");
   const [keyword, setKeyword] = useState("");
   const [difficulty, setDifficulty] = useState("");
-  const [tag, setTag] = useState("");
-  const [tags, setTags] = useState<string[]>([]);
-
-  useEffect(() => {
-    if (!loginId) return;
-    api.get("/oj/tags")
-      .then((res) => setTags((res.data?.value ?? []).map((t: any) => t.name)))
-      .catch(() => {});
-  }, [loginId]);
+  // null = 폴더 목록 화면. 폴더를 누르면 그 폴더 안의 문제만 보임 (검색 중엔 폴더 무시하고 전체에서 찾음)
+  const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
 
   useEffect(() => {
     if (!loginId) return;
@@ -54,7 +51,7 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
     const timer = setTimeout(async () => {
       try {
         const res = await api.get("/oj/problems", {
-          params: { loginId, keyword: keyword || undefined, difficulty: difficulty || undefined, tag: tag || undefined, limit: 100 },
+          params: { loginId, keyword: keyword || undefined, difficulty: difficulty || undefined, limit: 200 },
         });
         if (active) {
           setProblems(res.data?.results ?? []);
@@ -70,7 +67,38 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
       active = false;
       clearTimeout(timer);
     };
-  }, [loginId, keyword, difficulty, tag]);
+  }, [loginId, keyword, difficulty]);
+
+  const folders = useMemo(() => {
+    const counts = new Map<string, number>();
+    let untagged = 0;
+    problems.forEach((p) => {
+      if (!p.tags || p.tags.length === 0) {
+        untagged++;
+        return;
+      }
+      p.tags.forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1));
+    });
+    const list = Array.from(counts.entries())
+      .map(([name, count]) => ({ name, count }))
+      .sort((a, b) => a.name.localeCompare(b.name));
+    if (untagged > 0) list.push({ name: "미분류", count: untagged, key: UNTAGGED_FOLDER } as any);
+    return list;
+  }, [problems]);
+
+  const searching = keyword.trim().length > 0;
+  const showFolderGrid = !searching && !selectedFolder;
+
+  const visibleProblems = useMemo(() => {
+    if (searching) return problems;
+    if (selectedFolder === ALL_FOLDER) return problems;
+    if (selectedFolder === UNTAGGED_FOLDER) return problems.filter((p) => !p.tags || p.tags.length === 0);
+    if (selectedFolder) return problems.filter((p) => (p.tags ?? []).includes(selectedFolder));
+    return [];
+  }, [problems, selectedFolder, searching]);
+
+  const currentFolderLabel =
+    selectedFolder === ALL_FOLDER ? "전체 문제" : selectedFolder === UNTAGGED_FOLDER ? "미분류" : selectedFolder;
 
   if (!loginId) {
     return (
@@ -101,19 +129,21 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
             </button>
           )}
         </div>
-        <p className="text-[13px] text-slate-400 mb-7">문제를 풀고 바로 채점 결과를 확인하세요</p>
+        <p className="text-[13px] text-slate-400 mb-7">
+          {showFolderGrid ? "폴더를 눌러 문제를 확인하세요" : "문제를 풀고 바로 채점 결과를 확인하세요"}
+        </p>
 
         <div className="relative mb-4">
           <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
           <input
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
-            placeholder="문제 제목 또는 번호로 검색"
+            placeholder="문제 제목 또는 번호로 검색 (전체 폴더에서 검색됩니다)"
             className="w-full h-11 pl-11 pr-4 text-[14px] text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all duration-150 focus:bg-white focus:border-slate-900 focus:ring-[3px] focus:ring-slate-900/[0.06]"
           />
         </div>
 
-        <div className="flex items-center gap-2 mb-4 flex-wrap">
+        <div className="flex items-center gap-2 mb-6">
           {DIFFICULTY_FILTERS.map((d) => (
             <button
               key={d.value}
@@ -129,73 +159,100 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
           ))}
         </div>
 
-        {tags.length > 0 && (
-          <div className="flex items-center gap-2 mb-6 flex-wrap">
-            <button
-              onClick={() => setTag("")}
-              className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
-                tag === "" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
-              }`}
-            >
-              <Folder size={13} /> 전체
-            </button>
-            {tags.map((t) => (
-              <button
-                key={t}
-                onClick={() => setTag(t)}
-                className={`px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
-                  tag === t ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
-                }`}
-              >
-                {t}
-              </button>
-            ))}
-          </div>
-        )}
-
         {errorMsg && <p className="text-[13px] font-medium text-center py-6" style={{ color: "#FF3B30" }}>{errorMsg}</p>}
 
         {!errorMsg && loading && <div className="h-40" />}
 
-        {!errorMsg && !loading && problems.length === 0 && (
-          <p className="text-[14px] text-slate-400 text-center py-16">조건에 맞는 문제가 없습니다</p>
+        {/* 폴더 목록 화면 */}
+        {!errorMsg && !loading && showFolderGrid && (
+          folders.length === 0 ? (
+            <p className="text-[14px] text-slate-400 text-center py-16">등록된 문제가 없습니다</p>
+          ) : (
+            <div className="grid grid-cols-2 gap-3">
+              <button
+                onClick={() => setSelectedFolder(ALL_FOLDER)}
+                className="flex flex-col items-start gap-3 p-5 rounded-[24px] bg-slate-900 text-white text-left hover:bg-slate-800 transition-colors"
+              >
+                <Folder size={20} />
+                <div>
+                  <p className="text-[14px] font-semibold">전체 문제</p>
+                  <p className="text-[12px] text-white/60 mt-0.5">{problems.length}개</p>
+                </div>
+              </button>
+              {folders.map((f: any) => (
+                <button
+                  key={f.key ?? f.name}
+                  onClick={() => setSelectedFolder(f.key ?? f.name)}
+                  className="flex flex-col items-start gap-3 p-5 rounded-[24px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_rgba(0,0,0,0.04)] text-left hover:border-slate-300 transition-colors"
+                >
+                  <Folder size={20} className="text-slate-400" />
+                  <div>
+                    <p className="text-[14px] font-semibold text-slate-900 truncate">{f.name}</p>
+                    <p className="text-[12px] text-slate-400 mt-0.5">{f.count}개</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          )
         )}
 
-        {!errorMsg && !loading && problems.length > 0 && (
-          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] overflow-hidden divide-y divide-black/[0.04]">
-            {problems.map((p) => {
-              const solved = p.my_status === 0;
-              const attempted = p.my_status !== null && p.my_status !== undefined && !solved;
-              const diff = DIFFICULTY_STYLE[p.difficulty];
-              return (
+        {/* 문제 목록 화면 (폴더 안 또는 검색 결과) */}
+        {!errorMsg && !loading && !showFolderGrid && (
+          <>
+            <div className="flex items-center justify-between mb-4">
+              {!searching ? (
                 <button
-                  key={p._id}
-                  onClick={() => navigate(`/oj/${p._id}`)}
-                  className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50/80 transition-colors"
+                  onClick={() => setSelectedFolder(null)}
+                  className="flex items-center gap-1 text-[13px] font-semibold text-slate-500 hover:text-slate-900 transition-colors"
                 >
-                  <div className="w-6 shrink-0 flex justify-center">
-                    {solved ? (
-                      <CheckCircle2 size={18} strokeWidth={2.2} style={{ color: "#34C759" }} />
-                    ) : attempted ? (
-                      <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#FF9500" }} />
-                    ) : null}
-                  </div>
-                  <span className="w-14 shrink-0 text-[13px] font-medium text-slate-400 tabular-nums">
-                    #{p._id}
-                  </span>
-                  <span className="flex-1 text-[14px] font-medium text-slate-900 truncate">{p.title}</span>
-                  {diff && (
-                    <span
-                      className="shrink-0 text-[12px] font-medium px-2.5 py-1 rounded-full"
-                      style={{ color: diff.color, backgroundColor: `${diff.color}14` }}
-                    >
-                      {diff.label}
-                    </span>
-                  )}
+                  <ChevronLeft size={16} /> 폴더 목록
                 </button>
-              );
-            })}
-          </div>
+              ) : (
+                <span className="text-[13px] font-semibold text-slate-500">검색 결과</span>
+              )}
+              {!searching && <span className="text-[13px] font-medium text-slate-400">{currentFolderLabel}</span>}
+            </div>
+
+            {visibleProblems.length === 0 ? (
+              <p className="text-[14px] text-slate-400 text-center py-16">조건에 맞는 문제가 없습니다</p>
+            ) : (
+              <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] overflow-hidden divide-y divide-black/[0.04]">
+                {visibleProblems.map((p) => {
+                  const solved = p.my_status === 0;
+                  const attempted = p.my_status !== null && p.my_status !== undefined && !solved;
+                  const diff = DIFFICULTY_STYLE[p.difficulty];
+                  return (
+                    <button
+                      key={p._id}
+                      onClick={() => navigate(`/oj/${p._id}`)}
+                      className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50/80 transition-colors"
+                    >
+                      <div className="w-6 shrink-0 flex justify-center">
+                        {solved ? (
+                          <CheckCircle2 size={18} strokeWidth={2.2} style={{ color: "#34C759" }} />
+                        ) : attempted ? (
+                          <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#FF9500" }} />
+                        ) : null}
+                      </div>
+                      <span className="w-14 shrink-0 text-[13px] font-medium text-slate-400 tabular-nums">
+                        #{p._id}
+                      </span>
+                      <span className="flex-1 text-[14px] font-medium text-slate-900 truncate">{p.title}</span>
+                      {diff && (
+                        <span
+                          className="shrink-0 text-[12px] font-medium px-2.5 py-1 rounded-full"
+                          style={{ color: diff.color, backgroundColor: `${diff.color}14` }}
+                        >
+                          {diff.label}
+                        </span>
+                      )}
+                      <ChevronRight size={15} className="shrink-0 text-slate-200" />
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </>
         )}
       </motion.div>
     </div>
