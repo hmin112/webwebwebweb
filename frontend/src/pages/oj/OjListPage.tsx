@@ -36,10 +36,11 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
   const [problems, setProblems] = useState<OjProblem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
-  const [keyword, setKeyword] = useState("");
   const [difficulty, setDifficulty] = useState("");
-  // null = 폴더 목록 화면. 폴더를 누르면 그 폴더 안의 문제만 보임 (검색 중엔 폴더 무시하고 전체에서 찾음)
+  // null = 폴더 목록 화면. 폴더를 누르면 그 폴더 안의 문제만 보임
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [folderSearch, setFolderSearch] = useState("");
+  const [problemSearch, setProblemSearch] = useState("");
 
   useEffect(() => {
     if (!loginId) return;
@@ -48,26 +49,26 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
     setLoading(true);
     setErrorMsg("");
 
-    const timer = setTimeout(async () => {
-      try {
-        const res = await api.get("/oj/problems", {
-          params: { loginId, keyword: keyword || undefined, difficulty: difficulty || undefined, limit: 200 },
-        });
-        if (active) {
-          setProblems(res.data?.results ?? []);
-        }
-      } catch {
+    api.get("/oj/problems", { params: { loginId, difficulty: difficulty || undefined, limit: 200 } })
+      .then((res) => {
+        if (active) setProblems(res.data?.results ?? []);
+      })
+      .catch(() => {
         if (active) setErrorMsg("문제 목록을 불러오지 못했습니다");
-      } finally {
+      })
+      .finally(() => {
         if (active) setLoading(false);
-      }
-    }, 250);
+      });
 
     return () => {
       active = false;
-      clearTimeout(timer);
     };
-  }, [loginId, keyword, difficulty]);
+  }, [loginId, difficulty]);
+
+  // 폴더를 바꿀 때마다 문제 검색어는 초기화
+  useEffect(() => {
+    setProblemSearch("");
+  }, [selectedFolder]);
 
   const folders = useMemo(() => {
     const counts = new Map<string, number>();
@@ -79,23 +80,33 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
       }
       p.tags.forEach((t) => counts.set(t, (counts.get(t) ?? 0) + 1));
     });
-    const list = Array.from(counts.entries())
-      .map(([name, count]) => ({ name, count }))
+    const list: { key: string; name: string; count: number }[] = Array.from(counts.entries())
+      .map(([name, count]) => ({ key: name, name, count }))
       .sort((a, b) => a.name.localeCompare(b.name));
-    if (untagged > 0) list.push({ name: "미분류", count: untagged, key: UNTAGGED_FOLDER } as any);
+    if (untagged > 0) list.push({ key: UNTAGGED_FOLDER, name: "미분류", count: untagged });
     return list;
   }, [problems]);
 
-  const searching = keyword.trim().length > 0;
-  const showFolderGrid = !searching && !selectedFolder;
+  const visibleFolders = useMemo(() => {
+    if (!folderSearch.trim()) return folders;
+    const q = folderSearch.trim().toLowerCase();
+    return folders.filter((f) => f.name.toLowerCase().includes(q));
+  }, [folders, folderSearch]);
 
-  const visibleProblems = useMemo(() => {
-    if (searching) return problems;
+  const showFolderGrid = !selectedFolder;
+
+  const folderProblems = useMemo(() => {
     if (selectedFolder === ALL_FOLDER) return problems;
     if (selectedFolder === UNTAGGED_FOLDER) return problems.filter((p) => !p.tags || p.tags.length === 0);
     if (selectedFolder) return problems.filter((p) => (p.tags ?? []).includes(selectedFolder));
     return [];
-  }, [problems, selectedFolder, searching]);
+  }, [problems, selectedFolder]);
+
+  const visibleProblems = useMemo(() => {
+    if (!problemSearch.trim()) return folderProblems;
+    const q = problemSearch.trim().toLowerCase();
+    return folderProblems.filter((p) => p.title.toLowerCase().includes(q) || p._id.toLowerCase().includes(q));
+  }, [folderProblems, problemSearch]);
 
   const currentFolderLabel =
     selectedFolder === ALL_FOLDER ? "전체 문제" : selectedFolder === UNTAGGED_FOLDER ? "미분류" : selectedFolder;
@@ -133,17 +144,7 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
           {showFolderGrid ? "폴더를 눌러 문제를 확인하세요" : "문제를 풀고 바로 채점 결과를 확인하세요"}
         </p>
 
-        <div className="relative mb-4">
-          <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
-          <input
-            value={keyword}
-            onChange={(e) => setKeyword(e.target.value)}
-            placeholder="문제 제목 또는 번호로 검색 (전체 폴더에서 검색됩니다)"
-            className="w-full h-11 pl-11 pr-4 text-[14px] text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all duration-150 focus:bg-white focus:border-slate-900 focus:ring-[3px] focus:ring-slate-900/[0.06]"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-4">
           {DIFFICULTY_FILTERS.map((d) => (
             <button
               key={d.value}
@@ -165,52 +166,72 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
 
         {/* 폴더 목록 화면 */}
         {!errorMsg && !loading && showFolderGrid && (
-          folders.length === 0 ? (
-            <p className="text-[14px] text-slate-400 text-center py-16">등록된 문제가 없습니다</p>
-          ) : (
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                onClick={() => setSelectedFolder(ALL_FOLDER)}
-                className="flex flex-col items-start gap-3 p-5 rounded-[24px] bg-slate-900 text-white text-left hover:bg-slate-800 transition-colors"
-              >
-                <Folder size={20} />
-                <div>
-                  <p className="text-[14px] font-semibold">전체 문제</p>
-                  <p className="text-[12px] text-white/60 mt-0.5">{problems.length}개</p>
-                </div>
-              </button>
-              {folders.map((f: any) => (
-                <button
-                  key={f.key ?? f.name}
-                  onClick={() => setSelectedFolder(f.key ?? f.name)}
-                  className="flex flex-col items-start gap-3 p-5 rounded-[24px] bg-white border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_8px_20px_rgba(0,0,0,0.04)] text-left hover:border-slate-300 transition-colors"
-                >
-                  <Folder size={20} className="text-slate-400" />
-                  <div>
-                    <p className="text-[14px] font-semibold text-slate-900 truncate">{f.name}</p>
-                    <p className="text-[12px] text-slate-400 mt-0.5">{f.count}개</p>
-                  </div>
-                </button>
-              ))}
+          <>
+            <div className="relative mb-4">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+              <input
+                value={folderSearch}
+                onChange={(e) => setFolderSearch(e.target.value)}
+                placeholder="폴더 검색"
+                className="w-full h-11 pl-11 pr-4 text-[14px] text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all duration-150 focus:bg-white focus:border-slate-900 focus:ring-[3px] focus:ring-slate-900/[0.06]"
+              />
             </div>
-          )
+
+            {visibleFolders.length === 0 ? (
+              <p className="text-[14px] text-slate-400 text-center py-16">
+                {folderSearch.trim() ? "조건에 맞는 폴더가 없습니다" : "등록된 문제가 없습니다"}
+              </p>
+            ) : (
+              <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] overflow-hidden divide-y divide-black/[0.04]">
+                {!folderSearch.trim() && (
+                  <button
+                    onClick={() => setSelectedFolder(ALL_FOLDER)}
+                    className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50/80 transition-colors"
+                  >
+                    <Folder size={17} className="shrink-0 text-slate-300" />
+                    <span className="flex-1 text-[14px] font-medium text-slate-900">전체 문제</span>
+                    <span className="text-[12px] font-medium text-slate-400">{problems.length}개</span>
+                    <ChevronRight size={15} className="shrink-0 text-slate-200" />
+                  </button>
+                )}
+                {visibleFolders.map((f) => (
+                  <button
+                    key={f.key}
+                    onClick={() => setSelectedFolder(f.key)}
+                    className="w-full flex items-center gap-4 px-6 py-4 text-left hover:bg-slate-50/80 transition-colors"
+                  >
+                    <Folder size={17} className="shrink-0 text-slate-300" />
+                    <span className="flex-1 text-[14px] font-medium text-slate-900 truncate">{f.name}</span>
+                    <span className="text-[12px] font-medium text-slate-400">{f.count}개</span>
+                    <ChevronRight size={15} className="shrink-0 text-slate-200" />
+                  </button>
+                ))}
+              </div>
+            )}
+          </>
         )}
 
-        {/* 문제 목록 화면 (폴더 안 또는 검색 결과) */}
+        {/* 문제 목록 화면 (폴더 안) */}
         {!errorMsg && !loading && !showFolderGrid && (
           <>
             <div className="flex items-center justify-between mb-4">
-              {!searching ? (
-                <button
-                  onClick={() => setSelectedFolder(null)}
-                  className="flex items-center gap-1 text-[13px] font-semibold text-slate-500 hover:text-slate-900 transition-colors"
-                >
-                  <ChevronLeft size={16} /> 폴더 목록
-                </button>
-              ) : (
-                <span className="text-[13px] font-semibold text-slate-500">검색 결과</span>
-              )}
-              {!searching && <span className="text-[13px] font-medium text-slate-400">{currentFolderLabel}</span>}
+              <button
+                onClick={() => setSelectedFolder(null)}
+                className="flex items-center gap-1 text-[13px] font-semibold text-slate-500 hover:text-slate-900 transition-colors"
+              >
+                <ChevronLeft size={16} /> 폴더 목록
+              </button>
+              <span className="text-[13px] font-medium text-slate-400">{currentFolderLabel}</span>
+            </div>
+
+            <div className="relative mb-4">
+              <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" />
+              <input
+                value={problemSearch}
+                onChange={(e) => setProblemSearch(e.target.value)}
+                placeholder="이 폴더 안에서 문제 검색"
+                className="w-full h-11 pl-11 pr-4 text-[14px] text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl outline-none transition-all duration-150 focus:bg-white focus:border-slate-900 focus:ring-[3px] focus:ring-slate-900/[0.06]"
+              />
             </div>
 
             {visibleProblems.length === 0 ? (
