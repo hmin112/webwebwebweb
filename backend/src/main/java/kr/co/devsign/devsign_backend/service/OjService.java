@@ -44,4 +44,9 @@ public class OjService {
     public Map<String, Object> getSubmissionList(String loginId, String problemDisplayId, int limit) {
         return ojClient.getSubmissionList(resolveAppkey(loginId), problemDisplayId, limit);
     }
+
+    // 태그(=폴더) 목록은 회원별 appkey가 필요 없는 조회라 서비스 계정으로 바로 조회
+    public Map<String, Object> getTags() {
+        return ojClient.getTags();
+    }
 }

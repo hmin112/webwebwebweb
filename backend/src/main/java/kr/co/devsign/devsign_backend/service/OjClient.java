@@ -8,8 +8,11 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Component;
+import org.springframework.util.LinkedMultiValueMap;
+import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
 import java.util.Collections;
@@ -178,6 +181,114 @@ public class OjClient {
             }
         }
         return null;
+    }
+
+    // ---------- 관리자(서비스 계정) API : 문제 관리 (2026-08-29 추가) ----------
+    // devsign 안에서 문제 생성/숨김/삭제/태그(폴더) 관리를 하기 위한 QDUOJ 관리자 API 래퍼.
+    // 계약은 실제 서버(oj.devsign.co.kr 내부 주소)에 격리된 테스트 문제를 만들었다 지우며 curl로 확인함:
+    // - 생성/수정 시 spj_language, spj_code 키는 값이 null이어도 반드시 존재해야 함(없으면 400)
+    // - 수정(PUT)은 GET 상세 응답을 그대로 돌려보내도 됨 (created_by 등 읽기전용 필드는 서버가 무시함)
+    // - 문제 목록/상세는 관리자 전용(/api/admin/problem)이라 숨김·대회전용 문제도 모두 보임(학생용 /api/problem은 공개+비대회만 노출)
+
+    public Map<String, Object> adminGetProblems(String keyword, int limit, int offset) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(ojBaseUrl + "/api/admin/problem")
+                .queryParam("limit", limit)
+                .queryParam("offset", offset);
+        if (keyword != null && !keyword.isBlank()) {
+            builder.queryParam("keyword", keyword);
+        }
+        HttpEntity<Void> entity = new HttpEntity<>(appkeyHeaders(serviceAppkey));
+        ResponseEntity<Map> response = restTemplate.exchange(builder.toUriString(), HttpMethod.GET, entity, Map.class);
+        return unwrap(response);
+    }
+
+    public Map<String, Object> adminGetProblemDetail(Long id) {
+        String url = UriComponentsBuilder.fromUriString(ojBaseUrl + "/api/admin/problem")
+                .queryParam("id", id)
+                .toUriString();
+        HttpEntity<Void> entity = new HttpEntity<>(appkeyHeaders(serviceAppkey));
+        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, entity, Map.class);
+        return unwrap(response);
+    }
+
+    public Map<String, Object> adminCreateProblem(Map<String, Object> payload) {
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(normalizeProblemPayload(payload), appkeyHeaders(serviceAppkey));
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    ojBaseUrl + "/api/admin/problem", HttpMethod.POST, entity, Map.class);
+            return unwrap(response);
+        } catch (HttpClientErrorException e) {
+            throw new OjApiException("문제 생성 실패: " + e.getResponseBodyAsString());
+        }
+    }
+
+    public Map<String, Object> adminUpdateProblem(Long id, Map<String, Object> payload) {
+        Map<String, Object> body = normalizeProblemPayload(payload);
+        body.put("id", id);
+        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, appkeyHeaders(serviceAppkey));
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    ojBaseUrl + "/api/admin/problem", HttpMethod.PUT, entity, Map.class);
+            return unwrap(response);
+        } catch (HttpClientErrorException e) {
+            throw new OjApiException("문제 수정 실패: " + e.getResponseBodyAsString());
+        }
+    }
+
+    public void adminSetProblemVisibility(Long id, boolean visible) {
+        Map<String, Object> detail = adminGetProblemDetail(id);
+        Map<String, Object> body = new HashMap<>(detail);
+        body.put("visible", visible);
+        adminUpdateProblem(id, body);
+    }
+
+    public void adminDeleteProblem(Long id) {
+        String url = UriComponentsBuilder.fromUriString(ojBaseUrl + "/api/admin/problem")
+                .queryParam("id", id)
+                .toUriString();
+        HttpEntity<Void> entity = new HttpEntity<>(appkeyHeaders(serviceAppkey));
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.DELETE, entity, Map.class);
+            unwrap(response);
+        } catch (HttpClientErrorException e) {
+            throw new OjApiException("문제 삭제 실패: " + e.getResponseBodyAsString());
+        }
+    }
+
+    public Map<String, Object> adminUploadTestCase(MultipartFile file, boolean spj) {
+        MultiValueMap<String, Object> body = new LinkedMultiValueMap<>();
+        body.add("spj", String.valueOf(spj));
+        body.add("file", file.getResource());
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.MULTIPART_FORM_DATA);
+        headers.set("Appkey", serviceAppkey);
+        HttpEntity<MultiValueMap<String, Object>> entity = new HttpEntity<>(body, headers);
+
+        try {
+            ResponseEntity<Map> response = restTemplate.exchange(
+                    ojBaseUrl + "/api/admin/test_case", HttpMethod.POST, entity, Map.class);
+            return unwrap(response);
+        } catch (HttpClientErrorException e) {
+            throw new OjApiException("테스트케이스 업로드 실패: " + e.getResponseBodyAsString());
+        }
+    }
+
+    // 문제 태그 = devsign OJ 탭의 "폴더" 개념으로 그대로 재사용 (QDUOJ에 별도 폴더 기능이 없어
+    // 이미 있는 자유 태그 필드를 그대로 활용 — 새 테이블/개념을 만들지 않음)
+    public Map<String, Object> getTags() {
+        HttpEntity<Void> entity = new HttpEntity<>(appkeyHeaders(serviceAppkey));
+        ResponseEntity<Map> response = restTemplate.exchange(
+                ojBaseUrl + "/api/problem/tags", HttpMethod.GET, entity, Map.class);
+        return unwrap(response);
+    }
+
+    // spj_language/spj_code 키가 없으면 QDUOJ가 400을 반환하므로(실제 문제 아님) 항상 채워서 보냄
+    private Map<String, Object> normalizeProblemPayload(Map<String, Object> payload) {
+        Map<String, Object> body = new HashMap<>(payload);
+        body.putIfAbsent("spj_language", null);
+        body.putIfAbsent("spj_code", null);
+        return body;
     }
 
     // ---------- 학생 본인 명의(appkey) API ----------

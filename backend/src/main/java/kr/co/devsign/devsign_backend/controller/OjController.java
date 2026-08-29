@@ -62,4 +62,10 @@ public class OjController {
     ) {
         return ojService.getSubmissionList(loginId, problemDisplayId, limit);
     }
+
+    // ✨ [신규] 문제 태그(=폴더) 목록 — 문제 목록 화면의 폴더/태그 필터에 사용
+    @GetMapping("/tags")
+    public Map<String, Object> tags() {
+        return ojService.getTags();
+    }
 }

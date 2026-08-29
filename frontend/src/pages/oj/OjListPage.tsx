@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { motion } from "framer-motion";
-import { CheckCircle2, Search, Code2 } from "lucide-react";
+import { CheckCircle2, Search, Code2, Settings, Folder } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { api } from "../../api/axios";
 
@@ -27,13 +27,22 @@ const DIFFICULTY_FILTERS: { value: string; label: string }[] = [
   { value: "High", label: "어려움" },
 ];
 
-export const OjListPage = ({ loginId }: { loginId?: string }) => {
+export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: boolean }) => {
   const navigate = useNavigate();
   const [problems, setProblems] = useState<OjProblem[]>([]);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
   const [keyword, setKeyword] = useState("");
   const [difficulty, setDifficulty] = useState("");
+  const [tag, setTag] = useState("");
+  const [tags, setTags] = useState<string[]>([]);
+
+  useEffect(() => {
+    if (!loginId) return;
+    api.get("/oj/tags")
+      .then((res) => setTags((res.data?.value ?? []).map((t: any) => t.name)))
+      .catch(() => {});
+  }, [loginId]);
 
   useEffect(() => {
     if (!loginId) return;
@@ -45,7 +54,7 @@ export const OjListPage = ({ loginId }: { loginId?: string }) => {
     const timer = setTimeout(async () => {
       try {
         const res = await api.get("/oj/problems", {
-          params: { loginId, keyword: keyword || undefined, difficulty: difficulty || undefined, limit: 100 },
+          params: { loginId, keyword: keyword || undefined, difficulty: difficulty || undefined, tag: tag || undefined, limit: 100 },
         });
         if (active) {
           setProblems(res.data?.results ?? []);
@@ -61,7 +70,7 @@ export const OjListPage = ({ loginId }: { loginId?: string }) => {
       active = false;
       clearTimeout(timer);
     };
-  }, [loginId, keyword, difficulty]);
+  }, [loginId, keyword, difficulty, tag]);
 
   if (!loginId) {
     return (
@@ -78,9 +87,19 @@ export const OjListPage = ({ loginId }: { loginId?: string }) => {
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.35, ease: [0.16, 1, 0.3, 1] }}
       >
-        <div className="flex items-center gap-2.5 mb-1.5">
-          <Code2 size={22} className="text-slate-900" strokeWidth={2.2} />
-          <h1 className="text-[22px] font-semibold text-slate-900 tracking-[-0.01em]">OJ</h1>
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-2.5">
+            <Code2 size={22} className="text-slate-900" strokeWidth={2.2} />
+            <h1 className="text-[22px] font-semibold text-slate-900 tracking-[-0.01em]">OJ</h1>
+          </div>
+          {isAdmin && (
+            <button
+              onClick={() => navigate("/oj/admin")}
+              className="flex items-center gap-1.5 h-9 px-3.5 rounded-2xl bg-slate-50 border border-slate-200 text-[12px] font-semibold text-slate-600 hover:bg-slate-100 transition-colors"
+            >
+              <Settings size={14} /> 문제 관리
+            </button>
+          )}
         </div>
         <p className="text-[13px] text-slate-400 mb-7">문제를 풀고 바로 채점 결과를 확인하세요</p>
 
@@ -94,7 +113,7 @@ export const OjListPage = ({ loginId }: { loginId?: string }) => {
           />
         </div>
 
-        <div className="flex items-center gap-2 mb-6">
+        <div className="flex items-center gap-2 mb-4 flex-wrap">
           {DIFFICULTY_FILTERS.map((d) => (
             <button
               key={d.value}
@@ -109,6 +128,30 @@ export const OjListPage = ({ loginId }: { loginId?: string }) => {
             </button>
           ))}
         </div>
+
+        {tags.length > 0 && (
+          <div className="flex items-center gap-2 mb-6 flex-wrap">
+            <button
+              onClick={() => setTag("")}
+              className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
+                tag === "" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
+              }`}
+            >
+              <Folder size={13} /> 전체
+            </button>
+            {tags.map((t) => (
+              <button
+                key={t}
+                onClick={() => setTag(t)}
+                className={`px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
+                  tag === t ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
+                }`}
+              >
+                {t}
+              </button>
+            ))}
+          </div>
+        )}
 
         {errorMsg && <p className="text-[13px] font-medium text-center py-6" style={{ color: "#FF3B30" }}>{errorMsg}</p>}
 
