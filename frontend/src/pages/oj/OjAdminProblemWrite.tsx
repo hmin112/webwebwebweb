@@ -52,6 +52,7 @@ export const OjAdminProblemWrite = ({ loginId }: { loginId?: string }) => {
   const [visible, setVisible] = useState(false);
   const [tags, setTags] = useState<string[]>([]);
   const [tagInput, setTagInput] = useState("");
+  const [existingFolders, setExistingFolders] = useState<string[]>([]);
   const [languages, setLanguages] = useState<string[]>([]);
   const [languageOptions, setLanguageOptions] = useState<string[]>([]);
 
@@ -67,6 +68,13 @@ export const OjAdminProblemWrite = ({ loginId }: { loginId?: string }) => {
       .then((res) => setLanguageOptions((res.data?.languages ?? []).map((l: any) => l.name)))
       .catch(() => {});
   }, [loginId]);
+
+  // 이미 다른 문제에 쓰인 폴더(태그) 이름들 — 새로 만들지 않고 골라 쓸 수 있게 제안으로 보여줌
+  useEffect(() => {
+    api.get("/admin/oj/tags")
+      .then((res) => setExistingFolders((res.data?.value ?? []).map((t: any) => t.name)))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (!isEdit) return;
@@ -360,8 +368,12 @@ export const OjAdminProblemWrite = ({ loginId }: { loginId?: string }) => {
           </div>
 
           <div>
-            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">태그 (폴더)</label>
-            <div className="flex flex-wrap gap-2 mt-1.5 mb-2">
+            <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">폴더</label>
+            <p className="text-[11px] text-slate-400 mt-1">
+              이 문제가 속할 폴더를 직접 정하세요. 자동으로 지정되지 않습니다 — 새 이름을 입력해 새 폴더를
+              만들거나, 아래 기존 폴더 중에서 골라도 됩니다. 여러 폴더에 동시에 넣을 수도 있습니다.
+            </p>
+            <div className="flex flex-wrap gap-2 mt-2.5 mb-2">
               {tags.map((t) => (
                 <span key={t} className="flex items-center gap-1.5 pl-3 pr-2 h-8 rounded-full bg-slate-100 text-[12px] font-medium text-slate-600">
                   {t}
@@ -376,11 +388,28 @@ export const OjAdminProblemWrite = ({ loginId }: { loginId?: string }) => {
                 value={tagInput}
                 onChange={(e) => setTagInput(e.target.value)}
                 onKeyDown={(e) => e.key === "Enter" && (e.preventDefault(), addTag())}
-                placeholder="태그 입력 후 Enter (예: 2026, 자료구조)"
+                placeholder="새 폴더 이름을 입력하고 Enter (예: 자료구조, 1주차)"
                 className="flex-1 h-10 px-4 text-[13px] bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900"
               />
               <button onClick={addTag} className="h-10 px-4 rounded-2xl bg-slate-50 border border-slate-200 text-[13px] font-medium text-slate-500 hover:bg-slate-100">추가</button>
             </div>
+
+            {existingFolders.filter((f) => !tags.includes(f)).length > 0 && (
+              <div className="mt-3">
+                <p className="text-[11px] text-slate-400 mb-1.5">또는 기존 폴더에서 선택</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {existingFolders.filter((f) => !tags.includes(f)).map((f) => (
+                    <button
+                      key={f}
+                      onClick={() => setTags((prev) => [...prev, f])}
+                      className="flex items-center gap-1 pl-2.5 pr-3 h-7 rounded-full bg-white border border-dashed border-slate-200 text-[12px] font-medium text-slate-500 hover:border-slate-400 hover:text-slate-700 transition-colors"
+                    >
+                      <Plus size={11} /> {f}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
 
           <label className="flex items-center gap-3 cursor-pointer">
