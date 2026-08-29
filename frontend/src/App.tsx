@@ -22,6 +22,10 @@ import { EventPage } from "./pages/event/EventPage";
 import { EventDetail } from "./pages/event/EventDetail";
 import { EventWrite } from "./pages/event/EventWrite";
 
+import { HallOfFamePage } from "./pages/halloffame/HallOfFamePage";
+import { HallOfFameDetail } from "./pages/halloffame/HallOfFameDetail";
+import { HallOfFameWrite } from "./pages/halloffame/HallOfFameWrite";
+
 import { BoardPage } from "./pages/board/BoardPage";
 import { BoardWrite } from "./pages/board/BoardWrite";
 import { BoardDetail } from "./pages/board/BoardDetail";
@@ -48,6 +52,7 @@ function AppContent() {
   const [posts, setPosts] = useState<any[]>([]);
   const [notices, setNotices] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
+  const [hallOfFame, setHallOfFame] = useState<any[]>([]);
 
   const handleLogout = async (isForced: boolean = false) => {
     if (!isForced && !window.confirm("로그아웃 하시겠습니까?")) return;
@@ -95,6 +100,14 @@ function AppContent() {
       if (eventsRes.data) setEvents(eventsRes.data);
     } catch (error) {
       console.error("❌ 행사 로드 에러:", error);
+    }
+
+    // 4. 명예의 전당 가져오기
+    try {
+      const hallOfFameRes = await api.get('/hall-of-fame');
+      if (hallOfFameRes.data) setHallOfFame(hallOfFameRes.data);
+    } catch (error) {
+      console.error("❌ 명예의 전당 로드 에러:", error);
     }
   };
 
@@ -204,6 +217,18 @@ function AppContent() {
     }
   };
 
+  const handleDeleteHallOfFame = async (id: number) => {
+    if (!isAdmin || !isLoggedIn) return;
+    if (window.confirm("이 명예의 전당 게시물을 삭제하시겠습니까?")) {
+      try {
+        await api.delete(`/hall-of-fame/${id}`);
+        setHallOfFame(prev => prev.filter(h => h.id !== id));
+        navigate("/hall-of-fame");
+        alert("삭제되었습니다.");
+      } catch (e) { console.error("명예의 전당 삭제 실패", e); }
+    }
+  };
+
   // Helper for components that still rely on onNavigate string prop temporarily
   const handleNavigateCompat = (path: string, param?: any) => {
     if (path === "home") {
@@ -234,6 +259,13 @@ function AppContent() {
     } else if (path === "event-write") {
       if (param) navigate(`/event/write/${param}`);
       else navigate("/event/write");
+    } else if (path === "halloffame-page" || path === "halloffame") {
+      navigate("/hall-of-fame");
+    } else if (path === "halloffame-detail" && param) {
+      navigate(`/hall-of-fame/${param}`);
+    } else if (path === "halloffame-write") {
+      if (param) navigate(`/hall-of-fame/write/${param}`);
+      else navigate("/hall-of-fame/write");
     } else if (path === "member-detail" && param) {
       navigate(`/assembly/member/${param}`);
     } else if (path === "board" || path === "board-page") {
@@ -265,7 +297,7 @@ function AppContent() {
 
       <main>
         <Routes>
-          <Route path="/" element={<Home isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} events={events} notices={notices} posts={posts} onNavigate={handleNavigateCompat} />} />
+          <Route path="/" element={<Home isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} events={events} notices={notices} posts={posts} hallOfFame={hallOfFame} onNavigate={handleNavigateCompat} />} />
 
           {/* ✨ 핵심 2: 로그인 성공 시 상태(State)와 LocalStorage를 동시에 즉시 업데이트하도록 수정 */}
           <Route path="/login" element={
@@ -314,6 +346,11 @@ function AppContent() {
           <Route path="/event/write" element={(isAdmin && isLoggedIn) ? <EventWriteWrapper events={events} onNavigate={handleNavigateCompat} user={currentUser} fetchEvents={fetchData} /> : <Navigate to="/" replace />} />
           <Route path="/event/write/:id" element={(isAdmin && isLoggedIn) ? <EventWriteWrapper events={events} onNavigate={handleNavigateCompat} user={currentUser} fetchEvents={fetchData} /> : <Navigate to="/" replace />} />
           <Route path="/event/:id" element={<EventDetailWrapper events={events} isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} user={currentUser} setEvents={setEvents} onDelete={handleDeleteEvent} handleNavigateCompat={handleNavigateCompat} />} />
+
+          <Route path="/hall-of-fame" element={<HallOfFamePage onNavigate={handleNavigateCompat} isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} entries={[...hallOfFame].sort((a: any, b: any) => b.id - a.id)} />} />
+          <Route path="/hall-of-fame/write" element={(isAdmin && isLoggedIn) ? <HallOfFameWriteWrapper entries={hallOfFame} onNavigate={handleNavigateCompat} fetchHallOfFame={fetchData} /> : <Navigate to="/" replace />} />
+          <Route path="/hall-of-fame/write/:id" element={(isAdmin && isLoggedIn) ? <HallOfFameWriteWrapper entries={hallOfFame} onNavigate={handleNavigateCompat} fetchHallOfFame={fetchData} /> : <Navigate to="/" replace />} />
+          <Route path="/hall-of-fame/:id" element={<HallOfFameDetailWrapper entries={hallOfFame} isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} onDelete={handleDeleteHallOfFame} handleNavigateCompat={handleNavigateCompat} />} />
 
           <Route path="*" element={
             <div className="pt-40 text-center h-screen bg-slate-50">
@@ -367,6 +404,18 @@ function EventWriteWrapper({ events, onNavigate, user, fetchEvents }: any) {
   const { id } = useParams();
   const event = id ? events.find((e: any) => Number(e.id) === Number(id)) : undefined;
   return <EventWrite onNavigate={onNavigate} event={event} user={user} fetchEvents={fetchEvents} />;
+}
+
+function HallOfFameDetailWrapper({ entries, isAdmin, isLoggedIn, onDelete, handleNavigateCompat }: any) {
+  const { id } = useParams();
+  const entry = entries.find((e: any) => Number(e.id) === Number(id));
+  return <HallOfFameDetail onNavigate={handleNavigateCompat} isAdmin={isAdmin} isLoggedIn={isLoggedIn} entry={entry} onDelete={onDelete} />;
+}
+
+function HallOfFameWriteWrapper({ entries, onNavigate, fetchHallOfFame }: any) {
+  const { id } = useParams();
+  const entry = id ? entries.find((e: any) => Number(e.id) === Number(id)) : undefined;
+  return <HallOfFameWrite onNavigate={onNavigate} entry={entry} fetchHallOfFame={fetchHallOfFame} />;
 }
 
 function App() {

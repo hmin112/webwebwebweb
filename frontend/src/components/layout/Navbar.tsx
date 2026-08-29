@@ -12,6 +12,7 @@ const FALLBACK_DISCORD_SERVER_ICON = "https://cdn.discordapp.com/icons/462157565
 // 전체 메뉴 데이터
 const navLinks = [
   { name: "홈", id: "home" },
+  { name: "명예의 전당", id: "halloffame" }, // ✨ [신규] 대회 수상 기록 — 홈 바로 옆
   { name: "주요행사", id: "event" },
   { name: "공지사항", id: "notice" },
   { name: "게시판", id: "board" },
@@ -82,6 +83,7 @@ export const Navbar = ({
       // 감지할 섹션 리스트 (Home.tsx의 id와 navLinks의 id 매칭)
       const sections = [
         { id: "home", navId: "home" },
+        { id: "halloffame", navId: "halloffame" },
         { id: "events", navId: "event" },
         { id: "notice", navId: "notice" },
         { id: "board", navId: "board" },
@@ -112,7 +114,7 @@ export const Navbar = ({
 
   const handleNavigate = (id: string) => {
     // ✨ 메인 페이지에서 스크롤로 이동할 섹션들
-    const scrollSections = ["home", "event", "notice", "board", "about", "faq"];
+    const scrollSections = ["home", "halloffame", "event", "notice", "board", "about", "faq"];
 
     if (scrollSections.includes(id)) {
       // Home.tsx의 id="events" 와 맞추기 위한 예외 처리 (event -> events)

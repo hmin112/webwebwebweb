@@ -1,4 +1,5 @@
 import { Hero } from "./components/Hero";
+import { HallOfFame } from "./components/HallOfFame";
 import { Events } from "./components/Events";
 import { Notice } from "./components/Notice";
 import { Board } from "./components/Board";
@@ -13,10 +14,11 @@ interface HomeProps {
     events: any[];
     notices: any[];
     posts: any[];
+    hallOfFame: any[];
     onNavigate: (path: string, id?: any) => void;
 }
 
-export function Home({ isAdmin, isLoggedIn, events, notices, posts, onNavigate }: HomeProps) {
+export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, onNavigate }: HomeProps) {
     const location = useLocation();
 
     // 해시(#) 값을 감지해서 해당 섹션으로 부드럽게 스크롤
@@ -46,10 +48,18 @@ export function Home({ isAdmin, isLoggedIn, events, notices, posts, onNavigate }
         return [...events].sort((a, b) => b.id - a.id).slice(0, 3);
     }, [events]);
 
+    // ✨ 명예의 전당: 최신 등록 순(ID 내림차순, 가장 왼쪽이 최신) 4개 추출
+    const recentHallOfFame = useMemo(() => {
+        return [...hallOfFame].sort((a, b) => b.id - a.id).slice(0, 4);
+    }, [hallOfFame]);
+
     return (
         <>
             <div id="home">
                 <Hero isAdmin={isAdmin} />
+            </div>
+            <div id="halloffame" className="scroll-mt-20">
+                <HallOfFame onNavigate={onNavigate} entries={recentHallOfFame} />
             </div>
             <div id="events" className="scroll-mt-20">
                 {/* ✨ events.slice(0, 3) 대신 최신순으로 정렬된 recentEvents를 사용 */}
