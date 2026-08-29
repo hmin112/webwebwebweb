@@ -10,6 +10,15 @@ const formatStudentId = (id?: string) => {
   return strId;
 };
 
+// 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
+const getAwardBadgeStyle = (awardName?: string) => {
+  const name = awardName || "";
+  if (name.includes("금")) return "bg-gradient-to-br from-[#FFDD66] to-[#B8860B] text-white shadow-lg shadow-amber-300/50";
+  if (name.includes("은")) return "bg-gradient-to-br from-[#F4F4F5] to-[#9CA3AF] text-slate-900 shadow-lg shadow-slate-300/50";
+  if (name.includes("동")) return "bg-gradient-to-br from-[#E0985A] to-[#8B5A2B] text-white shadow-lg shadow-orange-300/50";
+  return "bg-amber-500 text-white shadow-lg";
+};
+
 export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string, id?: number) => void; entries: any[] }) => {
   return (
     <section id="halloffame" className="py-10 md:py-16 bg-white">
@@ -59,7 +68,7 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                     </div>
                   )}
                   <div className="absolute top-2 left-2 md:top-4 md:left-4">
-                    <span className="px-2 py-1 md:px-3 md:py-1.5 rounded-lg md:rounded-full bg-amber-500 text-white text-[9px] md:text-[10px] font-black shadow-lg line-clamp-1">
+                    <span className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-full text-[10px] md:text-xs font-black line-clamp-1 ${getAwardBadgeStyle(entry.awardName)}`}>
                       {entry.awardName}
                     </span>
                   </div>
@@ -71,22 +80,31 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                 <p className="text-[11px] md:text-sm text-slate-400 font-bold line-clamp-1">{entry.competitionName}</p>
 
                 {entry.participants && entry.participants.length > 0 && (
-                  <div className="flex items-center -space-x-2 mt-2">
-                    {entry.participants.slice(0, 4).map((p: any) => (
+                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
+                    {entry.participants.slice(0, 3).map((p: any) => (
                       <div
                         key={p.loginId}
-                        title={`${formatStudentId(p.studentId)} ${p.name}`}
-                        className="w-6 h-6 md:w-7 md:h-7 rounded-full overflow-hidden border-2 border-white shadow-sm bg-indigo-100 shrink-0"
+                        className="flex items-center gap-1 md:gap-1.5 bg-slate-50 rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-slate-100"
                       >
-                        {p.profileImage ? (
-                          <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
-                        ) : (
-                          <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[9px]">
-                            {p.name?.[0] || "?"}
-                          </div>
-                        )}
+                        <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
+                          {p.profileImage ? (
+                            <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
+                          ) : (
+                            <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
+                              {p.name?.[0] || "?"}
+                            </div>
+                          )}
+                        </div>
+                        <span className="text-[10px] md:text-[11px] font-bold text-slate-700 whitespace-nowrap">
+                          {formatStudentId(p.studentId)} {p.name}
+                        </span>
                       </div>
                     ))}
+                    {entry.participants.length > 3 && (
+                      <span className="text-[10px] md:text-[11px] font-bold text-slate-400">
+                        +{entry.participants.length - 3}명
+                      </span>
+                    )}
                   </div>
                 )}
               </motion.div>

@@ -11,6 +11,15 @@ const formatStudentId = (id?: string) => {
   return strId;
 };
 
+// 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
+const getAwardBadgeStyle = (awardName?: string) => {
+  const name = awardName || "";
+  if (name.includes("금")) return "bg-gradient-to-br from-[#FFDD66] to-[#B8860B] text-white shadow-lg shadow-amber-300/50";
+  if (name.includes("은")) return "bg-gradient-to-br from-[#F4F4F5] to-[#9CA3AF] text-slate-900 shadow-lg shadow-slate-300/50";
+  if (name.includes("동")) return "bg-gradient-to-br from-[#E0985A] to-[#8B5A2B] text-white shadow-lg shadow-orange-300/50";
+  return "bg-amber-500 text-white shadow-lg";
+};
+
 export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any) => {
   return (
     <div className="min-h-screen bg-white pb-16 md:pb-20 pt-24 md:pt-32">
@@ -55,7 +64,7 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
                     </div>
                   )}
                   <div className="absolute top-4 left-4 md:top-6 md:left-6">
-                    <span className="px-3 py-1.5 md:px-4 md:py-1.5 rounded-full bg-amber-500 text-white text-[9px] md:text-[10px] font-black">
+                    <span className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(entry.awardName)}`}>
                       {entry.awardName}
                     </span>
                   </div>

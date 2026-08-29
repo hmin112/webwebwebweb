@@ -10,6 +10,15 @@ const formatStudentId = (id?: string) => {
   return strId;
 };
 
+// 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
+const getAwardBadgeStyle = (awardName?: string) => {
+  const name = awardName || "";
+  if (name.includes("금")) return "bg-gradient-to-br from-[#FFDD66] to-[#B8860B] text-white shadow-lg shadow-amber-300/50";
+  if (name.includes("은")) return "bg-gradient-to-br from-[#F4F4F5] to-[#9CA3AF] text-slate-900 shadow-lg shadow-slate-300/50";
+  if (name.includes("동")) return "bg-gradient-to-br from-[#E0985A] to-[#8B5A2B] text-white shadow-lg shadow-orange-300/50";
+  return "bg-amber-500 text-white shadow-lg";
+};
+
 export const HallOfFameDetail = ({ onNavigate, isAdmin, isLoggedIn, entry, onDelete }: any) => {
   if (!entry) return <div className="pt-40 text-center font-bold text-slate-400">명예의 전당 게시물을 찾을 수 없습니다.</div>;
 
@@ -45,7 +54,7 @@ export const HallOfFameDetail = ({ onNavigate, isAdmin, isLoggedIn, entry, onDel
         </div>
 
         <header className="mb-12">
-          <div className="inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-amber-500 text-white text-[11px] font-black uppercase mb-6">
+          <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-black uppercase mb-6 ${getAwardBadgeStyle(entry.awardName)}`}>
             <Trophy size={13} /> {entry.awardName}
           </div>
           <h1 className="text-4xl font-black text-slate-900 mb-10 tracking-tight leading-tight">
