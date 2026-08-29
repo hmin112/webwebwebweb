@@ -31,6 +31,16 @@ const DIFFICULTY_FILTERS: { value: string; label: string }[] = [
 const ALL_FOLDER = "__all__";
 const UNTAGGED_FOLDER = "__untagged__";
 
+// 문제 번호(_id)가 숫자면 숫자 크기순으로, 아니면(예: "devsign", "T2602") 뒤로 보내고 문자열 비교
+const compareProblemId = (a: string, b: string) => {
+  const aIsNum = /^\d+$/.test(a);
+  const bIsNum = /^\d+$/.test(b);
+  if (aIsNum && bIsNum) return Number(a) - Number(b);
+  if (aIsNum) return -1;
+  if (bIsNum) return 1;
+  return a.localeCompare(b);
+};
+
 export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: boolean }) => {
   const navigate = useNavigate();
   const [problems, setProblems] = useState<OjProblem[]>([]);
@@ -103,9 +113,13 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
   }, [problems, selectedFolder]);
 
   const visibleProblems = useMemo(() => {
-    if (!problemSearch.trim()) return folderProblems;
-    const q = problemSearch.trim().toLowerCase();
-    return folderProblems.filter((p) => p.title.toLowerCase().includes(q) || p._id.toLowerCase().includes(q));
+    const base = !problemSearch.trim()
+      ? folderProblems
+      : folderProblems.filter((p) => {
+          const q = problemSearch.trim().toLowerCase();
+          return p.title.toLowerCase().includes(q) || p._id.toLowerCase().includes(q);
+        });
+    return [...base].sort((a, b) => compareProblemId(a._id, b._id));
   }, [folderProblems, problemSearch]);
 
   const currentFolderLabel =

@@ -19,6 +19,16 @@ const DIFFICULTY_STYLE: Record<string, { label: string; color: string }> = {
   High: { label: "어려움", color: "#FF3B30" },
 };
 
+// 문제 번호(_id)가 숫자면 숫자 크기순으로, 아니면 뒤로 보내고 문자열 비교
+const compareProblemId = (a: string, b: string) => {
+  const aIsNum = /^\d+$/.test(a);
+  const bIsNum = /^\d+$/.test(b);
+  if (aIsNum && bIsNum) return Number(a) - Number(b);
+  if (aIsNum) return -1;
+  if (bIsNum) return 1;
+  return a.localeCompare(b);
+};
+
 export const OjAdminPage = () => {
   const navigate = useNavigate();
   const [problems, setProblems] = useState<AdminProblem[]>([]);
@@ -53,8 +63,8 @@ export const OjAdminPage = () => {
   }, [problems]);
 
   const visibleProblems = useMemo(() => {
-    if (!activeFolder) return problems;
-    return problems.filter((p) => (p.tags || []).includes(activeFolder));
+    const base = !activeFolder ? problems : problems.filter((p) => (p.tags || []).includes(activeFolder));
+    return [...base].sort((a, b) => compareProblemId(a._id, b._id));
   }, [problems, activeFolder]);
 
   const handleToggleVisibility = async (p: AdminProblem) => {
