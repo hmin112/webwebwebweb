@@ -153,7 +153,7 @@ export const OjAdminPage = () => {
               const diff = DIFFICULTY_STYLE[p.difficulty];
               return (
                 <div key={p.id} className="flex items-center gap-3 px-6 py-4">
-                  <span className="w-16 shrink-0 text-[13px] font-medium text-slate-400 tabular-nums truncate">#{p._id}</span>
+                  <span className="shrink-0 max-w-[30%] text-[13px] font-medium text-slate-400 tabular-nums truncate">#{p._id}</span>
                   <div className="flex-1 min-w-0">
                     <p className="text-[14px] font-medium text-slate-900 truncate">{p.title}</p>
                     <div className="flex items-center gap-1.5 mt-1 flex-wrap">
