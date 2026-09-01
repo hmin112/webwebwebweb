@@ -246,27 +246,39 @@ public class OjClient {
     // 폴더 = 태그(자유 문자열)라 QDUOJ에 "태그 이름 변경" API가 따로 없음. 그 태그를 가진 문제를
     // 전부 찾아 하나씩 태그 이름을 바꿔치기하는 방식으로 "폴더 이름 변경"을 구현.
     @SuppressWarnings("unchecked")
-    public int adminRenameFolder(String oldName, String newName) {
+    // oldPath/newPath는 "OOP/2023"처럼 "/"로 중첩 폴더를 표현한 경로일 수 있음.
+    // 정확히 일치하는 태그뿐 아니라 그 하위 경로("OOP/2023/1학기" 등)까지 통째로 접두사만 바꿔치기해서,
+    // 폴더 하나를 바꾸면 그 안의 하위 폴더들도 함께 이름이 바뀌도록 처리
+    public int adminRenameFolder(String oldPath, String newPath) {
         Map<String, Object> list = adminGetProblems(null, 1000, 0);
         List<Map<String, Object>> results = (List<Map<String, Object>>) list.get("results");
         if (results == null) return 0;
 
+        String oldPrefix = oldPath + "/";
         int updated = 0;
         for (Map<String, Object> summary : results) {
             List<String> tags = (List<String>) summary.get("tags");
-            if (tags == null || !tags.contains(oldName)) continue;
+            if (tags == null) continue;
+            boolean matches = tags.stream().anyMatch(t -> t.equals(oldPath) || t.startsWith(oldPrefix));
+            if (!matches) continue;
 
             Long id = ((Number) summary.get("id")).longValue();
             Map<String, Object> detail = adminGetProblemDetail(id);
             List<String> currentTags = (List<String>) detail.get("tags");
-            List<String> newTags = new ArrayList<>(currentTags != null ? currentTags : List.of());
-            newTags.remove(oldName);
-            if (!newTags.contains(newName)) {
-                newTags.add(newName);
+            List<String> newTags = new ArrayList<>();
+            for (String t : currentTags != null ? currentTags : List.<String>of()) {
+                if (t.equals(oldPath)) {
+                    newTags.add(newPath);
+                } else if (t.startsWith(oldPrefix)) {
+                    newTags.add(newPath + t.substring(oldPath.length()));
+                } else {
+                    newTags.add(t);
+                }
             }
+            List<String> deduped = newTags.stream().distinct().collect(java.util.stream.Collectors.toList());
 
             Map<String, Object> body = new HashMap<>(detail);
-            body.put("tags", newTags);
+            body.put("tags", deduped);
             adminUpdateProblem(id, body);
             updated++;
         }

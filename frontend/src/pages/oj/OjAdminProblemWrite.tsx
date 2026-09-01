@@ -372,6 +372,8 @@ export const OjAdminProblemWrite = ({ loginId }: { loginId?: string }) => {
             <p className="text-[11px] text-slate-400 mt-1">
               이 문제가 속할 폴더를 직접 정하세요. 자동으로 지정되지 않습니다 — 새 이름을 입력해 새 폴더를
               만들거나, 아래 기존 폴더 중에서 골라도 됩니다. 여러 폴더에 동시에 넣을 수도 있습니다.
+              <br />
+              "OOP/2023"처럼 이름 사이에 <span className="font-mono">/</span>를 넣으면 폴더 안에 폴더(하위 폴더)로 중첩됩니다.
             </p>
             <div className="flex flex-wrap gap-2 mt-2.5 mb-2">
               {tags.map((t) => (
