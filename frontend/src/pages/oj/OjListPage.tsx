@@ -267,7 +267,7 @@ export const OjListPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: b
                           <div className="w-2 h-2 rounded-full" style={{ backgroundColor: "#FF9500" }} />
                         ) : null}
                       </div>
-                      <span className="shrink-0 whitespace-nowrap max-w-[35%] truncate text-[13px] font-medium text-slate-400 tabular-nums">
+                      <span className="shrink-0 whitespace-nowrap min-w-[52px] max-w-[35%] truncate text-[13px] font-medium text-slate-400 tabular-nums">
                         #{p._id}
                       </span>
                       <span className="flex-1 min-w-0 text-[14px] font-medium text-slate-900 truncate">{p.title}</span>
