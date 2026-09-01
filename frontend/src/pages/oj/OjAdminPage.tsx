@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Search, Plus, Eye, EyeOff, Trash2, Pencil, Folder } from "lucide-react";
+import { ArrowLeft, Search, Plus, Eye, EyeOff, Trash2, Pencil, Folder, Check, X } from "lucide-react";
 import { api } from "../../api/axios";
 
 type AdminProblem = {
@@ -36,6 +36,9 @@ export const OjAdminPage = () => {
   const [errorMsg, setErrorMsg] = useState("");
   const [keyword, setKeyword] = useState("");
   const [activeFolder, setActiveFolder] = useState<string>("");
+  const [renamingFolder, setRenamingFolder] = useState(false);
+  const [renameValue, setRenameValue] = useState("");
+  const [renaming, setRenaming] = useState(false);
 
   const fetchProblems = async () => {
     setLoading(true);
@@ -73,6 +76,39 @@ export const OjAdminPage = () => {
       setProblems((prev) => prev.map((x) => (x.id === p.id ? { ...x, visible: !x.visible } : x)));
     } catch {
       alert("공개 상태 변경에 실패했습니다.");
+    }
+  };
+
+  const startRenameFolder = () => {
+    setRenameValue(activeFolder);
+    setRenamingFolder(true);
+  };
+
+  const cancelRenameFolder = () => {
+    setRenamingFolder(false);
+    setRenameValue("");
+  };
+
+  const confirmRenameFolder = async () => {
+    const newName = renameValue.trim();
+    if (!newName || newName === activeFolder) {
+      cancelRenameFolder();
+      return;
+    }
+    setRenaming(true);
+    try {
+      const res = await api.put("/admin/oj/folders/rename", null, {
+        params: { oldName: activeFolder, newName },
+      });
+      const updatedCount = res.data?.updatedCount ?? 0;
+      setActiveFolder(newName);
+      setRenamingFolder(false);
+      await fetchProblems();
+      alert(`"${activeFolder}" → "${newName}"로 변경했습니다. (문제 ${updatedCount}개 반영)`);
+    } catch {
+      alert("폴더 이름 변경에 실패했습니다.");
+    } finally {
+      setRenaming(false);
     }
   };
 
@@ -120,7 +156,7 @@ export const OjAdminPage = () => {
         {folders.length > 0 && (
           <div className="flex items-center gap-2 mb-6 flex-wrap">
             <button
-              onClick={() => setActiveFolder("")}
+              onClick={() => { setActiveFolder(""); setRenamingFolder(false); }}
               className={`flex items-center gap-1.5 px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
                 activeFolder === "" ? "bg-slate-900 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
               }`}
@@ -130,7 +166,7 @@ export const OjAdminPage = () => {
             {folders.map((f) => (
               <button
                 key={f}
-                onClick={() => setActiveFolder(f)}
+                onClick={() => { setActiveFolder(f); setRenamingFolder(false); }}
                 className={`px-3.5 h-8 rounded-full text-[13px] font-medium transition-colors ${
                   activeFolder === f ? "bg-slate-900 text-white" : "bg-slate-50 text-slate-500 hover:bg-slate-100 border border-slate-200"
                 }`}
@@ -138,6 +174,40 @@ export const OjAdminPage = () => {
                 {f}
               </button>
             ))}
+          </div>
+        )}
+
+        {activeFolder && (
+          <div className="flex items-center gap-2 mb-6 -mt-3">
+            {renamingFolder ? (
+              <>
+                <input
+                  autoFocus
+                  value={renameValue}
+                  onChange={(e) => setRenameValue(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && confirmRenameFolder()}
+                  className="h-8 px-3 text-[13px] bg-slate-50 border border-slate-200 rounded-xl outline-none focus:bg-white focus:border-slate-900"
+                />
+                <button
+                  onClick={confirmRenameFolder}
+                  disabled={renaming}
+                  className="p-1.5 rounded-lg bg-slate-900 text-white disabled:opacity-50"
+                  title="저장"
+                >
+                  <Check size={14} />
+                </button>
+                <button onClick={cancelRenameFolder} className="p-1.5 rounded-lg text-slate-400 hover:text-slate-700" title="취소">
+                  <X size={14} />
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={startRenameFolder}
+                className="flex items-center gap-1.5 text-[12px] font-medium text-slate-400 hover:text-slate-700 transition-colors"
+              >
+                <Pencil size={12} /> "{activeFolder}" 폴더 이름 변경
+              </button>
+            )}
           </div>
         )}
 

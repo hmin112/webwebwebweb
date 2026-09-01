@@ -65,4 +65,11 @@ public class AdminOjController {
     public Map<String, Object> tags() {
         return ojClient.getTags();
     }
+
+    // 폴더(=태그) 이름 변경 — 그 태그가 붙은 문제를 전부 찾아 태그 이름을 일괄 바꿔치기함
+    @PutMapping("/folders/rename")
+    public Map<String, Object> renameFolder(@RequestParam String oldName, @RequestParam String newName) {
+        int updated = ojClient.adminRenameFolder(oldName.trim(), newName.trim());
+        return Map.of("status", "success", "updatedCount", updated);
+    }
 }

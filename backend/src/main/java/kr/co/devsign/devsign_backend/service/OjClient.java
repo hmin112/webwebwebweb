@@ -15,6 +15,7 @@ import org.springframework.web.client.RestTemplate;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.util.UriComponentsBuilder;
 
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -240,6 +241,36 @@ public class OjClient {
         Map<String, Object> body = new HashMap<>(detail);
         body.put("visible", visible);
         adminUpdateProblem(id, body);
+    }
+
+    // 폴더 = 태그(자유 문자열)라 QDUOJ에 "태그 이름 변경" API가 따로 없음. 그 태그를 가진 문제를
+    // 전부 찾아 하나씩 태그 이름을 바꿔치기하는 방식으로 "폴더 이름 변경"을 구현.
+    @SuppressWarnings("unchecked")
+    public int adminRenameFolder(String oldName, String newName) {
+        Map<String, Object> list = adminGetProblems(null, 1000, 0);
+        List<Map<String, Object>> results = (List<Map<String, Object>>) list.get("results");
+        if (results == null) return 0;
+
+        int updated = 0;
+        for (Map<String, Object> summary : results) {
+            List<String> tags = (List<String>) summary.get("tags");
+            if (tags == null || !tags.contains(oldName)) continue;
+
+            Long id = ((Number) summary.get("id")).longValue();
+            Map<String, Object> detail = adminGetProblemDetail(id);
+            List<String> currentTags = (List<String>) detail.get("tags");
+            List<String> newTags = new ArrayList<>(currentTags != null ? currentTags : List.of());
+            newTags.remove(oldName);
+            if (!newTags.contains(newName)) {
+                newTags.add(newName);
+            }
+
+            Map<String, Object> body = new HashMap<>(detail);
+            body.put("tags", newTags);
+            adminUpdateProblem(id, body);
+            updated++;
+        }
+        return updated;
     }
 
     public void adminDeleteProblem(Long id) {
