@@ -56,4 +56,11 @@ public class DiscordBotClient {
         String url = botBaseUrl + "/guild-icon";
         return restTemplate.getForObject(url, Map.class);
     }
+
+    // ✨ [신규] 총회 출석 — 특정 메시지에 지정한 이모지로 반응한 사람 목록 조회
+    public Map<String, Object> getMessageReactors(String messageId, String emoji) {
+        String encodedEmoji = java.net.URLEncoder.encode(emoji, java.nio.charset.StandardCharsets.UTF_8);
+        String url = botBaseUrl + "/message-reactors/" + messageId + "?emoji=" + encodedEmoji;
+        return restTemplate.getForObject(url, Map.class);
+    }
 }

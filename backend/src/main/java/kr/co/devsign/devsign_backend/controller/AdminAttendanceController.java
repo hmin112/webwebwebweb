@@ -5,6 +5,7 @@ import kr.co.devsign.devsign_backend.dto.attendance.AttendanceHistoryItem;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceStartErrorResponse;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceStartResponse;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceValidationException;
+import kr.co.devsign.devsign_backend.dto.attendance.DiscordAttendanceStartRequest;
 import kr.co.devsign.devsign_backend.dto.attendance.ManualAttendanceRequest;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.service.AttendanceService;
@@ -28,6 +29,17 @@ public class AdminAttendanceController {
     public ResponseEntity<?> start(@RequestParam MultipartFile file, Authentication authentication) {
         try {
             AttendanceStartResponse response = attendanceService.startSession(file, authentication.getName());
+            return ResponseEntity.ok(response);
+        } catch (AttendanceValidationException e) {
+            return ResponseEntity.badRequest().body(new AttendanceStartErrorResponse(e.getMessage(), e.getProblems()));
+        }
+    }
+
+    // ✨ [신규] 엑셀 업로드 대신, 디스코드 메시지에 ✅ 반응을 남긴 사람들을 대상자로 출석을 시작
+    @PostMapping("/start-from-discord")
+    public ResponseEntity<?> startFromDiscord(@RequestBody DiscordAttendanceStartRequest request, Authentication authentication) {
+        try {
+            AttendanceStartResponse response = attendanceService.startSessionFromDiscordMessage(request.messageId(), authentication.getName());
             return ResponseEntity.ok(response);
         } catch (AttendanceValidationException e) {
             return ResponseEntity.badRequest().body(new AttendanceStartErrorResponse(e.getMessage(), e.getProblems()));

@@ -63,11 +63,13 @@ public class AttendanceService {
     // ✨ 엑셀 셀을 화면에 보이는 그대로(텍스트)로 읽기 위한 포맷터 — 학번 등 숫자로 자동 인식된 셀도
     // "20233088.0" 같은 형태 없이 그대로 텍스트로 변환됨
     private static final DataFormatter DATA_FORMATTER = new DataFormatter();
+    private static final String WHITE_CHECK_MARK = "✅"; // ✅
 
     private final AttendanceSessionRepository sessionRepository;
     private final AttendanceTargetRepository targetRepository;
     private final AttendanceRecordRepository recordRepository;
     private final MemberRepository memberRepository;
+    private final DiscordBotClient discordBotClient;
 
     public AttendanceStartResponse startSession(MultipartFile file, String adminLoginId) {
         Optional<AttendanceSession> currentOpt = sessionRepository.findTopByOrderByIdDesc();
@@ -165,10 +167,70 @@ public class AttendanceService {
             throw new AttendanceValidationException("엑셀에서 유효한 대상자를 찾을 수 없습니다.", List.of());
         }
 
+        String title = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 총회 출석";
+        return createSession(validMembers, adminLoginId, title, List.of());
+    }
+
+    // ✨ [신규] 디스코드 메시지 ID를 받아, 그 메시지에 ✅ 반응을 남긴 사람들을 대상자로 출석을 시작.
+    // 엑셀 업로드와 달리 "반응"은 관리자가 직접 정리한 공식 명단이 아니라 자연스러운 사용자 행동이므로
+    // (동아리원이 아닌 사람이 실수로 반응했거나, 아직 웹사이트에 가입하지 않은 경우가 있을 수 있음)
+    // 엑셀처럼 한 명이라도 문제 있으면 전체를 막지 않고, 매칭 안 되는 사람만 제외하고 시작한 뒤
+    // 제외된 목록을 응답에 담아 관리자에게 안내한다.
+    public AttendanceStartResponse startSessionFromDiscordMessage(String messageId, String adminLoginId) {
+        Optional<AttendanceSession> currentOpt = sessionRepository.findTopByOrderByIdDesc();
+        currentOpt.ifPresent(this::autoCloseIfExpired);
+        if (currentOpt.isPresent() && STATUS_ACTIVE.equals(currentOpt.get().getStatus())) {
+            throw new AttendanceValidationException("이미 진행 중인 출석이 있습니다. 먼저 종료해주세요.", List.of());
+        }
+        if (!StringUtils.hasText(messageId)) {
+            throw new AttendanceValidationException("디스코드 메시지 ID를 입력해주세요.", List.of());
+        }
+
+        Map<String, Object> result;
+        try {
+            result = discordBotClient.getMessageReactors(messageId.trim(), WHITE_CHECK_MARK);
+        } catch (Exception e) {
+            throw new AttendanceValidationException("디스코드 봇과 통신할 수 없습니다: " + e.getMessage(), List.of());
+        }
+
+        String status = String.valueOf(result.get("status"));
+        if (!"success".equals(status)) {
+            String message = result.get("message") != null ? result.get("message").toString() : "메시지에서 반응자를 가져오지 못했습니다.";
+            throw new AttendanceValidationException(message, List.of());
+        }
+
+        @SuppressWarnings("unchecked")
+        List<Map<String, Object>> reactors = (List<Map<String, Object>>) result.getOrDefault("members", List.of());
+
+        Map<String, Member> validMembers = new LinkedHashMap<>();
+        List<String> skipped = new ArrayList<>();
+        for (Map<String, Object> reactor : reactors) {
+            Object tagObj = reactor.get("discordTag");
+            String discordTag = tagObj != null ? tagObj.toString() : null;
+            if (!StringUtils.hasText(discordTag)) continue;
+
+            Optional<Member> memberOpt = memberRepository.findByDiscordTag(discordTag);
+            if (memberOpt.isEmpty() || memberOpt.get().isDeleted()) {
+                skipped.add(discordTag);
+                continue;
+            }
+            validMembers.put(memberOpt.get().getLoginId(), memberOpt.get());
+        }
+
+        if (validMembers.isEmpty()) {
+            throw new AttendanceValidationException(
+                    "해당 메시지에 ✅ 반응을 남긴 사람 중 웹사이트 회원으로 확인된 대상자가 없습니다.", List.of());
+        }
+
+        String title = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 총회 출석 (디스코드)";
+        return createSession(validMembers, adminLoginId, title, skipped);
+    }
+
+    private AttendanceStartResponse createSession(Map<String, Member> validMembers, String adminLoginId, String title, List<String> skippedReactors) {
         AttendanceSession session = new AttendanceSession();
         session.setCode(String.valueOf(100 + RANDOM.nextInt(900)));
         session.setStatus(STATUS_ACTIVE);
-        session.setTitle(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 총회 출석");
+        session.setTitle(title);
         session.setCreatedBy(adminLoginId);
         session.setStartedAt(LocalDateTime.now());
         session.setDurationSeconds(DURATION_SECONDS);
@@ -189,7 +251,7 @@ public class AttendanceService {
         }
         targetRepository.saveAll(targets);
 
-        return new AttendanceStartResponse(session.getId(), session.getCode(), session.getStartedAt(), session.getDurationSeconds(), targetInfos);
+        return new AttendanceStartResponse(session.getId(), session.getCode(), session.getStartedAt(), session.getDurationSeconds(), targetInfos, skippedReactors);
     }
 
     public AdminAttendanceStatusResponse getAdminStatus() {

@@ -199,6 +199,70 @@ async def get_guild_icon():
         return {"status": "success", "iconUrl": guild.icon.url}
     return {"status": "success", "iconUrl": None}
 
+# [기능 7] 총회 출석용 - 특정 메시지에 지정한 이모지(기본 ✅)로 반응한 사람 목록 조회.
+# 메시지가 어느 채널에 있는지 모르는 상태로 메시지 ID만 받으므로, 서버의 모든 텍스트 채널을
+# 순서대로 뒤져서 fetch_message가 성공하는 채널을 찾는다(채널 수가 아주 많지 않은 소규모
+# 동아리 서버 기준으로는 충분히 빠름).
+@app.get("/message-reactors/{message_id}")
+async def get_message_reactors(message_id: int, emoji: str = "✅"):
+    guild = bot.get_guild(GUILD_ID)
+    if not guild:
+        return {"status": "error", "message": "서버를 찾을 수 없습니다."}
+
+    target_message = None
+    for channel in guild.text_channels:
+        try:
+            target_message = await channel.fetch_message(message_id)
+            break
+        except (discord.NotFound, discord.Forbidden):
+            continue
+        except Exception:
+            continue
+
+    if target_message is None:
+        return {"status": "not_found", "message": "해당 메시지를 찾을 수 없습니다. 메시지 ID가 맞는지 확인해주세요."}
+
+    target_reaction = None
+    for reaction in target_message.reactions:
+        if str(reaction.emoji) == emoji:
+            target_reaction = reaction
+            break
+
+    if target_reaction is None:
+        return {"status": "no_reaction", "message": f"이 메시지에 '{emoji}' 반응이 하나도 없습니다."}
+
+    reactors = []
+    async for user in target_reaction.users():
+        if user.bot:
+            continue
+        member = guild.get_member(user.id)
+        if member is None:
+            try:
+                member = await guild.fetch_member(user.id)
+            except Exception:
+                member = None
+
+        if member:
+            reactors.append(get_member_status_info(member))
+        else:
+            # 서버를 이미 나간 사람 등, 길드 멤버 정보를 못 가져오는 경우에도 디스코드 태그는 남긴다
+            reactors.append({
+                "discordTag": user.name,
+                "name": user.display_name,
+                "studentId": "Unknown",
+                "userStatus": "일반",
+                "role": "USER",
+                "avatarUrl": str(user.display_avatar.url),
+            })
+
+    return {
+        "status": "success",
+        "messageId": str(message_id),
+        "channelName": getattr(target_message.channel, "name", ""),
+        "count": len(reactors),
+        "members": reactors,
+    }
+
 # 메인 실행 루프
 async def main():
     # 도커 컨테이너 외부에서도 접근 가능하도록 host를 "0.0.0.0"으로 변경
