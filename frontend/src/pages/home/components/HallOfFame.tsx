@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Trophy, Sparkles, ArrowRight } from "lucide-react";
+import { Trophy, Sparkles, ArrowRight, CalendarDays } from "lucide-react";
 
 const formatStudentId = (id?: string) => {
   if (!id) return "??";
@@ -78,6 +78,13 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                   {entry.title}
                 </h3>
                 <p className="text-[11px] md:text-sm text-slate-400 font-bold line-clamp-1">{entry.competitionName}</p>
+
+                {entry.date && (
+                  <div className="flex items-center gap-1 mt-1.5 text-[10px] md:text-xs text-slate-400 font-bold">
+                    <CalendarDays className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
+                    <span className="truncate">{entry.date}</span>
+                  </div>
+                )}
 
                 {entry.participants && entry.participants.length > 0 && (
                   <div className="flex flex-wrap items-center gap-1.5 mt-2.5">

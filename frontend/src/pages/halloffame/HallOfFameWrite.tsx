@@ -188,7 +188,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
             <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Date</label>
             <input
               type="text"
-              placeholder="예: 2026.08.29"
+              placeholder="예: 2026.08.29 또는 2026.08.11 ~ 2026.08.30"
               value={formData.date}
               onChange={(e) => setFormData({ ...formData, date: e.target.value })}
               className="w-full max-w-xs px-6 py-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500 transition-all"
