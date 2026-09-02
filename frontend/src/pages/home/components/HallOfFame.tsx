@@ -78,7 +78,7 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                       {entry.participants.slice(0, 3).map((p: any) => (
                         <div
                           key={p.loginId}
-                          className="flex items-center gap-1 md:gap-1.5 bg-white/95 backdrop-blur-sm shadow-md rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-white"
+                          className="flex items-center gap-1 md:gap-1.5 bg-white/60 backdrop-blur-md shadow-md rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-white/40"
                         >
                           <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
                             {p.profileImage ? (
