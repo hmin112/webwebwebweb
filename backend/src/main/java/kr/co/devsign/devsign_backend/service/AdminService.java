@@ -89,6 +89,7 @@ public class AdminService {
     static {
         heroSettings.put("recruitmentText", "2026 recruitment open");
         heroSettings.put("applyLink", "https://open.kakao.com/o/example");
+        heroSettings.put("applyButtonText", "지원하기");
     }
 
     // ✨ 핵심 3: 서버가 켜질 때마다 안전한 uploads 폴더에서 설정 파일을 읽어옵니다.
@@ -109,6 +110,9 @@ public class AdminService {
                     }
                     if (props.containsKey("applyLink")) {
                         heroSettings.put("applyLink", props.getProperty("applyLink"));
+                    }
+                    if (props.containsKey("applyButtonText")) {
+                        heroSettings.put("applyButtonText", props.getProperty("applyButtonText"));
                     }
                 }
             }
@@ -143,13 +147,17 @@ public class AdminService {
     }
 
     public HeroSettingsResponse getHeroSettings() {
-        return new HeroSettingsResponse(heroSettings.get("recruitmentText"), heroSettings.get("applyLink"));
+        return new HeroSettingsResponse(heroSettings.get("recruitmentText"), heroSettings.get("applyLink"), heroSettings.get("applyButtonText"));
     }
 
     public StatusResponse updateHeroSettings(HeroSettingsRequest settings) {
         heroSettings.put("recruitmentText", settings.recruitmentText());
         heroSettings.put("applyLink", settings.applyLink());
-        
+        // ConcurrentHashMap은 null 값을 허용하지 않으므로, 혹시 프론트에서 값이 안 왔다면 기본값 유지
+        if (settings.applyButtonText() != null && !settings.applyButtonText().isBlank()) {
+            heroSettings.put("applyButtonText", settings.applyButtonText());
+        }
+
         // ✨ 핵심 4: 메모리가 아닌 도커 볼륨(uploads 폴더)의 실제 파일에 영구 저장합니다.
         try {
             File uploadDir = getUploadBasePath().toFile();

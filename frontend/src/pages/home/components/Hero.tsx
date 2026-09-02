@@ -1,18 +1,19 @@
 import { api } from "../../../api/axios";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  ArrowRight, Code2, Sparkles, Users2, Pencil, Check, Link as LinkIcon,
-  Cpu, Database, Globe, Terminal, Boxes, 
+import {
+  ArrowRight, Code2, Sparkles, Users2, Pencil, Check, Link as LinkIcon, Type,
+  Cpu, Database, Globe, Terminal, Boxes,
   Layers, Monitor, Smartphone, Zap, Braces
-} from "lucide-react"; 
+} from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
 export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
   // 💡 기존 모집 문구 및 링크 상태 (로컬 스토리지 연동)
   const [recruitmentText, setRecruitmentText] = useState(() => localStorage.getItem("heroRecruitmentText") || "2026년 신입 부원 모집 중");
   const [applyLink, setApplyLink] = useState(() => localStorage.getItem("heroApplyLink") || "https://open.kakao.com/o/example");
-  
+  const [applyButtonText, setApplyButtonText] = useState(() => localStorage.getItem("heroApplyButtonText") || "지원하기");
+
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingLink, setIsEditingLink] = useState(false);
 
@@ -25,10 +26,14 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
         if (response.data) {
           setRecruitmentText(response.data.recruitmentText);
           setApplyLink(response.data.applyLink);
-          
+          // 기존에 저장된 값이 없는(백엔드 배포 전에 저장된) 경우를 대비해 기본값으로 보완
+          const buttonText = response.data.applyButtonText || "지원하기";
+          setApplyButtonText(buttonText);
+
           // 받아온 최신 데이터를 로컬 스토리지에도 안전하게 업데이트
           localStorage.setItem("heroRecruitmentText", response.data.recruitmentText);
           localStorage.setItem("heroApplyLink", response.data.applyLink);
+          localStorage.setItem("heroApplyButtonText", buttonText);
         }
       } catch (error) {
         console.error("Hero 설정을 불러오는 데 실패했습니다.", error);
@@ -38,16 +43,18 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
   }, []);
 
   // ✨ 2. 데이터 저장 로직 (백엔드 전송)
-  const saveSettings = async (text: string, link: string) => {
+  const saveSettings = async (text: string, link: string, buttonText: string) => {
     // 로컬 스토리지 동기화
     localStorage.setItem("heroRecruitmentText", text);
     localStorage.setItem("heroApplyLink", link);
+    localStorage.setItem("heroApplyButtonText", buttonText);
 
     if (isAdmin) {
       try {
         const response = await api.post("/admin/settings", {
           recruitmentText: text,
-          applyLink: link
+          applyLink: link,
+          applyButtonText: buttonText
         });
         
         // ✨ 핵심 2: 백엔드가 진짜로 저장을 성공했는지 팝업으로 명확하게 알려주기!
@@ -87,13 +94,13 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
   // 문구 수정 완료 핸들러
   const handleTextSubmit = () => {
     setIsEditing(false);
-    saveSettings(recruitmentText, applyLink);
+    saveSettings(recruitmentText, applyLink, applyButtonText);
   };
 
-  // 링크 수정 완료 핸들러
+  // 지원하기 버튼(문구+링크) 수정 완료 핸들러
   const handleLinkSubmit = () => {
     setIsEditingLink(false);
-    saveSettings(recruitmentText, applyLink);
+    saveSettings(recruitmentText, applyLink, applyButtonText);
   };
 
   return (
@@ -190,7 +197,7 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
               size="lg" 
               className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 md:px-10 md:py-7 rounded-xl md:rounded-2xl font-extrabold text-sm md:text-lg group shadow-xl shadow-indigo-100 transition-all hover:scale-105 active:scale-95"
             >
-              지원하기 <ArrowRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
+              {applyButtonText} <ArrowRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
             </Button>
             
             {isAdmin && (
@@ -212,18 +219,31 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
                 initial={{ opacity: 0, y: -10 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: -10 }}
-                className="w-full max-w-[280px] md:max-w-md bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/20 flex items-center gap-2 md:gap-3"
+                className="w-full max-w-[280px] md:max-w-md bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/20 flex flex-col gap-2.5 md:gap-3"
               >
-                <LinkIcon className="text-indigo-500 w-4 h-4 md:w-5 md:h-5" />
-                <input 
-                  type="text" 
-                  value={applyLink}
-                  onChange={(e) => setApplyLink(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
-                  placeholder="카카오톡 오픈채팅 링크 입력"
-                  className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
-                  autoFocus
-                />
+                <div className="flex items-center gap-2 md:gap-3">
+                  <Type className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
+                  <input
+                    type="text"
+                    value={applyButtonText}
+                    onChange={(e) => setApplyButtonText(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
+                    placeholder="버튼 문구 입력 (예: 지원하기)"
+                    className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
+                    autoFocus
+                  />
+                </div>
+                <div className="flex items-center gap-2 md:gap-3">
+                  <LinkIcon className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
+                  <input
+                    type="text"
+                    value={applyLink}
+                    onChange={(e) => setApplyLink(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
+                    placeholder="카카오톡 오픈채팅 링크 입력"
+                    className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
+                  />
+                </div>
               </motion.div>
             )}
           </AnimatePresence>
