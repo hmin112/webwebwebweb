@@ -4,6 +4,9 @@ import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
 import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
 import kr.co.devsign.devsign_backend.entity.AssemblyProject;
 import kr.co.devsign.devsign_backend.entity.AssemblyReport;
+import kr.co.devsign.devsign_backend.entity.PlanBudgetItem;
+import kr.co.devsign.devsign_backend.entity.PlanRole;
+import kr.co.devsign.devsign_backend.entity.PlanTask;
 import kr.co.devsign.devsign_backend.entity.TeamMember;
 import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyProjectRepository;
@@ -34,6 +37,7 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
@@ -249,10 +253,17 @@ public class AssemblyService {
 
     private void applyPlanFields(AssemblyReport report, SavePlanRequest req) {
         report.setMemo(req.memo());
-        report.setPlanGoal(req.planGoal());
-        report.setPlanSchedule(req.planSchedule());
-        report.setPlanTeamRoles(req.planTeamRoles());
-        report.setPlanBudget(req.planBudget());
+        report.setPlanOverview(req.planOverview());
+        report.setPlanGoals(req.planGoals() != null ? new ArrayList<>(req.planGoals()) : new ArrayList<>());
+        report.setPlanTasks(req.planTasks() != null
+                ? req.planTasks().stream().map(t -> new PlanTask(t.task(), t.assignee(), t.deadline())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
+                : new ArrayList<>());
+        report.setPlanRoles(req.planRoles() != null
+                ? req.planRoles().stream().map(r -> new PlanRole(r.name(), r.role(), r.duties())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
+                : new ArrayList<>());
+        report.setPlanBudgetItems(req.planBudgetItems() != null
+                ? req.planBudgetItems().stream().map(b -> new PlanBudgetItem(b.item(), b.amount(), b.note())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
+                : new ArrayList<>());
         report.setPlanNotes(req.planNotes());
     }
 
@@ -301,10 +312,18 @@ public class AssemblyService {
             teammateReport.setPdfPath(report.getPdfPath());
             teammateReport.setOtherPath(report.getOtherPath());
             // ✨ [2026-09-02 추가] 웹 작성 계획서도 팀원에게 그대로 동기화
-            teammateReport.setPlanGoal(report.getPlanGoal());
-            teammateReport.setPlanSchedule(report.getPlanSchedule());
-            teammateReport.setPlanTeamRoles(report.getPlanTeamRoles());
-            teammateReport.setPlanBudget(report.getPlanBudget());
+            // (리스트는 두 엔티티가 같은 List 인스턴스를 공유하면 안 되므로 반드시 새로 복사)
+            teammateReport.setPlanOverview(report.getPlanOverview());
+            teammateReport.setPlanGoals(new ArrayList<>(report.getPlanGoals()));
+            teammateReport.setPlanTasks(report.getPlanTasks().stream()
+                    .map(t -> new PlanTask(t.getTask(), t.getAssignee(), t.getDeadline()))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
+            teammateReport.setPlanRoles(report.getPlanRoles().stream()
+                    .map(r -> new PlanRole(r.getName(), r.getRole(), r.getDuties()))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
+            teammateReport.setPlanBudgetItems(report.getPlanBudgetItems().stream()
+                    .map(b -> new PlanBudgetItem(b.getItem(), b.getAmount(), b.getNote()))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
             teammateReport.setPlanNotes(report.getPlanNotes());
 
             reportRepository.save(teammateReport);
@@ -425,10 +444,17 @@ public class AssemblyService {
                 report.getPresentationPath(),
                 report.getPdfPath(),
                 report.getOtherPath(),
-                report.getPlanGoal(),
-                report.getPlanSchedule(),
-                report.getPlanTeamRoles(),
-                report.getPlanBudget(),
+                report.getPlanOverview(),
+                new ArrayList<>(report.getPlanGoals()),
+                report.getPlanTasks().stream()
+                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanTaskDto(t.getTask(), t.getAssignee(), t.getDeadline()))
+                        .toList(),
+                report.getPlanRoles().stream()
+                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getName(), r.getRole(), r.getDuties()))
+                        .toList(),
+                report.getPlanBudgetItems().stream()
+                        .map(b -> new kr.co.devsign.devsign_backend.dto.assembly.PlanBudgetItemDto(b.getItem(), b.getAmount(), b.getNote()))
+                        .toList(),
                 report.getPlanNotes()
         );
     }

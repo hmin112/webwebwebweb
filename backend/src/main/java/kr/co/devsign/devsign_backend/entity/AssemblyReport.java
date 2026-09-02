@@ -4,6 +4,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.ArrayList;
+import java.util.List;
+
 @Entity
 @Getter @Setter
 public class AssemblyReport {
@@ -34,20 +37,29 @@ public class AssemblyReport {
     private String pdfPath;
     private String otherPath;
 
-    // ✨ [2026-09-02 추가] 계획서(PLAN)를 파일 업로드 대신 웹에서 바로 작성할 수 있도록 추가한 필드들.
-    // 예전 학기의 PLAN 제출은 파일 경로만 채워져 있고 이 필드들은 비어있는 채로 남아있음(마이그레이션 없음) —
-    // 화면에서는 이 필드 중 하나라도 값이 있으면 "웹 작성 계획서"로, 없으면 기존처럼 파일 기반으로 취급한다.
+    // ✨ [2026-09-02 추가, 2026-09-03 구조화된 양식으로 재구성] 계획서(PLAN)를 파일 업로드 대신
+    // 웹에서 바로 작성할 수 있도록 추가한 필드들. 예전 학기의 PLAN 제출은 파일 경로만 채워져 있고
+    // 이 필드들은 비어있는 채로 남아있음(마이그레이션 없음) — planOverview 등 이 필드 중 하나라도
+    // 값이 있으면 "웹 작성 계획서"로, 없으면 기존처럼 파일 기반으로 취급한다.
     @Column(columnDefinition = "LONGTEXT")
-    private String planGoal;          // 목표
+    private String planOverview;      // 배경 및 목표 개요
 
-    @Column(columnDefinition = "LONGTEXT")
-    private String planSchedule;      // 추진 일정
+    @ElementCollection
+    @CollectionTable(name = "assembly_plan_goals", joinColumns = @JoinColumn(name = "report_id"))
+    @Column(name = "goal_text", columnDefinition = "TEXT")
+    private List<String> planGoals = new ArrayList<>();          // 핵심 목표 (여러 개)
 
-    @Column(columnDefinition = "LONGTEXT")
-    private String planTeamRoles;     // 팀 구성 및 역할 분담
+    @ElementCollection
+    @CollectionTable(name = "assembly_plan_tasks", joinColumns = @JoinColumn(name = "report_id"))
+    private List<PlanTask> planTasks = new ArrayList<>();        // 작업 및 일정 (여러 개)
 
-    @Column(columnDefinition = "LONGTEXT")
-    private String planBudget;        // 예산 계획
+    @ElementCollection
+    @CollectionTable(name = "assembly_plan_roles", joinColumns = @JoinColumn(name = "report_id"))
+    private List<PlanRole> planRoles = new ArrayList<>();        // 역할 및 담당 (여러 명)
+
+    @ElementCollection
+    @CollectionTable(name = "assembly_plan_budget_items", joinColumns = @JoinColumn(name = "report_id"))
+    private List<PlanBudgetItem> planBudgetItems = new ArrayList<>(); // 예산 계획 (여러 항목)
 
     @Column(columnDefinition = "LONGTEXT")
     private String planNotes;         // 기타 참고사항

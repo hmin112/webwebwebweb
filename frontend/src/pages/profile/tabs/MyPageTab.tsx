@@ -7,12 +7,11 @@ import {
   Edit2, Save, MessageCircle, Upload, FileArchive, Loader2,
   Lock
 } from "lucide-react";
-import { AssemblyPlanEditor } from "./AssemblyPlanEditor";
 
-// 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 웹 작성 에디터를 씀.
+// 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 별도 페이지(AssemblyPlanPage)에서 웹으로 작성.
 const isPlanMonth = (month: number) => month === 3 || month === 9;
 
-export const MyPageTab = ({ loginId }: { loginId: string }) => {
+export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOpenPlanEditor?: (report: any) => void }) => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [projectTitle, setProjectTitle] = useState("");
   const [isEditingProject, setIsEditingProject] = useState(false);
@@ -316,6 +315,10 @@ export const MyPageTab = ({ loginId }: { loginId: string }) => {
             key={report.id}
             whileHover={{ scale: 1.01, y: -2 }}
             onClick={() => {
+              if (isPlanMonth(report.month)) {
+                onOpenPlanEditor?.(report);
+                return;
+              }
               setSelectedReport(report);
               setSubmissionMemo(report.memo || "");
               setUploadedFiles({ presentation: null, pdf: null, other: null });
@@ -361,71 +364,57 @@ export const MyPageTab = ({ loginId }: { loginId: string }) => {
                 <div>
                   <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] md:text-[10px] font-bold rounded-md uppercase border border-indigo-100">{selectedReport.month}월 자료</span>
                   <h3 className="text-xl md:text-3xl font-bold text-slate-900 mt-1 md:mt-2">
-                    {isPlanMonth(selectedReport.month)
-                      ? (isSubmittedStatus(selectedReport.status) ? "계획서 수정" : "계획서 작성")
-                      : (isSubmittedStatus(selectedReport.status) ? (selectedReport.isWithinPeriod ? "제출 내용 수정" : "제출 자료 확인") : "신규 자료 제출")}
+                    {isSubmittedStatus(selectedReport.status) ? (selectedReport.isWithinPeriod ? "제출 내용 수정" : "제출 자료 확인") : "신규 자료 제출"}
                   </h3>
                 </div>
                 <button onClick={() => setSelectedReport(null)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"><X size={18} /></button>
               </div>
 
-              {isPlanMonth(selectedReport.month) ? (
-                <AssemblyPlanEditor
-                  loginId={loginId}
-                  report={selectedReport}
-                  disabled={!selectedReport.isWithinPeriod}
-                  onSaved={fetchSubmissions}
-                  onRequestClose={() => setSelectedReport(null)}
-                />
-              ) : (
-                <>
-                  {!selectedReport.isWithinPeriod && (
-                    <div className="mb-6 p-3 md:p-4 bg-slate-900 rounded-xl md:rounded-2xl border border-slate-800 flex items-center gap-2 md:gap-3 text-white">
-                      <Lock size={16} className="text-indigo-400 shrink-0" />
-                      <div>
-                        <p className="text-xs font-bold">현재 제출 및 수정 가능 기간이 아닙니다.</p>
-                      </div>
-                    </div>
-                  )}
-
-                  <div className="mb-6 md:mb-8">
-                    <div className="flex items-center gap-1.5 mb-2 ml-1"><MessageCircle size={14} className="text-indigo-500" /><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">활동 요약</p></div>
-                    <textarea
-                      value={submissionMemo}
-                      onChange={(e) => setSubmissionMemo(e.target.value)}
-                      disabled={!selectedReport.isWithinPeriod}
-                      placeholder="활동 내용을 입력해주세요."
-                      className="w-full p-4 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm min-h-[80px] md:min-h-[100px] disabled:opacity-50 resize-none"
-                    />
+              {!selectedReport.isWithinPeriod && (
+                <div className="mb-6 p-3 md:p-4 bg-slate-900 rounded-xl md:rounded-2xl border border-slate-800 flex items-center gap-2 md:gap-3 text-white">
+                  <Lock size={16} className="text-indigo-400 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold">현재 제출 및 수정 가능 기간이 아닙니다.</p>
                   </div>
-
-                  <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
-                    <p className="text-[10px] md:text-xs font-bold text-slate-400 ml-1 uppercase">제출 파일 관리</p>
-                    <div className="grid grid-cols-1 gap-2 md:gap-3">
-                      <input type="file" accept=".ppt,.pptx" ref={fileRefs.presentation} className="hidden" onChange={handlePresentationFileChange} />
-                      <input type="file" accept=".pdf" ref={fileRefs.pdf} className="hidden" onChange={handlePdfFileChange} />
-                      <input type="file" ref={fileRefs.other} className="hidden" onChange={(e) => setUploadedFiles({ ...uploadedFiles, other: e.target.files![0] })} />
-
-                      <UploadSlot label="발표자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.presentationPath} fileName={uploadedFiles.presentation?.name} onDownload={() => handleDownload(selectedReport.presentationPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.presentation.current?.click()} />
-                      <UploadSlot label="PDF" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.pdfPath} fileName={uploadedFiles.pdf?.name} onDownload={() => handleDownload(selectedReport.pdfPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.pdf.current?.click()} />
-                      <UploadSlot label="기타 자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.otherPath} fileName={uploadedFiles.other?.name} onDownload={() => handleDownload(selectedReport.otherPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.other.current?.click()} />
-                    </div>
-                  </div>
-
-                  <div className="flex gap-3">
-                    <button onClick={() => setSelectedReport(null)} className="flex-1 py-3.5 md:py-5 bg-slate-50 text-slate-500 rounded-xl md:rounded-2xl font-bold text-xs md:text-base hover:bg-slate-100 transition-all">닫기</button>
-                    {selectedReport.isWithinPeriod && (
-                      <button
-                        onClick={handleSubmit}
-                        disabled={!canSubmit || isLoading}
-                        className={`flex-[2] py-3.5 md:py-5 rounded-xl md:rounded-2xl font-bold text-xs md:text-base transition-all flex items-center justify-center gap-2 ${canSubmit && !isLoading ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
-                      >
-                        {isLoading ? <Loader2 className="animate-spin" size={18} /> : (isSubmittedStatus(selectedReport.status) ? "수정 저장" : "제출 완료")}
-                      </button>
-                    )}
-                  </div>
-                </>
+                </div>
               )}
+
+              <div className="mb-6 md:mb-8">
+                <div className="flex items-center gap-1.5 mb-2 ml-1"><MessageCircle size={14} className="text-indigo-500" /><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">활동 요약</p></div>
+                <textarea
+                  value={submissionMemo}
+                  onChange={(e) => setSubmissionMemo(e.target.value)}
+                  disabled={!selectedReport.isWithinPeriod}
+                  placeholder="활동 내용을 입력해주세요."
+                  className="w-full p-4 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm min-h-[80px] md:min-h-[100px] disabled:opacity-50 resize-none"
+                />
+              </div>
+
+              <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
+                <p className="text-[10px] md:text-xs font-bold text-slate-400 ml-1 uppercase">제출 파일 관리</p>
+                <div className="grid grid-cols-1 gap-2 md:gap-3">
+                  <input type="file" accept=".ppt,.pptx" ref={fileRefs.presentation} className="hidden" onChange={handlePresentationFileChange} />
+                  <input type="file" accept=".pdf" ref={fileRefs.pdf} className="hidden" onChange={handlePdfFileChange} />
+                  <input type="file" ref={fileRefs.other} className="hidden" onChange={(e) => setUploadedFiles({ ...uploadedFiles, other: e.target.files![0] })} />
+
+                  <UploadSlot label="발표자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.presentationPath} fileName={uploadedFiles.presentation?.name} onDownload={() => handleDownload(selectedReport.presentationPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.presentation.current?.click()} />
+                  <UploadSlot label="PDF" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.pdfPath} fileName={uploadedFiles.pdf?.name} onDownload={() => handleDownload(selectedReport.pdfPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.pdf.current?.click()} />
+                  <UploadSlot label="기타 자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.otherPath} fileName={uploadedFiles.other?.name} onDownload={() => handleDownload(selectedReport.otherPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.other.current?.click()} />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => setSelectedReport(null)} className="flex-1 py-3.5 md:py-5 bg-slate-50 text-slate-500 rounded-xl md:rounded-2xl font-bold text-xs md:text-base hover:bg-slate-100 transition-all">닫기</button>
+                {selectedReport.isWithinPeriod && (
+                  <button
+                    onClick={handleSubmit}
+                    disabled={!canSubmit || isLoading}
+                    className={`flex-[2] py-3.5 md:py-5 rounded-xl md:rounded-2xl font-bold text-xs md:text-base transition-all flex items-center justify-center gap-2 ${canSubmit && !isLoading ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
+                  >
+                    {isLoading ? <Loader2 className="animate-spin" size={18} /> : (isSubmittedStatus(selectedReport.status) ? "수정 저장" : "제출 완료")}
+                  </button>
+                )}
+              </div>
             </motion.div>
           </div>
         )}

@@ -13,6 +13,7 @@ import { AdminPeriodTab } from "../profile/tabs/AdminPeriodTab";
 import { MemberDetailTab } from "../profile/tabs/MemberDetailTab";
 import { AttendanceMemberTab } from "./tabs/AttendanceMemberTab";
 import { AttendanceAdminTab } from "./tabs/AttendanceAdminTab";
+import { AssemblyPlanPage } from "../profile/tabs/AssemblyPlanPage";
 
 export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   isAdmin: boolean,
@@ -27,6 +28,14 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   const [selectedLoginId, setSelectedLoginId] = useState<string | null>(null);
   // ✨ 회원 상세를 어느 탭에서 열었는지 기억해뒀다가, 뒤로가기 시 그 탭으로 복귀시키기 위함
   const [memberDetailOrigin, setMemberDetailOrigin] = useState<string>("community");
+
+  // ✨ [2026-09-03 추가] 계획서(3월/9월) 작성 — 사이드바는 그대로 두고 메인 영역만
+  // 별도 "페이지"로 전환하는 방식(member-detail과 동일한 패턴)
+  const [planEditorReport, setPlanEditorReport] = useState<any | null>(null);
+  const handleOpenPlanEditor = (report: any) => {
+    setPlanEditorReport(report);
+    setActiveTab("plan-editor");
+  };
 
   const userMenus = [
     ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={18} /> }] : []),
@@ -47,6 +56,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   const handleTabChange = (id: string) => {
     setActiveTab(id);
     setSelectedLoginId(null);
+    setPlanEditorReport(null);
     setIsMobileMenuOpen(false);
   };
 
@@ -62,7 +72,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
       {/* 📱 모바일 전용: 알약 모양 상단 탭 (Sticky) */}
       <div className="lg:hidden sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-3 overflow-x-auto no-scrollbar flex gap-2">
         {allMenus.map((menu) => {
-          const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail");
+          const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor");
           return (
             <button
               key={menu.id}
@@ -94,7 +104,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
           {userMenus.map((menu) => (
             <SidebarLink
               key={menu.id}
-              active={activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail")}
+              active={activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor")}
               onClick={() => handleTabChange(menu.id)}
               icon={menu.icon}
               name={menu.name}
@@ -115,7 +125,16 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
       {/* ✨ 모바일에서 상단 탭 여유를 위해 패딩 살짝 조정 */}
       <main className="flex-1 p-5 md:p-12 overflow-y-auto">
         <AnimatePresence mode="wait">
-          {activeTab === "mypage" && <MyPageTab key="mypage" loginId={loginId} />}
+          {activeTab === "mypage" && <MyPageTab key="mypage" loginId={loginId} onOpenPlanEditor={handleOpenPlanEditor} />}
+
+          {activeTab === "plan-editor" && planEditorReport && (
+            <AssemblyPlanPage
+              key="plan-editor"
+              loginId={loginId}
+              report={planEditorReport}
+              onBack={() => setActiveTab("mypage")}
+            />
+          )}
 
           {activeTab === "community" && (
             <CommunityTab

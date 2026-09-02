@@ -702,10 +702,17 @@ public class AdminService {
                 projectTitle,
                 folderName,
                 report.getDate(),
-                report.getPlanGoal(),
-                report.getPlanSchedule(),
-                report.getPlanTeamRoles(),
-                report.getPlanBudget(),
+                report.getPlanOverview(),
+                report.getPlanGoals(),
+                report.getPlanTasks().stream()
+                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanTaskDto(t.getTask(), t.getAssignee(), t.getDeadline()))
+                        .toList(),
+                report.getPlanRoles().stream()
+                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getName(), r.getRole(), r.getDuties()))
+                        .toList(),
+                report.getPlanBudgetItems().stream()
+                        .map(b -> new kr.co.devsign.devsign_backend.dto.assembly.PlanBudgetItemDto(b.getItem(), b.getAmount(), b.getNote()))
+                        .toList(),
                 report.getPlanNotes()
         );
 
@@ -718,10 +725,11 @@ public class AdminService {
 
     private boolean isWebAuthoredPlan(AssemblyReport report) {
         return "PLAN".equals(report.getType()) && (
-                StringUtils.hasText(report.getPlanGoal())
-                        || StringUtils.hasText(report.getPlanSchedule())
-                        || StringUtils.hasText(report.getPlanTeamRoles())
-                        || StringUtils.hasText(report.getPlanBudget())
+                StringUtils.hasText(report.getPlanOverview())
+                        || !report.getPlanGoals().isEmpty()
+                        || !report.getPlanTasks().isEmpty()
+                        || !report.getPlanRoles().isEmpty()
+                        || !report.getPlanBudgetItems().isEmpty()
                         || StringUtils.hasText(report.getPlanNotes())
         );
     }

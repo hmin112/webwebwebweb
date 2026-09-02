@@ -3,14 +3,19 @@ package kr.co.devsign.devsign_backend.util;
 import com.lowagie.text.Document;
 import com.lowagie.text.Element;
 import com.lowagie.text.Font;
-import com.lowagie.text.FontFactory;
 import com.lowagie.text.PageSize;
 import com.lowagie.text.Paragraph;
+import com.lowagie.text.pdf.PdfPCell;
+import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
+import kr.co.devsign.devsign_backend.dto.assembly.PlanBudgetItemDto;
+import kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto;
+import kr.co.devsign.devsign_backend.dto.assembly.PlanTaskDto;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
 import java.io.InputStream;
+import java.util.List;
 
 // 총회 계획서(PLAN)를 웹에서 작성한 내용을 관리자 ZIP 다운로드용 PDF로 변환.
 // 한글이 어떤 뷰어에서도 깨지지 않도록, 시스템 폰트에 의존하지 않고 한글 서브셋 폰트(NotoSansKR)를
@@ -19,14 +24,21 @@ import java.io.InputStream;
 public class PlanPdfGenerator {
 
     private static final String FONT_RESOURCE = "/fonts/NotoSansKR.ttf";
+    private static final float[] TASK_WIDTHS = {3f, 2f, 1.5f};
+    private static final float[] ROLE_WIDTHS = {1.5f, 1.5f, 3f};
+    private static final float[] BUDGET_WIDTHS = {2.5f, 1.5f, 2.5f};
 
-    public byte[] generate(String title, String competitionOrProjectTitle, String date,
-                            String goal, String schedule, String teamRoles, String budget, String notes) {
+    public byte[] generate(String title, String author, String date, String planOverview,
+                            List<String> planGoals, List<PlanTaskDto> planTasks,
+                            List<PlanRoleDto> planRoles, List<PlanBudgetItemDto> planBudgetItems,
+                            String planNotes) {
         try {
             Font titleFont = loadFont(20, Font.BOLD);
             Font headingFont = loadFont(13, Font.BOLD);
             Font bodyFont = loadFont(11, Font.NORMAL);
             Font metaFont = loadFont(10, Font.NORMAL);
+            Font tableHeaderFont = loadFont(10, Font.BOLD);
+            Font tableBodyFont = loadFont(10, Font.NORMAL);
 
             Document document = new Document(PageSize.A4, 50, 50, 50, 50);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
@@ -34,27 +46,22 @@ public class PlanPdfGenerator {
             document.open();
 
             document.add(new Paragraph(title != null && !title.isBlank() ? title : "프로젝트 계획서", titleFont));
-            if (competitionOrProjectTitle != null && !competitionOrProjectTitle.isBlank()) {
-                Paragraph sub = new Paragraph(competitionOrProjectTitle, metaFont);
+            if (author != null && !author.isBlank()) {
+                Paragraph sub = new Paragraph(author, metaFont);
                 sub.setSpacingBefore(4f);
                 document.add(sub);
             }
-            if (date != null && !date.isBlank()) {
-                Paragraph dateP = new Paragraph(date, metaFont);
-                dateP.setSpacingBefore(2f);
-                dateP.setSpacingAfter(16f);
-                document.add(dateP);
-            } else {
-                Paragraph spacer = new Paragraph(" ", metaFont);
-                spacer.setSpacingAfter(12f);
-                document.add(spacer);
-            }
+            Paragraph dateP = new Paragraph(date != null && !date.isBlank() ? date : "", metaFont);
+            dateP.setSpacingBefore(2f);
+            dateP.setSpacingAfter(16f);
+            document.add(dateP);
 
-            addSection(document, "목표", goal, headingFont, bodyFont);
-            addSection(document, "추진 일정", schedule, headingFont, bodyFont);
-            addSection(document, "팀 구성 및 역할 분담", teamRoles, headingFont, bodyFont);
-            addSection(document, "예산 계획", budget, headingFont, bodyFont);
-            addSection(document, "기타 참고사항", notes, headingFont, bodyFont);
+            addTextSection(document, "배경 및 목표 개요", planOverview, headingFont, bodyFont);
+            addListSection(document, "핵심 목표", planGoals, headingFont, bodyFont);
+            addTaskTableSection(document, "작업 및 일정", planTasks, headingFont, tableHeaderFont, tableBodyFont);
+            addRoleTableSection(document, "역할 및 담당", planRoles, headingFont, tableHeaderFont, tableBodyFont);
+            addBudgetTableSection(document, "예산 계획", planBudgetItems, headingFont, tableHeaderFont, tableBodyFont);
+            addTextSection(document, "기타 참고사항", planNotes, headingFont, bodyFont);
 
             document.close();
             return out.toByteArray();
@@ -63,17 +70,108 @@ public class PlanPdfGenerator {
         }
     }
 
-    private void addSection(Document document, String heading, String content, Font headingFont, Font bodyFont) throws Exception {
-        if (content == null || content.isBlank()) return;
-
+    private void addHeading(Document document, String heading, Font headingFont) throws Exception {
         Paragraph headingP = new Paragraph(heading, headingFont);
-        headingP.setSpacingBefore(14f);
+        headingP.setSpacingBefore(16f);
         headingP.setSpacingAfter(6f);
         document.add(headingP);
+    }
 
-        Paragraph bodyP = new Paragraph(content, bodyFont);
-        bodyP.setAlignment(Element.ALIGN_LEFT);
-        document.add(bodyP);
+    private void addTextSection(Document document, String heading, String content, Font headingFont, Font bodyFont) throws Exception {
+        if (content == null || content.isBlank()) return;
+        addHeading(document, heading, headingFont);
+        document.add(new Paragraph(content, bodyFont));
+    }
+
+    private void addListSection(Document document, String heading, List<String> items, Font headingFont, Font bodyFont) throws Exception {
+        if (items == null || items.isEmpty()) return;
+        addHeading(document, heading, headingFont);
+        for (String item : items) {
+            if (item == null || item.isBlank()) continue;
+            Paragraph p = new Paragraph("•  " + item, bodyFont);
+            p.setSpacingAfter(3f);
+            document.add(p);
+        }
+    }
+
+    private void addTaskTableSection(Document document, String heading, List<PlanTaskDto> rows,
+                                      Font headingFont, Font headerFont, Font bodyFont) throws Exception {
+        List<PlanTaskDto> valid = rows == null ? List.of() : rows.stream()
+                .filter(r -> hasText(r.task()) || hasText(r.assignee()) || hasText(r.deadline())).toList();
+        if (valid.isEmpty()) return;
+        addHeading(document, heading, headingFont);
+        PdfPTable table = newTable(TASK_WIDTHS);
+        addHeaderCell(table, "작업명", headerFont);
+        addHeaderCell(table, "담당자", headerFont);
+        addHeaderCell(table, "기한", headerFont);
+        for (PlanTaskDto row : valid) {
+            addBodyCell(table, row.task(), bodyFont);
+            addBodyCell(table, row.assignee(), bodyFont);
+            addBodyCell(table, row.deadline(), bodyFont);
+        }
+        document.add(table);
+    }
+
+    private void addRoleTableSection(Document document, String heading, List<PlanRoleDto> rows,
+                                      Font headingFont, Font headerFont, Font bodyFont) throws Exception {
+        List<PlanRoleDto> valid = rows == null ? List.of() : rows.stream()
+                .filter(r -> hasText(r.name()) || hasText(r.role()) || hasText(r.duties())).toList();
+        if (valid.isEmpty()) return;
+        addHeading(document, heading, headingFont);
+        PdfPTable table = newTable(ROLE_WIDTHS);
+        addHeaderCell(table, "이름", headerFont);
+        addHeaderCell(table, "역할", headerFont);
+        addHeaderCell(table, "담당 업무", headerFont);
+        for (PlanRoleDto row : valid) {
+            addBodyCell(table, row.name(), bodyFont);
+            addBodyCell(table, row.role(), bodyFont);
+            addBodyCell(table, row.duties(), bodyFont);
+        }
+        document.add(table);
+    }
+
+    private void addBudgetTableSection(Document document, String heading, List<PlanBudgetItemDto> rows,
+                                        Font headingFont, Font headerFont, Font bodyFont) throws Exception {
+        List<PlanBudgetItemDto> valid = rows == null ? List.of() : rows.stream()
+                .filter(r -> hasText(r.item()) || hasText(r.amount()) || hasText(r.note())).toList();
+        if (valid.isEmpty()) return;
+        addHeading(document, heading, headingFont);
+        PdfPTable table = newTable(BUDGET_WIDTHS);
+        addHeaderCell(table, "항목", headerFont);
+        addHeaderCell(table, "금액", headerFont);
+        addHeaderCell(table, "비고", headerFont);
+        for (PlanBudgetItemDto row : valid) {
+            addBodyCell(table, row.item(), bodyFont);
+            addBodyCell(table, row.amount(), bodyFont);
+            addBodyCell(table, row.note(), bodyFont);
+        }
+        document.add(table);
+    }
+
+    private boolean hasText(String s) {
+        return s != null && !s.isBlank();
+    }
+
+    private PdfPTable newTable(float[] widths) throws Exception {
+        PdfPTable table = new PdfPTable(widths);
+        table.setWidthPercentage(100);
+        table.setSpacingBefore(2f);
+        return table;
+    }
+
+    private void addHeaderCell(PdfPTable table, String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Paragraph(text, font));
+        cell.setBackgroundColor(new java.awt.Color(0x33, 0x33, 0x33));
+        cell.setPadding(6f);
+        cell.setHorizontalAlignment(Element.ALIGN_LEFT);
+        cell.getPhrase().getFont().setColor(java.awt.Color.WHITE);
+        table.addCell(cell);
+    }
+
+    private void addBodyCell(PdfPTable table, String text, Font font) {
+        PdfPCell cell = new PdfPCell(new Paragraph(text == null ? "" : text, font));
+        cell.setPadding(6f);
+        table.addCell(cell);
     }
 
     private Font loadFont(float size, int style) throws Exception {
