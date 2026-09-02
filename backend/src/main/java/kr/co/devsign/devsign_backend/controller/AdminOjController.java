@@ -2,10 +2,12 @@ package kr.co.devsign.devsign_backend.controller;
 
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.service.OjClient;
+import kr.co.devsign.devsign_backend.service.OjFolderService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.List;
 import java.util.Map;
 
 // devsign 안에서 OJ 문제를 관리(생성/숨김·표시/삭제/태그)하기 위한 관리자 전용 프록시.
@@ -16,6 +18,7 @@ import java.util.Map;
 public class AdminOjController {
 
     private final OjClient ojClient;
+    private final OjFolderService ojFolderService;
 
     @GetMapping("/problems")
     public Map<String, Object> listProblems(
@@ -67,9 +70,42 @@ public class AdminOjController {
     }
 
     // 폴더(=태그) 이름 변경 — 그 태그가 붙은 문제를 전부 찾아 태그 이름을 일괄 바꿔치기함
+    // + 레지스트리에 등록된(빈) 폴더 경로도 함께 갱신
     @PutMapping("/folders/rename")
     public Map<String, Object> renameFolder(@RequestParam String oldName, @RequestParam String newName) {
         int updated = ojClient.adminRenameFolder(oldName.trim(), newName.trim());
+        ojFolderService.renamePath(oldName.trim(), newName.trim());
         return Map.of("status", "success", "updatedCount", updated);
+    }
+
+    // 빈 폴더를 미리 만들어두는 레지스트리 (드래그로 문제를 넣기 전에도 폴더가 보이도록)
+    @GetMapping("/folders")
+    public List<String> listRegisteredFolders() {
+        return ojFolderService.getAllFolderPaths();
+    }
+
+    @PostMapping("/folders")
+    public StatusResponse createFolder(@RequestParam String path) {
+        ojFolderService.createFolder(path.trim());
+        return StatusResponse.success();
+    }
+
+    @DeleteMapping("/folders")
+    public StatusResponse deleteFolderRegistry(@RequestParam String path) {
+        ojFolderService.deleteFolder(path.trim());
+        return StatusResponse.success();
+    }
+
+    // 드래그 앤 드롭으로 문제를 폴더에 넣거나(add) 빼는(remove) 동작
+    @PutMapping("/problems/{id}/tags")
+    public StatusResponse addTag(@PathVariable Long id, @RequestParam String folder) {
+        ojClient.adminAddTagToProblem(id, folder);
+        return StatusResponse.success();
+    }
+
+    @DeleteMapping("/problems/{id}/tags")
+    public StatusResponse removeTag(@PathVariable Long id, @RequestParam String folder) {
+        ojClient.adminRemoveTagFromProblem(id, folder);
+        return StatusResponse.success();
     }
 }

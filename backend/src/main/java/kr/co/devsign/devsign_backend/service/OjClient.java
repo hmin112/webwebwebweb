@@ -243,6 +243,29 @@ public class OjClient {
         adminUpdateProblem(id, body);
     }
 
+    // 문제를 끌어다 폴더에 놓는 동작(드래그 앤 드롭) — 기존 태그는 그대로 두고 새 폴더 태그만 추가
+    @SuppressWarnings("unchecked")
+    public void adminAddTagToProblem(Long id, String folder) {
+        Map<String, Object> detail = adminGetProblemDetail(id);
+        List<String> tags = new ArrayList<>((List<String>) detail.getOrDefault("tags", List.of()));
+        if (!tags.contains(folder)) {
+            tags.add(folder);
+        }
+        Map<String, Object> body = new HashMap<>(detail);
+        body.put("tags", tags);
+        adminUpdateProblem(id, body);
+    }
+
+    @SuppressWarnings("unchecked")
+    public void adminRemoveTagFromProblem(Long id, String folder) {
+        Map<String, Object> detail = adminGetProblemDetail(id);
+        List<String> tags = new ArrayList<>((List<String>) detail.getOrDefault("tags", List.of()));
+        tags.remove(folder);
+        Map<String, Object> body = new HashMap<>(detail);
+        body.put("tags", tags);
+        adminUpdateProblem(id, body);
+    }
+
     // 폴더 = 태그(자유 문자열)라 QDUOJ에 "태그 이름 변경" API가 따로 없음. 그 태그를 가진 문제를
     // 전부 찾아 하나씩 태그 이름을 바꿔치기하는 방식으로 "폴더 이름 변경"을 구현.
     @SuppressWarnings("unchecked")
