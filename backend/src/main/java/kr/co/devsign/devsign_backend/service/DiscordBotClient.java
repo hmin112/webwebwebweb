@@ -58,9 +58,11 @@ public class DiscordBotClient {
     }
 
     // ✨ [신규] 총회 출석 — 특정 메시지에 지정한 이모지로 반응한 사람 목록 조회
+    // ⚠️ emoji를 미리 URLEncoder로 인코딩한 뒤 RestTemplate에 완성된 문자열로 넘기면, RestTemplate이
+    // URI 템플릿을 만들며 그 문자열을 다시 한 번 인코딩해(%가 %25로) 이중 인코딩이 발생한다.
+    // 대신 {emoji}를 URI 템플릿 변수로 넘겨 RestTemplate이 원본 문자열을 "정확히 한 번만" 인코딩하게 한다.
     public Map<String, Object> getMessageReactors(String messageId, String emoji) {
-        String encodedEmoji = java.net.URLEncoder.encode(emoji, java.nio.charset.StandardCharsets.UTF_8);
-        String url = botBaseUrl + "/message-reactors/" + messageId + "?emoji=" + encodedEmoji;
-        return restTemplate.getForObject(url, Map.class);
+        String url = botBaseUrl + "/message-reactors/{messageId}?emoji={emoji}";
+        return restTemplate.getForObject(url, Map.class, messageId, emoji);
     }
 }
