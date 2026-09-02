@@ -1,4 +1,4 @@
 package kr.co.devsign.devsign_backend.dto.assembly;
 
-public record PlanRoleDto(String name, String role, String duties) {
+public record PlanRoleDto(String loginId, String name, String role, String duties) {
 }

@@ -704,14 +704,14 @@ public class AdminService {
                 report.getDate(),
                 report.getPlanOverview(),
                 report.getPlanGoals(),
-                report.getPlanTasks().stream()
-                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanTaskDto(t.getTask(), t.getAssignee(), t.getDeadline()))
+                report.getPlanRoadmapItems().stream()
+                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoadmapItemDto(t.getTitle(), t.getStartDate(), t.getEndDate(), t.getDetail()))
                         .toList(),
                 report.getPlanRoles().stream()
-                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getName(), r.getRole(), r.getDuties()))
+                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getLoginId(), r.getName(), r.getRole(), r.getDuties()))
                         .toList(),
-                report.getPlanBudgetItems().stream()
-                        .map(b -> new kr.co.devsign.devsign_backend.dto.assembly.PlanBudgetItemDto(b.getItem(), b.getAmount(), b.getNote()))
+                report.getPlanLinks().stream()
+                        .map(l -> new kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto(l.getLabel(), l.getUrl()))
                         .toList(),
                 report.getPlanNotes()
         );
@@ -727,9 +727,9 @@ public class AdminService {
         return "PLAN".equals(report.getType()) && (
                 StringUtils.hasText(report.getPlanOverview())
                         || !report.getPlanGoals().isEmpty()
-                        || !report.getPlanTasks().isEmpty()
+                        || !report.getPlanRoadmapItems().isEmpty()
                         || !report.getPlanRoles().isEmpty()
-                        || !report.getPlanBudgetItems().isEmpty()
+                        || !report.getPlanLinks().isEmpty()
                         || StringUtils.hasText(report.getPlanNotes())
         );
     }

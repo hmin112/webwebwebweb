@@ -11,9 +11,9 @@ public record SavePlanRequest(
         String memo,
         String planOverview,
         List<String> planGoals,
-        List<PlanTaskDto> planTasks,
+        List<PlanRoadmapItemDto> planRoadmapItems,
         List<PlanRoleDto> planRoles,
-        List<PlanBudgetItemDto> planBudgetItems,
+        List<PlanLinkDto> planLinks,
         String planNotes
 ) {
 }

@@ -4,9 +4,9 @@ import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
 import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
 import kr.co.devsign.devsign_backend.entity.AssemblyProject;
 import kr.co.devsign.devsign_backend.entity.AssemblyReport;
-import kr.co.devsign.devsign_backend.entity.PlanBudgetItem;
+import kr.co.devsign.devsign_backend.entity.PlanLink;
+import kr.co.devsign.devsign_backend.entity.PlanRoadmapItem;
 import kr.co.devsign.devsign_backend.entity.PlanRole;
-import kr.co.devsign.devsign_backend.entity.PlanTask;
 import kr.co.devsign.devsign_backend.entity.TeamMember;
 import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyProjectRepository;
@@ -255,14 +255,14 @@ public class AssemblyService {
         report.setMemo(req.memo());
         report.setPlanOverview(req.planOverview());
         report.setPlanGoals(req.planGoals() != null ? new ArrayList<>(req.planGoals()) : new ArrayList<>());
-        report.setPlanTasks(req.planTasks() != null
-                ? req.planTasks().stream().map(t -> new PlanTask(t.task(), t.assignee(), t.deadline())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
+        report.setPlanRoadmapItems(req.planRoadmapItems() != null
+                ? req.planRoadmapItems().stream().map(t -> new PlanRoadmapItem(t.title(), t.startDate(), t.endDate(), t.detail())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
                 : new ArrayList<>());
         report.setPlanRoles(req.planRoles() != null
-                ? req.planRoles().stream().map(r -> new PlanRole(r.name(), r.role(), r.duties())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
+                ? req.planRoles().stream().map(r -> new PlanRole(r.loginId(), r.name(), r.role(), r.duties())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
                 : new ArrayList<>());
-        report.setPlanBudgetItems(req.planBudgetItems() != null
-                ? req.planBudgetItems().stream().map(b -> new PlanBudgetItem(b.item(), b.amount(), b.note())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
+        report.setPlanLinks(req.planLinks() != null
+                ? req.planLinks().stream().map(l -> new PlanLink(l.label(), l.url())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
                 : new ArrayList<>());
         report.setPlanNotes(req.planNotes());
     }
@@ -315,14 +315,14 @@ public class AssemblyService {
             // (리스트는 두 엔티티가 같은 List 인스턴스를 공유하면 안 되므로 반드시 새로 복사)
             teammateReport.setPlanOverview(report.getPlanOverview());
             teammateReport.setPlanGoals(new ArrayList<>(report.getPlanGoals()));
-            teammateReport.setPlanTasks(report.getPlanTasks().stream()
-                    .map(t -> new PlanTask(t.getTask(), t.getAssignee(), t.getDeadline()))
+            teammateReport.setPlanRoadmapItems(report.getPlanRoadmapItems().stream()
+                    .map(t -> new PlanRoadmapItem(t.getTitle(), t.getStartDate(), t.getEndDate(), t.getDetail()))
                     .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
             teammateReport.setPlanRoles(report.getPlanRoles().stream()
-                    .map(r -> new PlanRole(r.getName(), r.getRole(), r.getDuties()))
+                    .map(r -> new PlanRole(r.getLoginId(), r.getName(), r.getRole(), r.getDuties()))
                     .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
-            teammateReport.setPlanBudgetItems(report.getPlanBudgetItems().stream()
-                    .map(b -> new PlanBudgetItem(b.getItem(), b.getAmount(), b.getNote()))
+            teammateReport.setPlanLinks(report.getPlanLinks().stream()
+                    .map(l -> new PlanLink(l.getLabel(), l.getUrl()))
                     .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
             teammateReport.setPlanNotes(report.getPlanNotes());
 
@@ -446,14 +446,14 @@ public class AssemblyService {
                 report.getOtherPath(),
                 report.getPlanOverview(),
                 new ArrayList<>(report.getPlanGoals()),
-                report.getPlanTasks().stream()
-                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanTaskDto(t.getTask(), t.getAssignee(), t.getDeadline()))
+                report.getPlanRoadmapItems().stream()
+                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoadmapItemDto(t.getTitle(), t.getStartDate(), t.getEndDate(), t.getDetail()))
                         .toList(),
                 report.getPlanRoles().stream()
-                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getName(), r.getRole(), r.getDuties()))
+                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getLoginId(), r.getName(), r.getRole(), r.getDuties()))
                         .toList(),
-                report.getPlanBudgetItems().stream()
-                        .map(b -> new kr.co.devsign.devsign_backend.dto.assembly.PlanBudgetItemDto(b.getItem(), b.getAmount(), b.getNote()))
+                report.getPlanLinks().stream()
+                        .map(l -> new kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto(l.getLabel(), l.getUrl()))
                         .toList(),
                 report.getPlanNotes()
         );

@@ -19,9 +19,9 @@ public record AssemblyReportResponse(
         String otherPath,
         String planOverview,
         List<String> planGoals,
-        List<PlanTaskDto> planTasks,
+        List<PlanRoadmapItemDto> planRoadmapItems,
         List<PlanRoleDto> planRoles,
-        List<PlanBudgetItemDto> planBudgetItems,
+        List<PlanLinkDto> planLinks,
         String planNotes
 ) {
 }

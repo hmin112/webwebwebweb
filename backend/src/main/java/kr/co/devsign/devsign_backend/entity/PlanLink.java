@@ -10,8 +10,7 @@ import lombok.Setter;
 @Getter @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-public class PlanBudgetItem {
-    private String item;   // 항목
-    private String amount; // 금액
-    private String note;   // 비고
+public class PlanLink {
+    private String label; // 예: Git, Notion
+    private String url;
 }

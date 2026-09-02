@@ -8,9 +8,9 @@ import com.lowagie.text.Paragraph;
 import com.lowagie.text.pdf.PdfPCell;
 import com.lowagie.text.pdf.PdfPTable;
 import com.lowagie.text.pdf.PdfWriter;
-import kr.co.devsign.devsign_backend.dto.assembly.PlanBudgetItemDto;
+import kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto;
+import kr.co.devsign.devsign_backend.dto.assembly.PlanRoadmapItemDto;
 import kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto;
-import kr.co.devsign.devsign_backend.dto.assembly.PlanTaskDto;
 import org.springframework.stereotype.Component;
 
 import java.io.ByteArrayOutputStream;
@@ -24,13 +24,13 @@ import java.util.List;
 public class PlanPdfGenerator {
 
     private static final String FONT_RESOURCE = "/fonts/NotoSansKR.ttf";
-    private static final float[] TASK_WIDTHS = {3f, 2f, 1.5f};
+    private static final float[] ROADMAP_WIDTHS = {2.5f, 2f, 3.5f};
     private static final float[] ROLE_WIDTHS = {1.5f, 1.5f, 3f};
-    private static final float[] BUDGET_WIDTHS = {2.5f, 1.5f, 2.5f};
+    private static final float[] LINK_WIDTHS = {1.5f, 4.5f};
 
     public byte[] generate(String title, String author, String date, String planOverview,
-                            List<String> planGoals, List<PlanTaskDto> planTasks,
-                            List<PlanRoleDto> planRoles, List<PlanBudgetItemDto> planBudgetItems,
+                            List<String> planGoals, List<PlanRoadmapItemDto> planRoadmapItems,
+                            List<PlanRoleDto> planRoles, List<PlanLinkDto> planLinks,
                             String planNotes) {
         try {
             Font titleFont = loadFont(20, Font.BOLD);
@@ -58,9 +58,9 @@ public class PlanPdfGenerator {
 
             addTextSection(document, "배경 및 목표 개요", planOverview, headingFont, bodyFont);
             addListSection(document, "핵심 목표", planGoals, headingFont, bodyFont);
-            addTaskTableSection(document, "작업 및 일정", planTasks, headingFont, tableHeaderFont, tableBodyFont);
+            addRoadmapTableSection(document, "로드맵", planRoadmapItems, headingFont, tableHeaderFont, tableBodyFont);
             addRoleTableSection(document, "역할 및 담당", planRoles, headingFont, tableHeaderFont, tableBodyFont);
-            addBudgetTableSection(document, "예산 계획", planBudgetItems, headingFont, tableHeaderFont, tableBodyFont);
+            addLinkTableSection(document, "관련 링크", planLinks, headingFont, tableHeaderFont, tableBodyFont);
             addTextSection(document, "기타 참고사항", planNotes, headingFont, bodyFont);
 
             document.close();
@@ -94,20 +94,21 @@ public class PlanPdfGenerator {
         }
     }
 
-    private void addTaskTableSection(Document document, String heading, List<PlanTaskDto> rows,
-                                      Font headingFont, Font headerFont, Font bodyFont) throws Exception {
-        List<PlanTaskDto> valid = rows == null ? List.of() : rows.stream()
-                .filter(r -> hasText(r.task()) || hasText(r.assignee()) || hasText(r.deadline())).toList();
+    private void addRoadmapTableSection(Document document, String heading, List<PlanRoadmapItemDto> rows,
+                                         Font headingFont, Font headerFont, Font bodyFont) throws Exception {
+        List<PlanRoadmapItemDto> valid = rows == null ? List.of() : rows.stream()
+                .filter(r -> hasText(r.title()) || hasText(r.startDate()) || hasText(r.endDate()) || hasText(r.detail())).toList();
         if (valid.isEmpty()) return;
         addHeading(document, heading, headingFont);
-        PdfPTable table = newTable(TASK_WIDTHS);
-        addHeaderCell(table, "작업명", headerFont);
-        addHeaderCell(table, "담당자", headerFont);
-        addHeaderCell(table, "기한", headerFont);
-        for (PlanTaskDto row : valid) {
-            addBodyCell(table, row.task(), bodyFont);
-            addBodyCell(table, row.assignee(), bodyFont);
-            addBodyCell(table, row.deadline(), bodyFont);
+        PdfPTable table = newTable(ROADMAP_WIDTHS);
+        addHeaderCell(table, "제목", headerFont);
+        addHeaderCell(table, "기간", headerFont);
+        addHeaderCell(table, "상세 내용", headerFont);
+        for (PlanRoadmapItemDto row : valid) {
+            String period = (hasText(row.startDate()) ? row.startDate() : "?") + " ~ " + (hasText(row.endDate()) ? row.endDate() : "?");
+            addBodyCell(table, row.title(), bodyFont);
+            addBodyCell(table, period, bodyFont);
+            addBodyCell(table, row.detail(), bodyFont);
         }
         document.add(table);
     }
@@ -130,20 +131,18 @@ public class PlanPdfGenerator {
         document.add(table);
     }
 
-    private void addBudgetTableSection(Document document, String heading, List<PlanBudgetItemDto> rows,
-                                        Font headingFont, Font headerFont, Font bodyFont) throws Exception {
-        List<PlanBudgetItemDto> valid = rows == null ? List.of() : rows.stream()
-                .filter(r -> hasText(r.item()) || hasText(r.amount()) || hasText(r.note())).toList();
+    private void addLinkTableSection(Document document, String heading, List<PlanLinkDto> rows,
+                                      Font headingFont, Font headerFont, Font bodyFont) throws Exception {
+        List<PlanLinkDto> valid = rows == null ? List.of() : rows.stream()
+                .filter(r -> hasText(r.label()) || hasText(r.url())).toList();
         if (valid.isEmpty()) return;
         addHeading(document, heading, headingFont);
-        PdfPTable table = newTable(BUDGET_WIDTHS);
-        addHeaderCell(table, "항목", headerFont);
-        addHeaderCell(table, "금액", headerFont);
-        addHeaderCell(table, "비고", headerFont);
-        for (PlanBudgetItemDto row : valid) {
-            addBodyCell(table, row.item(), bodyFont);
-            addBodyCell(table, row.amount(), bodyFont);
-            addBodyCell(table, row.note(), bodyFont);
+        PdfPTable table = newTable(LINK_WIDTHS);
+        addHeaderCell(table, "이름", headerFont);
+        addHeaderCell(table, "링크", headerFont);
+        for (PlanLinkDto row : valid) {
+            addBodyCell(table, row.label(), bodyFont);
+            addBodyCell(table, row.url(), bodyFont);
         }
         document.add(table);
     }

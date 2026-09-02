@@ -49,17 +49,19 @@ public class AssemblyReport {
     @Column(name = "goal_text", columnDefinition = "TEXT")
     private List<String> planGoals = new ArrayList<>();          // 핵심 목표 (여러 개)
 
+    // ✨ [2026-09-03] "작업 및 일정"을 단순 표 대신 기간이 있는 로드맵(막대) + 상세 카드로 재구성
     @ElementCollection
-    @CollectionTable(name = "assembly_plan_tasks", joinColumns = @JoinColumn(name = "report_id"))
-    private List<PlanTask> planTasks = new ArrayList<>();        // 작업 및 일정 (여러 개)
+    @CollectionTable(name = "assembly_plan_roadmap_items", joinColumns = @JoinColumn(name = "report_id"))
+    private List<PlanRoadmapItem> planRoadmapItems = new ArrayList<>();
 
     @ElementCollection
     @CollectionTable(name = "assembly_plan_roles", joinColumns = @JoinColumn(name = "report_id"))
-    private List<PlanRole> planRoles = new ArrayList<>();        // 역할 및 담당 (여러 명)
+    private List<PlanRole> planRoles = new ArrayList<>();        // 역할 및 담당 (팀 프로젝트일 때만, 팀원 여러 명)
 
+    // ✨ [2026-09-03 추가] Git/Notion 등 참고 링크 (여러 개 추가 가능)
     @ElementCollection
-    @CollectionTable(name = "assembly_plan_budget_items", joinColumns = @JoinColumn(name = "report_id"))
-    private List<PlanBudgetItem> planBudgetItems = new ArrayList<>(); // 예산 계획 (여러 항목)
+    @CollectionTable(name = "assembly_plan_links", joinColumns = @JoinColumn(name = "report_id"))
+    private List<PlanLink> planLinks = new ArrayList<>();
 
     @Column(columnDefinition = "LONGTEXT")
     private String planNotes;         // 기타 참고사항
