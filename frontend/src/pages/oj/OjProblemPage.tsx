@@ -203,18 +203,22 @@ export const OjProblemPage = ({ loginId }: { loginId?: string }) => {
             <div className="prose prose-sm max-w-none text-[14px] text-slate-700 leading-relaxed [&_p]:mb-3">
               <div dangerouslySetInnerHTML={{ __html: problem.description }} />
             </div>
+          </div>
 
+          {/* 오른쪽: 예제 (에디터보다 넓게 써서 출력이 한 줄로 보이도록) + 제출 이력 */}
+          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] p-7 max-h-[calc(100vh-180px)] overflow-y-auto">
+            <p className="text-[13px] font-semibold text-slate-900 mb-4">예제</p>
             {problem.samples?.map((sample, i) => (
-              <div key={i} className="mt-5">
-                <p className="text-[13px] font-semibold text-slate-900 mb-2">예제 {i + 1}</p>
-                <div className="grid grid-cols-2 gap-3">
+              <div key={i} className={i > 0 ? "mt-5" : ""}>
+                <p className="text-[12px] font-semibold text-slate-500 mb-2">예제 {i + 1}</p>
+                <div className="space-y-2">
                   <div>
                     <p className="text-[11px] font-medium text-slate-400 mb-1">입력</p>
-                    <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre-wrap break-all">{sample.input}</pre>
+                    <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre overflow-x-auto">{sample.input}</pre>
                   </div>
                   <div>
                     <p className="text-[11px] font-medium text-slate-400 mb-1">출력</p>
-                    <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre-wrap break-all">{sample.output}</pre>
+                    <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre overflow-x-auto">{sample.output}</pre>
                   </div>
                 </div>
               </div>
@@ -237,65 +241,65 @@ export const OjProblemPage = ({ loginId }: { loginId?: string }) => {
               </div>
             )}
           </div>
+        </div>
 
-          {/* 오른쪽: 에디터 */}
-          <div className="flex flex-col gap-4">
-            <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] overflow-hidden">
-              <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
-                <select
-                  value={language}
-                  onChange={(e) => handleLanguageChange(e.target.value)}
-                  className="text-[13px] font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none"
-                >
-                  {problem.languages.map((lang) => (
-                    <option key={lang} value={lang}>{lang}</option>
-                  ))}
-                </select>
-                <button
-                  onClick={handleSubmit}
-                  disabled={submitting || !code.trim()}
-                  className="flex items-center gap-1.5 h-9 px-4 rounded-xl text-[13px] font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-40 transition-colors"
-                >
-                  <Play size={14} strokeWidth={2.5} />
-                  {submitting ? "제출 중..." : "제출"}
-                </button>
-              </div>
-              <Editor
-                height="480px"
-                language={MONACO_LANGUAGE[language] ?? "plaintext"}
-                value={code}
-                onChange={(v) => setCode(v ?? "")}
-                theme="vs"
-                options={{ fontSize: 13, minimap: { enabled: false }, scrollBeyondLastLine: false }}
-              />
+        {/* 하단: 코드 에디터 (전체 폭) */}
+        <div className="mt-6 flex flex-col gap-4">
+          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] overflow-hidden">
+            <div className="flex items-center justify-between px-5 py-3.5 border-b border-slate-100">
+              <select
+                value={language}
+                onChange={(e) => handleLanguageChange(e.target.value)}
+                className="text-[13px] font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-xl px-3 py-1.5 outline-none"
+              >
+                {problem.languages.map((lang) => (
+                  <option key={lang} value={lang}>{lang}</option>
+                ))}
+              </select>
+              <button
+                onClick={handleSubmit}
+                disabled={submitting || !code.trim()}
+                className="flex items-center gap-1.5 h-9 px-4 rounded-xl text-[13px] font-semibold text-white bg-slate-900 hover:bg-slate-800 disabled:opacity-40 transition-colors"
+              >
+                <Play size={14} strokeWidth={2.5} />
+                {submitting ? "제출 중..." : "제출"}
+              </button>
             </div>
+            <Editor
+              height="420px"
+              language={MONACO_LANGUAGE[language] ?? "plaintext"}
+              value={code}
+              onChange={(v) => setCode(v ?? "")}
+              theme="vs"
+              options={{ fontSize: 13, minimap: { enabled: false }, scrollBeyondLastLine: false }}
+            />
+          </div>
 
-            <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] px-6 py-5 min-h-[88px] flex items-center">
-              {!activeSubmission && !loadError && (
-                <p className="text-[13px] text-slate-400">채점 결과가 여기에 표시됩니다</p>
-              )}
-              {loadError && problem && (
-                <p className="text-[13px] font-medium" style={{ color: "#FF3B30" }}>{loadError}</p>
-              )}
-              {activeSubmission && (
-                <div className="flex items-center gap-3">
-                  {isPending(activeSubmission.result) && (
-                    <div className="w-4 h-4 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
-                  )}
-                  {resultStyle && !isPending(activeSubmission.result) && (
-                    <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: resultStyle.color }} />
-                  )}
-                  <span className="text-[15px] font-semibold" style={{ color: resultStyle?.color ?? "#8E8E93" }}>
-                    {resultStyle?.label ?? "채점중"}
+          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] px-6 py-5 min-h-[88px] flex items-center">
+            {!activeSubmission && !loadError && (
+              <p className="text-[13px] text-slate-400">채점 결과가 여기에 표시됩니다</p>
+            )}
+            {loadError && problem && (
+              <p className="text-[13px] font-medium" style={{ color: "#FF3B30" }}>{loadError}</p>
+            )}
+            {activeSubmission && (
+              <div className="flex items-center gap-3">
+                {isPending(activeSubmission.result) && (
+                  <div className="w-4 h-4 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
+                )}
+                {resultStyle && !isPending(activeSubmission.result) && (
+                  <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: resultStyle.color }} />
+                )}
+                <span className="text-[15px] font-semibold" style={{ color: resultStyle?.color ?? "#8E8E93" }}>
+                  {resultStyle?.label ?? "채점중"}
+                </span>
+                {activeSubmission.statistic_info?.time_cost !== undefined && !isPending(activeSubmission.result) && (
+                  <span className="text-[12px] text-slate-400">
+                    {activeSubmission.statistic_info.time_cost}ms · {activeSubmission.statistic_info.memory_cost}KB
                   </span>
-                  {activeSubmission.statistic_info?.time_cost !== undefined && !isPending(activeSubmission.result) && (
-                    <span className="text-[12px] text-slate-400">
-                      {activeSubmission.statistic_info.time_cost}ms · {activeSubmission.statistic_info.memory_cost}KB
-                    </span>
-                  )}
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            )}
           </div>
         </div>
       </motion.div>
