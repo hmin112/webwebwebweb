@@ -20,11 +20,13 @@ import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
 import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
+import kr.co.devsign.devsign_backend.entity.AssemblyProject;
 import kr.co.devsign.devsign_backend.entity.AssemblyReport;
 import kr.co.devsign.devsign_backend.entity.Member;
 import kr.co.devsign.devsign_backend.entity.TeamMember;
 import kr.co.devsign.devsign_backend.repository.AccessLogRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
+import kr.co.devsign.devsign_backend.repository.AssemblyProjectRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
@@ -69,6 +71,8 @@ public class AdminService {
     private final AccessLogRepository accessLogRepository;
     private final AssemblyPeriodRepository assemblyPeriodRepository;
     private final AssemblyReportRepository assemblyReportRepository;
+    private final AssemblyProjectRepository assemblyProjectRepository;
+    private final kr.co.devsign.devsign_backend.util.PlanPdfGenerator planPdfGenerator;
     private final TeamMemberRepository teamMemberRepository;
     private final AccessLogService accessLogService;
     private final DiscordBotClient discordBotClient;
@@ -325,6 +329,7 @@ public class AdminService {
                 addFileToZip(zipOut, folderName, report.getPresentationPath(), includePresentation, Set.of("ppt", "pptx"));
                 addFileToZip(zipOut, folderName, report.getPdfPath(), includePdf, Set.of("pdf"));
                 addFileToZip(zipOut, folderName, report.getOtherPath(), includeOther, Collections.emptySet());
+                addPlanPdfToZip(zipOut, folderName, report, includePdf);
             }
 
             for (Map.Entry<Long, List<AssemblyReport>> entry : teamGroups.entrySet()) {
@@ -346,6 +351,7 @@ public class AdminService {
                 addFileToZip(zipOut, folderName, representative.getPresentationPath(), includePresentation, Set.of("ppt", "pptx"));
                 addFileToZip(zipOut, folderName, representative.getPdfPath(), includePdf, Set.of("pdf"));
                 addFileToZip(zipOut, folderName, representative.getOtherPath(), includeOther, Collections.emptySet());
+                addPlanPdfToZip(zipOut, folderName, representative, includePdf);
             }
 
             zipOut.finish();
@@ -676,6 +682,48 @@ public class AdminService {
             in.transferTo(zipOut);
         }
         zipOut.closeEntry();
+    }
+
+    // ✨ [2026-09-02 추가] 웹에서 작성한 계획서(PLAN)는 파일이 아니라 텍스트 필드로 저장되므로,
+    // ZIP에 담을 때 그 자리에서 PDF로 변환해서 넣는다. 기존 파일 기반 제출(지난 학기 등)은
+    // planGoal 등이 전부 비어있어 이 메서드가 아무 일도 하지 않고 그냥 넘어간다.
+    private void addPlanPdfToZip(ZipOutputStream zipOut, String folderName, AssemblyReport report, boolean includePdf) throws IOException {
+        if (!includePdf || !isWebAuthoredPlan(report)) {
+            return;
+        }
+
+        String projectTitle = assemblyProjectRepository
+                .findByLoginIdAndYearAndSemester(report.getLoginId(), report.getYear(), report.getSemester())
+                .map(AssemblyProject::getTitle)
+                .filter(StringUtils::hasText)
+                .orElse(report.getMonth() + "월 프로젝트 계획서");
+
+        byte[] pdf = planPdfGenerator.generate(
+                projectTitle,
+                folderName,
+                report.getDate(),
+                report.getPlanGoal(),
+                report.getPlanSchedule(),
+                report.getPlanTeamRoles(),
+                report.getPlanBudget(),
+                report.getPlanNotes()
+        );
+
+        String safeTitle = projectTitle.replaceAll("[\\\\/:*?\"<>|]", "_");
+        String entryName = folderName + "/" + safeTitle + ".pdf";
+        zipOut.putNextEntry(new ZipEntry(entryName));
+        zipOut.write(pdf);
+        zipOut.closeEntry();
+    }
+
+    private boolean isWebAuthoredPlan(AssemblyReport report) {
+        return "PLAN".equals(report.getType()) && (
+                StringUtils.hasText(report.getPlanGoal())
+                        || StringUtils.hasText(report.getPlanSchedule())
+                        || StringUtils.hasText(report.getPlanTeamRoles())
+                        || StringUtils.hasText(report.getPlanBudget())
+                        || StringUtils.hasText(report.getPlanNotes())
+        );
     }
 
     private File resolveFile(String path) {

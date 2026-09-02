@@ -12,6 +12,7 @@ import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
 import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
+import kr.co.devsign.devsign_backend.dto.assembly.SavePlanRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
@@ -21,6 +22,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -142,31 +144,7 @@ public class AssemblyService {
         MultipartFile pdf = command.pdf();
         MultipartFile other = command.other();
 
-        AssemblyReport report = null;
-
-        if (reportId != null && !reportId.equals("0") && !reportId.startsWith("temp")) {
-            report = reportRepository.findById(Long.parseLong(reportId)).orElse(null);
-        }
-
-        if (report == null) {
-            List<AssemblyReport> existing =
-                    reportRepository.findByLoginIdAndYearAndSemesterOrderByMonthAsc(loginId, year, semester);
-
-            report = existing.stream()
-                    .filter(r -> r.getMonth() == month)
-                    .findFirst()
-                    .orElse(null);
-        }
-
-        if (report == null) {
-            report = new AssemblyReport();
-            report.setLoginId(loginId);
-            report.setYear(year);
-            report.setSemester(semester);
-            report.setMonth(month);
-            report.setStatus("NOT_SUBMITTED");
-            report.setType(resolveType(month));
-        }
+        AssemblyReport report = findOrCreateReport(loginId, reportId, year, semester, month);
 
         validateUploadFiles(presentation, pdf, other, report);
 
@@ -209,6 +187,73 @@ public class AssemblyService {
         syncToTeammates(report);
 
         return "submitted";
+    }
+
+    // ✨ [2026-09-02 추가] loginId/reportId로 기존 리포트를 찾거나, 없으면 새로 만든다.
+    // submitFiles/savePlanDraft/submitPlan이 공통으로 쓰던 조회 로직을 하나로 합침.
+    private AssemblyReport findOrCreateReport(String loginId, String reportId, int year, int semester, int month) {
+        AssemblyReport report = null;
+
+        if (reportId != null && !reportId.equals("0") && !reportId.startsWith("temp")) {
+            report = reportRepository.findById(Long.parseLong(reportId)).orElse(null);
+        }
+
+        if (report == null) {
+            List<AssemblyReport> existing =
+                    reportRepository.findByLoginIdAndYearAndSemesterOrderByMonthAsc(loginId, year, semester);
+
+            report = existing.stream()
+                    .filter(r -> r.getMonth() == month)
+                    .findFirst()
+                    .orElse(null);
+        }
+
+        if (report == null) {
+            report = new AssemblyReport();
+            report.setLoginId(loginId);
+            report.setYear(year);
+            report.setSemester(semester);
+            report.setMonth(month);
+            report.setStatus("NOT_SUBMITTED");
+            report.setType(resolveType(month));
+        }
+
+        return report;
+    }
+
+    // ✨ [2026-09-02 추가] 계획서(PLAN)를 웹에서 작성 중일 때 자동/수동 임시저장.
+    // 팀 동기화는 여기서 하지 않음 — 타이핑할 때마다 팀원 화면까지 계속 갱신되면 번잡하므로,
+    // 동기화는 "제출 확정"(submitPlan) 시점에만 한다.
+    @Transactional
+    public AssemblyReportResponse savePlanDraft(SavePlanRequest req) {
+        AssemblyReport report = findOrCreateReport(req.loginId(), req.reportId(), req.year(), req.semester(), req.month());
+        applyPlanFields(report, req);
+        if (!"SUBMITTED".equals(report.getStatus())) {
+            report.setStatus("DRAFT");
+        }
+        return toReportResponse(reportRepository.save(report));
+    }
+
+    // ✨ [2026-09-02 추가] 계획서 제출 확정 — 상태를 SUBMITTED로 바꾸고 팀원에게 동기화.
+    @Transactional
+    public AssemblyReportResponse submitPlan(SavePlanRequest req) {
+        AssemblyReport report = findOrCreateReport(req.loginId(), req.reportId(), req.year(), req.semester(), req.month());
+        applyPlanFields(report, req);
+        report.setStatus("SUBMITTED");
+        report.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
+
+        AssemblyReport saved = reportRepository.save(report);
+        syncToTeammates(saved);
+        return toReportResponse(saved);
+    }
+
+    private void applyPlanFields(AssemblyReport report, SavePlanRequest req) {
+        report.setMemo(req.memo());
+        report.setPlanGoal(req.planGoal());
+        report.setPlanSchedule(req.planSchedule());
+        report.setPlanTeamRoles(req.planTeamRoles());
+        report.setPlanBudget(req.planBudget());
+        report.setPlanNotes(req.planNotes());
     }
 
     // ✨ [신규] 제출자가 속한 팀의 다른 accepted 팀원들에게 제출 내용을 그대로 복사해준다.
@@ -255,6 +300,12 @@ public class AssemblyService {
             teammateReport.setPresentationPath(report.getPresentationPath());
             teammateReport.setPdfPath(report.getPdfPath());
             teammateReport.setOtherPath(report.getOtherPath());
+            // ✨ [2026-09-02 추가] 웹 작성 계획서도 팀원에게 그대로 동기화
+            teammateReport.setPlanGoal(report.getPlanGoal());
+            teammateReport.setPlanSchedule(report.getPlanSchedule());
+            teammateReport.setPlanTeamRoles(report.getPlanTeamRoles());
+            teammateReport.setPlanBudget(report.getPlanBudget());
+            teammateReport.setPlanNotes(report.getPlanNotes());
 
             reportRepository.save(teammateReport);
         }
@@ -373,7 +424,12 @@ public class AssemblyService {
                 report.getDeadline(),
                 report.getPresentationPath(),
                 report.getPdfPath(),
-                report.getOtherPath()
+                report.getOtherPath(),
+                report.getPlanGoal(),
+                report.getPlanSchedule(),
+                report.getPlanTeamRoles(),
+                report.getPlanBudget(),
+                report.getPlanNotes()
         );
     }
 

@@ -1,7 +1,9 @@
 package kr.co.devsign.devsign_backend.controller;
 
 import kr.co.devsign.devsign_backend.service.AssemblyService;
+import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
+import kr.co.devsign.devsign_backend.dto.assembly.SavePlanRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
@@ -77,5 +79,16 @@ public class AssemblyController {
         } catch (Exception e) {
             return ResponseEntity.badRequest().body(new SubmitFilesResponse("fail", "submit error: " + e.getMessage()));
         }
+    }
+
+    // ✨ [2026-09-02 추가] 계획서(PLAN) 웹 작성 — 임시저장(자동저장 포함)과 제출확정을 분리
+    @PostMapping("/plan/save")
+    public ResponseEntity<AssemblyReportResponse> savePlanDraft(@RequestBody SavePlanRequest request) {
+        return ResponseEntity.ok(assemblyService.savePlanDraft(request));
+    }
+
+    @PostMapping("/plan/submit")
+    public ResponseEntity<AssemblyReportResponse> submitPlan(@RequestBody SavePlanRequest request) {
+        return ResponseEntity.ok(assemblyService.submitPlan(request));
     }
 }
