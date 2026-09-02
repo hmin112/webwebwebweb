@@ -2,7 +2,7 @@ import { useEffect, useRef, useState, type CSSProperties } from "react";
 import { motion } from "framer-motion";
 import {
   Timer, Users, CheckCircle2, History, ChevronLeft, ChevronRight,
-  Upload, FileSpreadsheet, AlertTriangle, Download, Trash2, MessageSquare,
+  AlertTriangle, Download, Trash2, MessageSquare,
 } from "lucide-react";
 import { api } from "../../../api/axios";
 import { Button } from "../../../components/ui/button";
@@ -25,8 +25,6 @@ type AdminStatus = {
   totalCount: number;
   targets: TargetStatus[];
 };
-
-type Problem = { row: number; name: string; reason: string };
 
 type HistorySession = {
   sessionId: number;
@@ -229,17 +227,13 @@ const HistoryPanel = ({
 
 export const AttendanceAdminTab = () => {
   const [status, setStatus] = useState<AdminStatus | null>(null);
-  const [file, setFile] = useState<File | null>(null);
   const [starting, setStarting] = useState(false);
   const [errorMsg, setErrorMsg] = useState("");
-  const [problems, setProblems] = useState<Problem[] | null>(null);
   const [remaining, setRemaining] = useState(0);
   const [history, setHistory] = useState<HistorySession[]>([]);
-  const [startMode, setStartMode] = useState<"excel" | "discord">("excel");
   const [messageId, setMessageId] = useState("");
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const tickRef = useRef<ReturnType<typeof setInterval> | null>(null);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchStatus = async () => {
     try {
@@ -279,36 +273,10 @@ export const AttendanceAdminTab = () => {
     };
   }, [status?.status, status?.sessionId]);
 
-  const handleStart = async () => {
-    if (!file || starting) return;
-    setStarting(true);
-    setErrorMsg("");
-    setProblems(null);
-    const formData = new FormData();
-    formData.append("file", file);
-    try {
-      await api.post("/admin/attendance/start", formData);
-      setFile(null);
-      if (fileInputRef.current) fileInputRef.current.value = "";
-      await fetchStatus();
-    } catch (e: any) {
-      const data = e?.response?.data;
-      if (data?.problems && data.problems.length > 0) {
-        setProblems(data.problems);
-        setErrorMsg(data.message || "대상자 명단에 문제가 있습니다");
-      } else {
-        setErrorMsg(data?.message || "출석 시작에 실패했습니다");
-      }
-    } finally {
-      setStarting(false);
-    }
-  };
-
   const handleStartFromDiscord = async () => {
     if (!messageId.trim() || starting) return;
     setStarting(true);
     setErrorMsg("");
-    setProblems(null);
     try {
       const res = await api.post("/admin/attendance/start-from-discord", { messageId: messageId.trim() });
       setMessageId("");
@@ -376,109 +344,42 @@ export const AttendanceAdminTab = () => {
             <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-6">
               <Timer size={20} />
             </div>
-            <h2 className="text-[19px] font-semibold text-slate-900 tracking-[-0.01em] mb-1.5">대상자 명단으로 출석 시작</h2>
-
-            <div className="flex items-center gap-1.5 bg-slate-100 rounded-full p-1 mb-6 w-fit">
-              <button
-                type="button"
-                onClick={() => { setStartMode("excel"); setErrorMsg(""); setProblems(null); }}
-                className={`flex items-center gap-1.5 text-[12.5px] font-semibold px-3.5 py-1.5 rounded-full transition-colors ${
-                  startMode === "excel" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
-                }`}
-              >
-                <FileSpreadsheet size={13} /> 엑셀 업로드
-              </button>
-              <button
-                type="button"
-                onClick={() => { setStartMode("discord"); setErrorMsg(""); setProblems(null); }}
-                className={`flex items-center gap-1.5 text-[12.5px] font-semibold px-3.5 py-1.5 rounded-full transition-colors ${
-                  startMode === "discord" ? "bg-white text-slate-900 shadow-sm" : "text-slate-400"
-                }`}
-              >
-                <MessageSquare size={13} /> 디스코드 메시지
-              </button>
+            <h2 className="text-[19px] font-semibold text-slate-900 tracking-[-0.01em] mb-1.5">디스코드 메시지로 출석 시작</h2>
+            <p className="text-[13px] text-slate-400 leading-relaxed mb-5">
+              대상자 모집 메시지의 <b className="text-slate-500 font-semibold">메시지 ID</b>를 붙여넣으면,
+              그 메시지에 ✅ 반응을 남긴 사람들을 대상으로 출석이 시작됩니다.
+              <br />
+              <span className="text-slate-300">(디스코드 개발자 모드 켜기 → 메시지 우클릭 → "메시지 ID 복사")</span>
+            </p>
+            <div className="flex items-center gap-3.5 border border-slate-200 rounded-2xl p-4 mb-5 focus-within:border-slate-300">
+              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+                <MessageSquare size={18} />
+              </div>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={messageId}
+                onChange={(e) => setMessageId(e.target.value.replace(/[^0-9]/g, ""))}
+                placeholder="메시지 ID 붙여넣기 (예: 1234567890123456789)"
+                className="min-w-0 flex-1 text-[14px] font-medium text-slate-800 outline-none placeholder:text-slate-300 placeholder:font-normal"
+              />
             </div>
-
-            {startMode === "excel" ? (
-              <>
-                <p className="text-[13px] text-slate-400 leading-relaxed mb-5">
-                  "이름 / 학번 / 학과" 컬럼이 포함된 .xlsx 파일을 업로드하면 해당 인원을 대상으로 출석이 시작됩니다.
-                </p>
-                <label className="flex items-center gap-3.5 border border-slate-200 rounded-2xl p-4 cursor-pointer hover:border-slate-300 hover:bg-slate-50/50 transition-all mb-5">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                    <FileSpreadsheet size={18} />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-[14px] font-medium text-slate-800 truncate">{file ? file.name : "엑셀 파일 선택"}</p>
-                    <p className="text-[12px] text-slate-400">.xlsx</p>
-                  </div>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept=".xlsx"
-                    className="hidden"
-                    onChange={(e) => setFile(e.target.files?.[0] || null)}
-                  />
-                </label>
-              </>
-            ) : (
-              <>
-                <p className="text-[13px] text-slate-400 leading-relaxed mb-5">
-                  디스코드에서 대상자 모집 메시지의 <b className="text-slate-500 font-semibold">메시지 ID</b>를 붙여넣으면,
-                  그 메시지에 ✅ 반응을 남긴 사람들을 대상으로 출석이 시작됩니다.
-                  <br />
-                  <span className="text-slate-300">(디스코드 개발자 모드 켜기 → 메시지 우클릭 → "메시지 ID 복사")</span>
-                </p>
-                <div className="flex items-center gap-3.5 border border-slate-200 rounded-2xl p-4 mb-5 focus-within:border-slate-300">
-                  <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
-                    <MessageSquare size={18} />
-                  </div>
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    value={messageId}
-                    onChange={(e) => setMessageId(e.target.value.replace(/[^0-9]/g, ""))}
-                    placeholder="메시지 ID 붙여넣기 (예: 1234567890123456789)"
-                    className="min-w-0 flex-1 text-[14px] font-medium text-slate-800 outline-none placeholder:text-slate-300 placeholder:font-normal"
-                  />
-                </div>
-              </>
-            )}
 
             {errorMsg && (
               <div className="bg-red-50/70 border border-red-100 rounded-2xl p-4 mb-5">
-                <div className="flex items-center gap-2 text-[13px] font-semibold mb-1.5" style={{ color: "#FF3B30" }}>
+                <div className="flex items-center gap-2 text-[13px] font-semibold" style={{ color: "#FF3B30" }}>
                   <AlertTriangle size={14} /> {errorMsg}
                 </div>
-                {problems && problems.length > 0 && (
-                  <ul className="space-y-1 text-[12px] text-red-400 font-medium pl-1 max-h-40 overflow-y-auto">
-                    {problems.map((p, i) => (
-                      <li key={i}>
-                        {p.row}행 · {p.name} — {p.reason}
-                      </li>
-                    ))}
-                  </ul>
-                )}
               </div>
             )}
 
-            {startMode === "excel" ? (
-              <Button
-                onClick={handleStart}
-                disabled={!file || starting}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 shadow-none"
-              >
-                <Upload size={16} /> {starting ? "시작하는 중…" : "출석 시작"}
-              </Button>
-            ) : (
-              <Button
-                onClick={handleStartFromDiscord}
-                disabled={!messageId.trim() || starting}
-                className="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 shadow-none"
-              >
-                <MessageSquare size={16} /> {starting ? "시작하는 중…" : "출석 시작"}
-              </Button>
-            )}
+            <Button
+              onClick={handleStartFromDiscord}
+              disabled={!messageId.trim() || starting}
+              className="w-full bg-slate-900 hover:bg-slate-800 text-white py-6 rounded-2xl font-semibold text-[15px] flex items-center justify-center gap-2 shadow-none"
+            >
+              <MessageSquare size={16} /> {starting ? "시작하는 중…" : "출석 시작"}
+            </Button>
           </div>
 
           <HistoryPanel history={history} onDownload={handleDownload} onToggled={fetchHistory} onDelete={handleDeleteHistory} />

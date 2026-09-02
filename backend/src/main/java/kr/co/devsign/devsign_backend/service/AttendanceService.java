@@ -3,7 +3,6 @@ package kr.co.devsign.devsign_backend.service;
 import kr.co.devsign.devsign_backend.dto.attendance.AdminAttendanceStatusResponse;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceHistoryItem;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceHistoryTargetItem;
-import kr.co.devsign.devsign_backend.dto.attendance.AttendanceProblem;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceStartResponse;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceTargetInfo;
 import kr.co.devsign.devsign_backend.dto.attendance.AttendanceTargetStatus;
@@ -19,8 +18,6 @@ import kr.co.devsign.devsign_backend.repository.AttendanceSessionRepository;
 import kr.co.devsign.devsign_backend.repository.AttendanceTargetRepository;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
-import org.apache.poi.ss.usermodel.Cell;
-import org.apache.poi.ss.usermodel.DataFormatter;
 import org.apache.poi.ss.usermodel.Font;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.ss.usermodel.Sheet;
@@ -34,11 +31,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.SecureRandom;
 import java.time.LocalDate;
@@ -60,9 +55,6 @@ public class AttendanceService {
     private static final String STATUS_CLOSED = "CLOSED";
     private static final int DURATION_SECONDS = 600;
     private static final SecureRandom RANDOM = new SecureRandom();
-    // ✨ 엑셀 셀을 화면에 보이는 그대로(텍스트)로 읽기 위한 포맷터 — 학번 등 숫자로 자동 인식된 셀도
-    // "20233088.0" 같은 형태 없이 그대로 텍스트로 변환됨
-    private static final DataFormatter DATA_FORMATTER = new DataFormatter();
     private static final String WHITE_CHECK_MARK = "✅"; // ✅
 
     private final AttendanceSessionRepository sessionRepository;
@@ -70,106 +62,6 @@ public class AttendanceService {
     private final AttendanceRecordRepository recordRepository;
     private final MemberRepository memberRepository;
     private final DiscordBotClient discordBotClient;
-
-    public AttendanceStartResponse startSession(MultipartFile file, String adminLoginId) {
-        Optional<AttendanceSession> currentOpt = sessionRepository.findTopByOrderByIdDesc();
-        currentOpt.ifPresent(this::autoCloseIfExpired);
-        if (currentOpt.isPresent() && STATUS_ACTIVE.equals(currentOpt.get().getStatus())) {
-            throw new AttendanceValidationException("이미 진행 중인 출석이 있습니다. 먼저 종료해주세요.", List.of());
-        }
-
-        List<AttendanceProblem> problems = new ArrayList<>();
-        Map<String, Member> validMembers = new LinkedHashMap<>();
-
-        try (InputStream is = file.getInputStream(); XSSFWorkbook workbook = new XSSFWorkbook(is)) {
-            Sheet sheet = workbook.getSheetAt(0);
-            int nameCol = 0;
-            int studentIdCol = 1;
-            int deptCol = 2;
-
-            Row header = sheet.getRow(sheet.getFirstRowNum());
-            if (header != null) {
-                for (Cell cell : header) {
-                    String value = cellToString(cell).trim();
-                    if ("이름".equals(value)) nameCol = cell.getColumnIndex();
-                    if ("학번".equals(value)) studentIdCol = cell.getColumnIndex();
-                    if ("학과".equals(value)) deptCol = cell.getColumnIndex();
-                }
-            }
-
-            for (int r = sheet.getFirstRowNum() + 1; r <= sheet.getLastRowNum(); r++) {
-                Row row = sheet.getRow(r);
-                if (row == null || isRowBlank(row)) continue;
-
-                String name = cellToString(row.getCell(nameCol)).trim();
-                // 엑셀의 학번은 8자리 전체 학번(예: 20223203) — 사이트 Member.studentId는 디스코드
-                // 닉네임에서 파싱된 2자리 입학연도 코드(예: "22")만 저장하므로, 8자리 중 3~4번째
-                // 문자를 잘라 비교한다 (CommunityTab/TeamTab의 formatStudentId와 동일한 규칙).
-                String fullStudentId = cellToString(row.getCell(studentIdCol)).trim();
-                String dept = cellToString(row.getCell(deptCol)).trim();
-                int excelRowNum = row.getRowNum() + 1;
-                String displayName = StringUtils.hasText(name) ? name : "(이름 없음)";
-
-                if (!StringUtils.hasText(fullStudentId)) {
-                    problems.add(new AttendanceProblem(excelRowNum, displayName, "학번 없음"));
-                    continue;
-                }
-                if (!StringUtils.hasText(dept)) {
-                    problems.add(new AttendanceProblem(excelRowNum, displayName, "학과 없음"));
-                    continue;
-                }
-
-                String yearCode;
-                if (fullStudentId.length() == 8) {
-                    yearCode = fullStudentId.substring(2, 4);
-                } else if (fullStudentId.length() == 2) {
-                    yearCode = fullStudentId;
-                } else {
-                    problems.add(new AttendanceProblem(excelRowNum, displayName, "학번 형식을 확인할 수 없음 (" + fullStudentId + ")"));
-                    continue;
-                }
-
-                List<Member> candidates = memberRepository.findByNameStartingWithAndStudentIdAndDeletedFalse(name, yearCode);
-                if (candidates.isEmpty()) {
-                    problems.add(new AttendanceProblem(excelRowNum, displayName, "일치하는 회원 없음 (이름·학번 확인 필요, " + yearCode + "학번)"));
-                    continue;
-                }
-
-                Member matched;
-                if (candidates.size() == 1) {
-                    // 이름+학번(입학연도)만으로 이미 유일하게 특정됨. DB의 학과는 정식 명칭
-                    // ("AI소프트웨어학부(컴퓨터공학전공)")으로, 엑셀의 약칭("컴공")과 표기가
-                    // 달라 문자열이 정확히 일치하지 않는 게 정상이므로 여기서는 막지 않는다.
-                    matched = candidates.get(0);
-                } else {
-                    // 동명이인(같은 이름+같은 학번)이 여러 명 있는 경우에만 학과로 특정 시도
-                    List<Member> byDept = candidates.stream()
-                            .filter(m -> StringUtils.hasText(m.getDept()) && (m.getDept().contains(dept) || dept.contains(m.getDept())))
-                            .toList();
-                    if (byDept.size() != 1) {
-                        problems.add(new AttendanceProblem(excelRowNum, displayName,
-                                "동명이인이 있어 학과로도 특정할 수 없음 (관리자 확인 필요)"));
-                        continue;
-                    }
-                    matched = byDept.get(0);
-                }
-
-                validMembers.put(matched.getLoginId(), matched);
-            }
-        } catch (IOException e) {
-            throw new AttendanceValidationException("엑셀 파일을 읽을 수 없습니다. .xlsx 형식인지 확인해주세요.", List.of());
-        }
-
-        if (!problems.isEmpty()) {
-            throw new AttendanceValidationException(problems.size() + "명의 대상자에 문제가 있어 출석을 시작할 수 없습니다.", problems);
-        }
-        if (validMembers.isEmpty()) {
-            throw new AttendanceValidationException("엑셀에서 유효한 대상자를 찾을 수 없습니다.", List.of());
-        }
-
-        String title = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 총회 출석";
-        return createSession(validMembers, adminLoginId, title, List.of());
-    }
 
     // ✨ [신규] 디스코드 메시지 ID를 받아, 그 메시지에 ✅ 반응을 남긴 사람들을 대상자로 출석을 시작.
     // 엑셀 업로드와 달리 "반응"은 관리자가 직접 정리한 공식 명단이 아니라 자연스러운 사용자 행동이므로
@@ -180,23 +72,23 @@ public class AttendanceService {
         Optional<AttendanceSession> currentOpt = sessionRepository.findTopByOrderByIdDesc();
         currentOpt.ifPresent(this::autoCloseIfExpired);
         if (currentOpt.isPresent() && STATUS_ACTIVE.equals(currentOpt.get().getStatus())) {
-            throw new AttendanceValidationException("이미 진행 중인 출석이 있습니다. 먼저 종료해주세요.", List.of());
+            throw new AttendanceValidationException("이미 진행 중인 출석이 있습니다. 먼저 종료해주세요.");
         }
         if (!StringUtils.hasText(messageId)) {
-            throw new AttendanceValidationException("디스코드 메시지 ID를 입력해주세요.", List.of());
+            throw new AttendanceValidationException("디스코드 메시지 ID를 입력해주세요.");
         }
 
         Map<String, Object> result;
         try {
             result = discordBotClient.getMessageReactors(messageId.trim(), WHITE_CHECK_MARK);
         } catch (Exception e) {
-            throw new AttendanceValidationException("디스코드 봇과 통신할 수 없습니다: " + e.getMessage(), List.of());
+            throw new AttendanceValidationException("디스코드 봇과 통신할 수 없습니다: " + e.getMessage());
         }
 
         String status = String.valueOf(result.get("status"));
         if (!"success".equals(status)) {
             String message = result.get("message") != null ? result.get("message").toString() : "메시지에서 반응자를 가져오지 못했습니다.";
-            throw new AttendanceValidationException(message, List.of());
+            throw new AttendanceValidationException(message);
         }
 
         @SuppressWarnings("unchecked")
@@ -218,8 +110,7 @@ public class AttendanceService {
         }
 
         if (validMembers.isEmpty()) {
-            throw new AttendanceValidationException(
-                    "해당 메시지에 ✅ 반응을 남긴 사람 중 웹사이트 회원으로 확인된 대상자가 없습니다.", List.of());
+            throw new AttendanceValidationException("해당 메시지에 ✅ 반응을 남긴 사람 중 웹사이트 회원으로 확인된 대상자가 없습니다.");
         }
 
         String title = LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy-MM-dd")) + " 총회 출석 (디스코드)";
@@ -493,19 +384,4 @@ public class AttendanceService {
         }
     }
 
-    private boolean isRowBlank(Row row) {
-        for (Cell cell : row) {
-            if (StringUtils.hasText(cellToString(cell))) {
-                return false;
-            }
-        }
-        return true;
-    }
-
-    private String cellToString(Cell cell) {
-        if (cell == null) return "";
-        // 엑셀에 보이는 그대로 텍스트로 변환 (학번처럼 숫자로 자동 인식된 셀도 "20233088.0" 없이
-        // 정수 텍스트 그대로 읽힘)
-        return DATA_FORMATTER.formatCellValue(cell).trim();
-    }
 }

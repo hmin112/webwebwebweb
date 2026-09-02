@@ -10,11 +10,9 @@ import kr.co.devsign.devsign_backend.dto.attendance.ManualAttendanceRequest;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.service.AttendanceService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.util.List;
 
@@ -25,24 +23,14 @@ public class AdminAttendanceController {
 
     private final AttendanceService attendanceService;
 
-    @PostMapping(value = "/start", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> start(@RequestParam MultipartFile file, Authentication authentication) {
-        try {
-            AttendanceStartResponse response = attendanceService.startSession(file, authentication.getName());
-            return ResponseEntity.ok(response);
-        } catch (AttendanceValidationException e) {
-            return ResponseEntity.badRequest().body(new AttendanceStartErrorResponse(e.getMessage(), e.getProblems()));
-        }
-    }
-
-    // ✨ [신규] 엑셀 업로드 대신, 디스코드 메시지에 ✅ 반응을 남긴 사람들을 대상자로 출석을 시작
+    // 디스코드 메시지에 ✅ 반응을 남긴 사람들을 대상자로 출석을 시작 (엑셀 업로드 방식은 제거됨)
     @PostMapping("/start-from-discord")
     public ResponseEntity<?> startFromDiscord(@RequestBody DiscordAttendanceStartRequest request, Authentication authentication) {
         try {
             AttendanceStartResponse response = attendanceService.startSessionFromDiscordMessage(request.messageId(), authentication.getName());
             return ResponseEntity.ok(response);
         } catch (AttendanceValidationException e) {
-            return ResponseEntity.badRequest().body(new AttendanceStartErrorResponse(e.getMessage(), e.getProblems()));
+            return ResponseEntity.badRequest().body(new AttendanceStartErrorResponse(e.getMessage()));
         }
     }
 

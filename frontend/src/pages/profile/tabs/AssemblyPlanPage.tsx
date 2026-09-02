@@ -156,7 +156,11 @@ export const AssemblyPlanPage = ({
     }
   };
 
-  const canSubmit = state.planOverview.trim() && state.planGoals.filter((g) => g.trim()).length >= MIN_GOALS;
+  const canSubmit =
+    state.memo.trim() &&
+    state.planOverview.trim() &&
+    state.planGoals.filter((g) => g.trim()).length >= MIN_GOALS &&
+    state.planRoadmapItems.length > 0;
   const showRoleSection = (teamMembers && teamMembers.length > 0) || state.planRoles.length > 0;
 
   const saveIndicator = () => {
@@ -244,7 +248,9 @@ export const AssemblyPlanPage = ({
         <section>
           <div className="flex items-center gap-1.5 mb-2">
             <StickyNote size={14} className="text-indigo-500" />
-            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">프로젝트 명</p>
+            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
+              프로젝트 명<span className="text-indigo-400"> *</span>
+            </p>
           </div>
           <input
             type="text"
@@ -300,7 +306,8 @@ export const AssemblyPlanPage = ({
 
         {/* 로드맵 */}
         <section>
-          <SectionHeader icon={<Route size={14} />} label="로드맵" />
+          <SectionHeader icon={<Route size={14} />} label="로드맵" required />
+          <p className="text-[10px] text-slate-300 -mt-2 mb-4">최소 1개 이상 등록해야 제출할 수 있어요.</p>
 
           {roadmapRange && state.planRoadmapItems.length > 0 && (
             <div className="mb-5 space-y-3">

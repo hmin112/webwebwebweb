@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   FileText, Check, Clock, X,
   Download, Presentation, CalendarDays, ChevronDown,
-  Edit2, Save, MessageCircle, Upload, FileArchive, Loader2,
+  MessageCircle, Upload, FileArchive, Loader2,
   Lock
 } from "lucide-react";
 
@@ -13,8 +13,6 @@ const isPlanMonth = (month: number) => month === 3 || month === 9;
 
 export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOpenPlanEditor?: (report: any) => void }) => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
-  const [projectTitle, setProjectTitle] = useState("");
-  const [isEditingProject, setIsEditingProject] = useState(false);
   const [submissionMemo, setSubmissionMemo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
@@ -69,7 +67,6 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
 
       if (res.data) {
         setReports(res.data.reports || []);
-        setProjectTitle(res.data.projectTitle || "");
       }
       if (periodRes.data) {
         setSubmissionPeriods(periodRes.data);
@@ -120,25 +117,18 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
     });
   }, [reports, selectedTerm, submissionPeriods]);
 
-  const handleSaveProjectTitle = async () => {
-    if (!projectTitle.trim()) {
-      alert("프로젝트 명을 입력해주세요.");
-      return;
-    }
-    try {
-      await api.post(`/assembly/project-title`, {
-        loginId,
-        year: selectedTerm.year,
-        semester: selectedTerm.semester,
-        title: projectTitle
-      });
-      setIsEditingProject(false);
-      alert("프로젝트 명이 저장되었습니다.");
-      await fetchSubmissions();
-    } catch (e: any) {
-      alert("제목 저장 실패: " + (e.response?.data || e.message));
-    }
-  };
+  // ✨ 마이페이지 우측 상단 "프로젝트 명"은 이제 별도로 편집하지 않고, 계획서(3월/9월)에서
+  // 작성한 "프로젝트 명"(memo 필드)을 그대로 읽기 전용으로 보여준다 — 진짜 수정은 계획서
+  // 작성 화면에서만 가능(단일 출처 유지, 마이페이지와 계획서가 서로 다른 값을 갖지 않도록).
+  const projectTitle = useMemo(() => {
+    const planMonth = selectedTerm.semester === 1 ? 3 : 9;
+    const planReport = reports.find(r =>
+      Number(r.month) === planMonth &&
+      Number(r.year) === Number(selectedTerm.year) &&
+      Number(r.semester) === Number(selectedTerm.semester)
+    );
+    return planReport?.memo || "";
+  }, [reports, selectedTerm]);
 
   const canSubmit = useMemo(() => {
     if (!selectedReport || !selectedReport.isWithinPeriod) return false;
@@ -284,29 +274,13 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
       <div className="space-y-4 md:space-y-6">
         <div className="flex flex-row items-center justify-between px-1 mb-4 md:mb-8 gap-2">
           <h3 className="text-sm md:text-xl font-bold text-slate-900 uppercase tracking-wider shrink-0">총회자료 제출</h3>
-          <div className="relative group max-w-[200px] md:max-w-md w-full flex justify-end">
-            {isEditingProject ? (
-              <div className="flex items-center gap-1.5 w-full justify-end">
-                <input
-                  type="text"
-                  autoFocus
-                  value={projectTitle}
-                  onChange={(e) => setProjectTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleSaveProjectTitle()}
-                  className="w-full bg-slate-100 px-3 py-1.5 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-slate-800 text-[11px] md:text-sm text-right"
-                />
-                <button onClick={handleSaveProjectTitle} className="p-1.5 bg-indigo-600 text-white rounded-lg shadow-md hover:bg-indigo-700 shrink-0">
-                  <Save size={14} />
-                </button>
-              </div>
-            ) : (
-              <div onClick={() => setIsEditingProject(true)} className="flex items-center gap-1.5 cursor-pointer hover:bg-slate-50 px-2 py-1 rounded-lg justify-end min-w-0">
-                <h2 className={`text-[11px] md:text-sm font-bold text-right truncate ${projectTitle ? "text-slate-600" : "text-slate-300"}`}>
-                  {projectTitle || "프로젝트 명 입력"}
-                </h2>
-                <Edit2 size={12} className="text-slate-300 shrink-0" />
-              </div>
-            )}
+          <div className="max-w-[200px] md:max-w-md w-full flex justify-end">
+            <h2
+              className={`text-[11px] md:text-sm font-bold text-right truncate px-2 py-1 ${projectTitle ? "text-slate-600" : "text-slate-300"}`}
+              title="계획서의 '프로젝트 명'에서 수정할 수 있어요"
+            >
+              {projectTitle || "계획서에서 프로젝트 명을 입력해주세요"}
+            </h2>
           </div>
         </div>
 
