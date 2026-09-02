@@ -54,14 +54,6 @@ const RESULT_STYLE: Record<number, { label: string; color: string }> = {
 
 const isPending = (result: number) => result === 6 || result === 7;
 
-// 이미 HTML 태그가 있으면 그대로 두고(기존 서식 보존), 순수 텍스트면 줄바꿈만 <br/>로 바꿔 최소 서식 적용
-const toDescriptionHtml = (text: string) => {
-  if (!text) return "";
-  if (/<[a-z][\s\S]*>/i.test(text)) return text;
-  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
-  return `<p>${escaped.replace(/\n/g, "<br/>")}</p>`;
-};
-
 export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: boolean }) => {
   const { problemId } = useParams<{ problemId: string }>();
   const navigate = useNavigate();
@@ -76,9 +68,9 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [editingStatement, setEditingStatement] = useState(false);
-  const [editDescription, setEditDescription] = useState("");
   const [editSamples, setEditSamples] = useState<{ input: string; output: string }[]>([]);
   const [savingStatement, setSavingStatement] = useState(false);
+  const descriptionEditRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
     if (!loginId || !problemId) return;
@@ -171,7 +163,6 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
 
   const startEditStatement = () => {
     if (!problem) return;
-    setEditDescription(problem.description || "");
     setEditSamples(
       problem.samples && problem.samples.length > 0
         ? problem.samples.map((s) => ({ ...s }))
@@ -182,12 +173,14 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
 
   const cancelEditStatement = () => setEditingStatement(false);
 
+  // 설명은 raw HTML을 편집하는 게 아니라, 화면에 실제로 보이는 그대로(contentEditable)를 편집해서
+  // 저장 시 그 결과 HTML을 그대로 보낸다 — <p> 같은 태그를 직접 타이핑할 필요가 없도록.
   const saveStatement = async () => {
     if (!problem) return;
     setSavingStatement(true);
     try {
+      const descriptionHtml = descriptionEditRef.current?.innerHTML ?? problem.description;
       const samples = editSamples.filter((s) => s.input.trim() || s.output.trim());
-      const descriptionHtml = toDescriptionHtml(editDescription);
       await api.put(`/admin/oj/problems/${problem.id}/statement`, { description: descriptionHtml, samples });
       setProblem((prev) => (prev ? { ...prev, description: descriptionHtml, samples } : prev));
       setEditingStatement(false);
@@ -272,11 +265,13 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
             </div>
 
             {editingStatement ? (
-              <textarea
-                value={editDescription}
-                onChange={(e) => setEditDescription(e.target.value)}
-                placeholder="문제 설명 (일반 텍스트로 써도 되고, HTML 태그를 직접 써도 됩니다)"
-                className="w-full min-h-[220px] p-4 text-[13px] bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 resize-y"
+              <div
+                key={problem.id}
+                ref={descriptionEditRef}
+                contentEditable
+                suppressContentEditableWarning
+                dangerouslySetInnerHTML={{ __html: problem.description }}
+                className="prose prose-sm max-w-none text-[14px] text-slate-700 leading-relaxed [&_p]:mb-3 min-h-[200px] p-4 rounded-2xl border border-dashed border-slate-300 bg-slate-50/60 outline-none focus:bg-white focus:border-slate-900 transition-colors"
               />
             ) : (
               <div className="prose prose-sm max-w-none text-[14px] text-slate-700 leading-relaxed [&_p]:mb-3">
