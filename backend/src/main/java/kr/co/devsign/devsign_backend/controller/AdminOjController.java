@@ -50,6 +50,15 @@ public class AdminOjController {
         return StatusResponse.success();
     }
 
+    // 문제 풀이 화면의 연필 버튼용 — 설명/예제만 수정, 나머지 설정은 그대로 유지
+    @SuppressWarnings("unchecked")
+    @PutMapping("/problems/{id}/statement")
+    public Map<String, Object> updateStatement(@PathVariable Long id, @RequestBody Map<String, Object> payload) {
+        String description = (String) payload.get("description");
+        List<Map<String, Object>> samples = (List<Map<String, Object>>) payload.get("samples");
+        return ojClient.adminUpdateStatement(id, description, samples);
+    }
+
     @DeleteMapping("/problems/{id}")
     public StatusResponse deleteProblem(@PathVariable Long id) {
         ojClient.adminDeleteProblem(id);

@@ -243,6 +243,18 @@ public class OjClient {
         adminUpdateProblem(id, body);
     }
 
+    // 문제 화면에서 관리자가 연필 버튼으로 바로 고치는 용도 — 설명/예제 두 필드만 바꾸고
+    // 나머지(시간제한/난이도/태그/공개여부/테스트케이스 등)는 기존 값을 그대로 유지.
+    // 학생용 문제 조회 API 응답에는 test_case_id 등 admin PUT에 필요한 필드가 빠져있어서
+    // (공개 API 스펙이 다름) 반드시 adminGetProblemDetail로 다시 받아온 전체 값을 베이스로 써야 함.
+    public Map<String, Object> adminUpdateStatement(Long id, String description, List<Map<String, Object>> samples) {
+        Map<String, Object> detail = adminGetProblemDetail(id);
+        Map<String, Object> body = new HashMap<>(detail);
+        body.put("description", description);
+        body.put("samples", samples);
+        return adminUpdateProblem(id, body);
+    }
+
     // 문제를 끌어다 폴더에 놓는 동작(드래그 앤 드롭) — 기존 태그는 그대로 두고 새 폴더 태그만 추가
     @SuppressWarnings("unchecked")
     public void adminAddTagToProblem(Long id, String folder) {

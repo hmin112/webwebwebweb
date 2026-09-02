@@ -332,7 +332,7 @@ function AppContent() {
           <Route path="/oj/admin" element={(isAdmin && isLoggedIn) ? <OjAdminPage /> : <Navigate to="/oj" replace />} />
           <Route path="/oj/admin/write" element={(isAdmin && isLoggedIn) ? <OjAdminProblemWrite loginId={currentUser?.loginId} /> : <Navigate to="/oj" replace />} />
           <Route path="/oj/admin/write/:id" element={(isAdmin && isLoggedIn) ? <OjAdminProblemWrite loginId={currentUser?.loginId} /> : <Navigate to="/oj" replace />} />
-          <Route path="/oj/:problemId" element={<OjProblemPage loginId={currentUser?.loginId} />} />
+          <Route path="/oj/:problemId" element={<OjProblemPage loginId={currentUser?.loginId} isAdmin={isAdmin && isLoggedIn} />} />
 
           <Route path="/admin" element={<AdminPage />} />
           <Route path="/contact-admin" element={<ContactAdmin onNavigate={handleNavigateCompat} />} />

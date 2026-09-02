@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, Cpu, Play } from "lucide-react";
+import { ArrowLeft, Clock, Cpu, Play, Pencil, Check, X, Plus } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { api } from "../../api/axios";
 
@@ -54,7 +54,15 @@ const RESULT_STYLE: Record<number, { label: string; color: string }> = {
 
 const isPending = (result: number) => result === 6 || result === 7;
 
-export const OjProblemPage = ({ loginId }: { loginId?: string }) => {
+// 이미 HTML 태그가 있으면 그대로 두고(기존 서식 보존), 순수 텍스트면 줄바꿈만 <br/>로 바꿔 최소 서식 적용
+const toDescriptionHtml = (text: string) => {
+  if (!text) return "";
+  if (/<[a-z][\s\S]*>/i.test(text)) return text;
+  const escaped = text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  return `<p>${escaped.replace(/\n/g, "<br/>")}</p>`;
+};
+
+export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?: boolean }) => {
   const { problemId } = useParams<{ problemId: string }>();
   const navigate = useNavigate();
 
@@ -66,6 +74,11 @@ export const OjProblemPage = ({ loginId }: { loginId?: string }) => {
   const [activeSubmission, setActiveSubmission] = useState<OjSubmission | null>(null);
   const [history, setHistory] = useState<OjSubmission[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const [editingStatement, setEditingStatement] = useState(false);
+  const [editDescription, setEditDescription] = useState("");
+  const [editSamples, setEditSamples] = useState<{ input: string; output: string }[]>([]);
+  const [savingStatement, setSavingStatement] = useState(false);
 
   useEffect(() => {
     if (!loginId || !problemId) return;
@@ -156,6 +169,35 @@ export const OjProblemPage = ({ loginId }: { loginId?: string }) => {
     }
   };
 
+  const startEditStatement = () => {
+    if (!problem) return;
+    setEditDescription(problem.description || "");
+    setEditSamples(
+      problem.samples && problem.samples.length > 0
+        ? problem.samples.map((s) => ({ ...s }))
+        : [{ input: "", output: "" }]
+    );
+    setEditingStatement(true);
+  };
+
+  const cancelEditStatement = () => setEditingStatement(false);
+
+  const saveStatement = async () => {
+    if (!problem) return;
+    setSavingStatement(true);
+    try {
+      const samples = editSamples.filter((s) => s.input.trim() || s.output.trim());
+      const descriptionHtml = toDescriptionHtml(editDescription);
+      await api.put(`/admin/oj/problems/${problem.id}/statement`, { description: descriptionHtml, samples });
+      setProblem((prev) => (prev ? { ...prev, description: descriptionHtml, samples } : prev));
+      setEditingStatement(false);
+    } catch {
+      alert("저장에 실패했습니다.");
+    } finally {
+      setSavingStatement(false);
+    }
+  };
+
   if (!loginId) {
     return (
       <div className="min-h-[60vh] flex items-center justify-center px-4">
@@ -192,7 +234,36 @@ export const OjProblemPage = ({ loginId }: { loginId?: string }) => {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 왼쪽: 문제 설명 */}
           <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] p-7 max-h-[calc(100vh-180px)] overflow-y-auto">
-            <p className="text-[13px] font-medium text-slate-400 mb-1">#{problem._id}</p>
+            <div className="flex items-start justify-between gap-3 mb-1">
+              <p className="text-[13px] font-medium text-slate-400">#{problem._id}</p>
+              {isAdmin && (
+                editingStatement ? (
+                  <div className="flex items-center gap-1.5 shrink-0">
+                    <button
+                      onClick={saveStatement}
+                      disabled={savingStatement}
+                      className="flex items-center gap-1 h-7 px-2.5 rounded-lg bg-slate-900 text-white text-[11px] font-semibold disabled:opacity-50"
+                    >
+                      <Check size={12} /> 저장
+                    </button>
+                    <button
+                      onClick={cancelEditStatement}
+                      className="flex items-center gap-1 h-7 px-2.5 rounded-lg text-slate-400 hover:text-slate-700 text-[11px] font-semibold"
+                    >
+                      <X size={12} /> 취소
+                    </button>
+                  </div>
+                ) : (
+                  <button
+                    onClick={startEditStatement}
+                    title="문제/예제 수정"
+                    className="p-1.5 rounded-lg text-slate-300 hover:text-slate-700 hover:bg-slate-50 transition-colors shrink-0"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                )
+              )}
+            </div>
             <h1 className="text-[20px] font-semibold text-slate-900 tracking-[-0.01em] mb-4">{problem.title}</h1>
 
             <div className="flex items-center gap-4 mb-6 text-[12px] text-slate-400">
@@ -200,29 +271,89 @@ export const OjProblemPage = ({ loginId }: { loginId?: string }) => {
               <span className="flex items-center gap-1"><Cpu size={13} /> {problem.memory_limit}MB</span>
             </div>
 
-            <div className="prose prose-sm max-w-none text-[14px] text-slate-700 leading-relaxed [&_p]:mb-3">
-              <div dangerouslySetInnerHTML={{ __html: problem.description }} />
-            </div>
+            {editingStatement ? (
+              <textarea
+                value={editDescription}
+                onChange={(e) => setEditDescription(e.target.value)}
+                placeholder="문제 설명 (일반 텍스트로 써도 되고, HTML 태그를 직접 써도 됩니다)"
+                className="w-full min-h-[220px] p-4 text-[13px] bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 resize-y"
+              />
+            ) : (
+              <div className="prose prose-sm max-w-none text-[14px] text-slate-700 leading-relaxed [&_p]:mb-3">
+                <div dangerouslySetInnerHTML={{ __html: problem.description }} />
+              </div>
+            )}
           </div>
 
           {/* 오른쪽: 예제 (에디터보다 넓게 써서 출력이 한 줄로 보이도록) + 제출 이력 */}
           <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] p-7 max-h-[calc(100vh-180px)] overflow-y-auto">
-            <p className="text-[13px] font-semibold text-slate-900 mb-4">예제</p>
-            {problem.samples?.map((sample, i) => (
-              <div key={i} className={i > 0 ? "mt-5" : ""}>
-                <p className="text-[12px] font-semibold text-slate-500 mb-2">예제 {i + 1}</p>
-                <div className="space-y-2">
-                  <div>
-                    <p className="text-[11px] font-medium text-slate-400 mb-1">입력</p>
-                    <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre overflow-x-auto">{sample.input}</pre>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-[13px] font-semibold text-slate-900">예제</p>
+              {editingStatement && (
+                <button
+                  onClick={() => setEditSamples((prev) => [...prev, { input: "", output: "" }])}
+                  className="flex items-center gap-1 text-[11px] font-semibold text-slate-400 hover:text-slate-700"
+                >
+                  <Plus size={12} /> 예제 추가
+                </button>
+              )}
+            </div>
+
+            {editingStatement ? (
+              editSamples.map((sample, i) => (
+                <div key={i} className={i > 0 ? "mt-5" : ""}>
+                  <div className="flex items-center justify-between mb-2">
+                    <p className="text-[12px] font-semibold text-slate-500">예제 {i + 1}</p>
+                    {editSamples.length > 1 && (
+                      <button
+                        onClick={() => setEditSamples((prev) => prev.filter((_, idx) => idx !== i))}
+                        className="text-slate-300 hover:text-red-500"
+                      >
+                        <X size={13} />
+                      </button>
+                    )}
                   </div>
-                  <div>
-                    <p className="text-[11px] font-medium text-slate-400 mb-1">출력</p>
-                    <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre overflow-x-auto">{sample.output}</pre>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">입력</p>
+                      <textarea
+                        value={sample.input}
+                        onChange={(e) =>
+                          setEditSamples((prev) => prev.map((s, idx) => (idx === i ? { ...s, input: e.target.value } : s)))
+                        }
+                        className="w-full min-h-[70px] text-[12px] font-mono bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:bg-white focus:border-slate-900 resize-y"
+                      />
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">출력</p>
+                      <textarea
+                        value={sample.output}
+                        onChange={(e) =>
+                          setEditSamples((prev) => prev.map((s, idx) => (idx === i ? { ...s, output: e.target.value } : s)))
+                        }
+                        className="w-full min-h-[70px] text-[12px] font-mono bg-slate-50 border border-slate-200 rounded-xl p-3 outline-none focus:bg-white focus:border-slate-900 resize-y"
+                      />
+                    </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))
+            ) : (
+              problem.samples?.map((sample, i) => (
+                <div key={i} className={i > 0 ? "mt-5" : ""}>
+                  <p className="text-[12px] font-semibold text-slate-500 mb-2">예제 {i + 1}</p>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">입력</p>
+                      <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre overflow-x-auto">{sample.input}</pre>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-medium text-slate-400 mb-1">출력</p>
+                      <pre className="text-[12px] bg-slate-50 border border-slate-200 rounded-xl p-3 whitespace-pre overflow-x-auto">{sample.output}</pre>
+                    </div>
+                  </div>
+                </div>
+              ))
+            )}
 
             {history.length > 0 && (
               <div className="mt-7 pt-6 border-t border-slate-100">
