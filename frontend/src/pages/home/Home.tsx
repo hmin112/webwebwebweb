@@ -1,4 +1,5 @@
 import { Hero } from "./components/Hero";
+import { ChosunPrograms } from "./components/ChosunPrograms";
 import { HallOfFame } from "./components/HallOfFame";
 import { Events } from "./components/Events";
 import { Notice } from "./components/Notice";
@@ -15,10 +16,11 @@ interface HomeProps {
     notices: any[];
     posts: any[];
     hallOfFame: any[];
+    chosunPrograms: any[];
     onNavigate: (path: string, id?: any) => void;
 }
 
-export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, onNavigate }: HomeProps) {
+export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, chosunPrograms, onNavigate }: HomeProps) {
     const location = useLocation();
 
     // 해시(#) 값을 감지해서 해당 섹션으로 부드럽게 스크롤
@@ -58,6 +60,7 @@ export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, 
             <div id="home">
                 <Hero isAdmin={isAdmin} />
             </div>
+            <ChosunPrograms programs={chosunPrograms} />
             <div id="halloffame" className="scroll-mt-20">
                 <HallOfFame onNavigate={onNavigate} entries={recentHallOfFame} />
             </div>

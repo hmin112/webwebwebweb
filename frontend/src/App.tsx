@@ -55,6 +55,7 @@ function AppContent() {
   const [notices, setNotices] = useState<any[]>([]);
   const [events, setEvents] = useState<any[]>([]);
   const [hallOfFame, setHallOfFame] = useState<any[]>([]);
+  const [chosunPrograms, setChosunPrograms] = useState<any[]>([]);
 
   const handleLogout = async (isForced: boolean = false) => {
     if (!isForced && !window.confirm("로그아웃 하시겠습니까?")) return;
@@ -110,6 +111,14 @@ function AppContent() {
       if (hallOfFameRes.data) setHallOfFame(hallOfFameRes.data);
     } catch (error) {
       console.error("❌ 명예의 전당 로드 에러:", error);
+    }
+
+    // 5. 조선대 SW중심대학 지원프로그램 가져오기(신청 가능한 것만, 서버가 주기적으로 캐싱해둔 값)
+    try {
+      const chosunProgramsRes = await api.get('/chosun-programs');
+      if (chosunProgramsRes.data) setChosunPrograms(chosunProgramsRes.data);
+    } catch (error) {
+      console.error("❌ 조선대 SW중심대학 지원프로그램 로드 에러:", error);
     }
   };
 
@@ -299,7 +308,7 @@ function AppContent() {
 
       <main>
         <Routes>
-          <Route path="/" element={<Home isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} events={events} notices={notices} posts={posts} hallOfFame={hallOfFame} onNavigate={handleNavigateCompat} />} />
+          <Route path="/" element={<Home isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} events={events} notices={notices} posts={posts} hallOfFame={hallOfFame} chosunPrograms={chosunPrograms} onNavigate={handleNavigateCompat} />} />
 
           {/* ✨ 핵심 2: 로그인 성공 시 상태(State)와 LocalStorage를 동시에 즉시 업데이트하도록 수정 */}
           <Route path="/login" element={
