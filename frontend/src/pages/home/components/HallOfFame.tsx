@@ -72,6 +72,35 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                       {entry.awardName}
                     </span>
                   </div>
+
+                  {entry.participants && entry.participants.length > 0 && (
+                    <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 flex flex-col items-end gap-1">
+                      {entry.participants.slice(0, 3).map((p: any) => (
+                        <div
+                          key={p.loginId}
+                          className="flex items-center gap-1 md:gap-1.5 bg-white/95 backdrop-blur-sm shadow-md rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-white"
+                        >
+                          <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
+                            {p.profileImage ? (
+                              <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
+                            ) : (
+                              <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
+                                {p.name?.[0] || "?"}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-[10px] md:text-[11px] font-bold text-slate-700 whitespace-nowrap">
+                            {formatStudentId(p.studentId)} {p.name}
+                          </span>
+                        </div>
+                      ))}
+                      {entry.participants.length > 3 && (
+                        <span className="text-[10px] md:text-[11px] font-bold text-white bg-slate-900/70 backdrop-blur-sm rounded-full px-2 py-0.5">
+                          +{entry.participants.length - 3}명
+                        </span>
+                      )}
+                    </div>
+                  )}
                 </div>
 
                 <h3 className="text-sm md:text-lg font-black text-slate-900 group-hover:text-indigo-600 transition-colors leading-snug line-clamp-1">
@@ -83,35 +112,6 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                   <div className="flex items-center gap-1 mt-1.5 text-[10px] md:text-xs text-slate-400 font-bold">
                     <CalendarDays className="w-3 h-3 md:w-3.5 md:h-3.5 shrink-0" />
                     <span className="truncate">{entry.date}</span>
-                  </div>
-                )}
-
-                {entry.participants && entry.participants.length > 0 && (
-                  <div className="flex flex-wrap items-center gap-1.5 mt-2.5">
-                    {entry.participants.slice(0, 3).map((p: any) => (
-                      <div
-                        key={p.loginId}
-                        className="flex items-center gap-1 md:gap-1.5 bg-slate-50 rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-slate-100"
-                      >
-                        <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
-                          {p.profileImage ? (
-                            <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
-                          ) : (
-                            <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
-                              {p.name?.[0] || "?"}
-                            </div>
-                          )}
-                        </div>
-                        <span className="text-[10px] md:text-[11px] font-bold text-slate-700 whitespace-nowrap">
-                          {formatStudentId(p.studentId)} {p.name}
-                        </span>
-                      </div>
-                    ))}
-                    {entry.participants.length > 3 && (
-                      <span className="text-[10px] md:text-[11px] font-bold text-slate-400">
-                        +{entry.participants.length - 3}명
-                      </span>
-                    )}
                   </div>
                 )}
               </motion.div>
