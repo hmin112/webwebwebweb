@@ -61,6 +61,19 @@ export const Navbar = ({
     fetchGuildIcon();
   }, []);
 
+  // ✨ [신규] 브라우저 탭 아이콘(favicon)이 사이트 내부 로고(위 서버 아이콘)와 어긋나 있던 문제 수정.
+  // index.html에 정적으로 박혀있던 옛 로고 대신, 네비바가 실시간으로 받아온 값을 그대로 탭 아이콘에도
+  // 반영해 "사이트 내부 로고가 기준"이 되도록 한다.
+  useEffect(() => {
+    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
+    if (!link) {
+      link = document.createElement("link");
+      link.rel = "icon";
+      document.head.appendChild(link);
+    }
+    link.href = guildIconUrl;
+  }, [guildIconUrl]);
+
   // ✨ 컴포넌트 마운트 시 및 로그인 상태 변경 시 사용자 정보 로드
   useEffect(() => {
     const savedUser = localStorage.getItem("currentUser");
