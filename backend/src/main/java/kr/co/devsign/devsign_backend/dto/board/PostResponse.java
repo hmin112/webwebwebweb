@@ -18,6 +18,11 @@ public record PostResponse(
         List<String> images,
         List<CommentResponse> commentsList,
         LocalDateTime createdAt,
-        String date
+        String date,
+        // ✨ [신규] 회비 게시글 전용 필드 — 다른 카테고리에서는 null
+        String feeAmount,
+        String feeAccount,
+        String feeDeadline,
+        String feeTerm
 ) {
 }

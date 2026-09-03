@@ -23,8 +23,9 @@ public class BoardController {
     private final JwtUtil jwtUtil;
 
     @GetMapping
-    public List<PostResponse> getAllPosts() {
-        return boardService.getAllPosts();
+    public List<PostResponse> getAllPosts(HttpServletRequest request) {
+        String loginId = jwtUtil.getLoginIdFromRequest(request);
+        return boardService.getAllPosts(loginId);
     }
 
     // ✨ [수정] @RequestBody 대신 @ModelAttribute와 MultipartFile 리스트를 받습니다.

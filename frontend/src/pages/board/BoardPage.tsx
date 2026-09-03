@@ -15,7 +15,9 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 10; // ✨ 20개에서 10개로 수정됨
 
-  const categories = ["전체", "회비", "자유", "질문"];
+  // ✨ 회비 게시글은 로그인해야만 노출되므로(백엔드에서도 필터링됨), 비로그인 상태에서는
+  // 카테고리 탭 자체를 숨겨 "숨겨진 카테고리가 있다"는 티도 나지 않게 한다.
+  const categories = isLoggedIn ? ["전체", "회비", "자유", "질문"] : ["전체", "자유", "질문"];
 
   // 기존 검색/필터링 로직 유지
   const filteredPosts = posts
@@ -151,9 +153,16 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
                   <h3 className="text-[15px] md:text-xl font-[900] text-slate-900 group-hover:text-indigo-600 transition-colors mb-1.5 md:mb-2 tracking-tight truncate md:whitespace-normal md:line-clamp-1">
                     {post.title}
                   </h3>
-                  <p className="text-slate-400 font-bold text-xs md:text-sm line-clamp-1 md:leading-relaxed">
-                    {post.content}
-                  </p>
+                  {post.category === "회비" && post.feeAmount ? (
+                    <p className="text-amber-700 font-black text-xs md:text-sm line-clamp-1 md:leading-relaxed">
+                      {post.feeAmount}
+                      {post.feeDeadline && <span className="text-amber-400 font-bold"> · {post.feeDeadline}까지</span>}
+                    </p>
+                  ) : (
+                    <p className="text-slate-400 font-bold text-xs md:text-sm line-clamp-1 md:leading-relaxed">
+                      {post.content}
+                    </p>
+                  )}
                 </div>
                 
                 <div className="flex flex-row-reverse md:flex-col items-center md:items-end justify-between w-full md:w-auto shrink-0 border-t md:border-t-0 md:border-l border-slate-50 pl-0 md:pl-8 pt-3 md:pt-0 mt-1 md:mt-0 gap-0 md:gap-8">

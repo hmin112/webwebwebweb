@@ -57,8 +57,14 @@ public class BoardService {
     @PersistenceContext
     private EntityManager entityManager;
 
-    public List<PostResponse> getAllPosts() {
+    private static final String FEE_CATEGORY = "회비";
+
+    // ✨ 회비 게시글은 로그인한 사용자에게만 노출 — 계좌번호 등 민감한 정보가 있어 목록 단계부터
+    // 완전히 제외한다(비로그인 요청에는 아예 응답에 포함되지 않음, 프론트 숨김이 아니라 서버단 필터).
+    public List<PostResponse> getAllPosts(String loginId) {
+        boolean isLoggedIn = loginId != null && !loginId.isBlank();
         return postRepository.findAllByOrderByIdDesc().stream()
+                .filter(post -> isLoggedIn || !FEE_CATEGORY.equals(post.getCategory()))
                 .map(this::toPostResponse)
                 .toList();
     }
@@ -72,6 +78,7 @@ public class BoardService {
         post.setTitle(payload.title());
         post.setContent(payload.content());
         post.setCategory(payload.category());
+        applyFeeFields(post, payload.category(), payload.feeAmount(), payload.feeAccount(), payload.feeDeadline(), payload.feeTerm());
 
         // 🚀 이미지 파일 저장 처리
         List<String> imageUrls = saveFiles(files);
@@ -91,6 +98,12 @@ public class BoardService {
     @Transactional
     public PostResponse getPostDetail(Long id, String loginId) {
         Post post = postRepository.findById(id).orElseThrow();
+
+        // ✨ 목록에서만 걸러지고 상세 URL로 직접 접근하면 보이는 걸 막기 위해 상세 조회도 동일하게 차단
+        if (FEE_CATEGORY.equals(post.getCategory()) && (loginId == null || loginId.isBlank())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "로그인 후 볼 수 있는 게시글입니다.");
+        }
+
         Member member = memberRepository.findByLoginId(loginId != null ? loginId : "").orElse(null);
 
         if (member != null) {
@@ -117,6 +130,7 @@ public class BoardService {
         post.setTitle(payload.title());
         post.setContent(payload.content());
         post.setCategory(payload.category());
+        applyFeeFields(post, payload.category(), payload.feeAmount(), payload.feeAccount(), payload.feeDeadline(), payload.feeTerm());
 
         // 🚀 이미지 수정 로직: 기존 이미지(프론트에서 남겨둔 것) + 새로 업로드한 파일
         List<String> currentImages = payload.images() != null ? new ArrayList<>(payload.images()) : new ArrayList<>();
@@ -125,6 +139,15 @@ public class BoardService {
 
         accessLogService.logByLoginId(loginId, "POST_UPDATE", ip);
         return toPostResponse(postRepository.save(post));
+    }
+
+    // ✨ [신규] 회비 카테고리일 때만 구조화 필드를 저장 — 다른 카테고리로 바뀌면(수정 시) 함께 비운다
+    private void applyFeeFields(Post post, String category, String amount, String account, String deadline, String term) {
+        boolean isFee = FEE_CATEGORY.equals(category);
+        post.setFeeAmount(isFee ? amount : null);
+        post.setFeeAccount(isFee ? account : null);
+        post.setFeeDeadline(isFee ? deadline : null);
+        post.setFeeTerm(isFee ? term : null);
     }
 
     // ✨ [신규] 파일을 물리적으로 저장하고 접근 가능한 URL 리스트를 반환하는 공통 메서드
@@ -372,7 +395,11 @@ public class BoardService {
                 post.getImages() == null ? List.of() : post.getImages(),
                 comments,
                 post.getCreatedAt(),
-                post.getDate()
+                post.getDate(),
+                post.getFeeAmount(),
+                post.getFeeAccount(),
+                post.getFeeDeadline(),
+                post.getFeeTerm()
         );
     }
 

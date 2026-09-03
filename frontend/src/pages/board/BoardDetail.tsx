@@ -3,7 +3,8 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Eye, MessageSquare, Heart,
-  User, Send, Wallet, Trash2, Edit3, Trash, ChevronDown
+  User, Send, Wallet, Trash2, Edit3, Trash, ChevronDown,
+  Banknote, Landmark, CalendarClock, Users, Copy, Check
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -135,9 +136,15 @@ export const BoardDetail = ({
           </header>
 
           <div className="prose prose-slate max-w-none mb-10 md:mb-16">
-            <div className="text-slate-600 text-sm md:text-lg font-medium leading-relaxed whitespace-pre-wrap">
-              {post.content}
-            </div>
+            {post.category === "회비" && post.feeAmount && (
+              <FeeInfoCard post={post} />
+            )}
+
+            {post.content && (
+              <div className="text-slate-600 text-sm md:text-lg font-medium leading-relaxed whitespace-pre-wrap">
+                {post.content}
+              </div>
+            )}
 
             {post.images && post.images.length > 0 && (
               <div className="mt-8 md:mt-12 flex flex-col gap-4 md:gap-8">
@@ -156,7 +163,7 @@ export const BoardDetail = ({
           <div className="flex items-center gap-2 md:gap-4 pt-6 md:pt-10 border-t border-slate-50">
             <Button
               onClick={() => onToggleLike(post.id)}
-              className={`rounded-xl md:rounded-2xl px-4 py-3 md:px-8 md:py-7 font-black transition-all flex items-center gap-1.5 md:gap-2 shadow-none border-none active:scale-95 text-[11px] md:text-base h-auto ${post.likedByMe ? "bg-pink-50 text-pink-500" : "bg-slate-50 text-slate-400"
+              className={`rounded-xl md:rounded-2xl px-4 py-2.5 md:px-6 md:py-3.5 font-black transition-all flex items-center gap-1.5 md:gap-2 shadow-none border-none active:scale-95 text-[11px] md:text-sm h-auto ${post.likedByMe ? "bg-pink-50 text-pink-500" : "bg-slate-50 text-slate-400"
                 }`}
             >
               <Heart className="w-3.5 h-3.5 md:w-5 md:h-5" fill={post.likedByMe ? "currentColor" : "none"} />
@@ -192,20 +199,28 @@ export const BoardDetail = ({
           </div>
 
           {isLoggedIn ? (
-            <div className="relative mb-8 md:mb-12 group">
+            <div className="mb-8 md:mb-12">
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
-                placeholder="따뜻한 댓글 한마디를 남겨주세요."
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && !e.shiftKey && !e.nativeEvent.isComposing) {
+                    e.preventDefault();
+                    handleSendComment();
+                  }
+                }}
+                placeholder="따뜻한 댓글 한마디를 남겨주세요. (Shift+Enter로 줄바꿈)"
                 className="w-full p-4 md:p-6 bg-slate-50 rounded-[1.25rem] md:rounded-[2rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm text-slate-700 min-h-[80px] md:min-h-[120px] transition-all resize-none"
               />
-              <button
-                onClick={handleSendComment}
-                className="absolute bottom-2 right-2 md:bottom-4 md:right-4 p-2.5 md:p-4 bg-indigo-600 text-white rounded-xl md:rounded-2xl shadow-lg hover:bg-indigo-700 hover:scale-105 active:scale-95 transition-all disabled:bg-slate-200"
-                disabled={!commentContent.trim()}
-              >
-                <Send className="w-4 h-4 md:w-5 md:h-5" />
-              </button>
+              <div className="flex justify-end mt-2.5 md:mt-3">
+                <button
+                  onClick={handleSendComment}
+                  disabled={!commentContent.trim()}
+                  className="flex items-center gap-1.5 px-4 py-2.5 md:px-5 md:py-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black text-[11px] md:text-sm shadow-sm hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-slate-200 disabled:text-slate-400"
+                >
+                  <Send className="w-3.5 h-3.5 md:w-4 md:h-4" /> 등록
+                </button>
+              </div>
             </div>
           ) : (
             <div className="mb-8 md:mb-12 p-6 md:p-10 bg-slate-50 rounded-[1.5rem] md:rounded-[2.5rem] border border-dashed border-slate-200 text-center">
@@ -241,6 +256,62 @@ export const BoardDetail = ({
           </div>
         </section>
       </div>
+    </div>
+  );
+};
+
+// ✨ 회비 게시글 전용 구조화 정보 카드 — 금액/대상학기/납부기한/입금계좌를 한눈에, 계좌는 복사 버튼 제공
+const FeeInfoCard = ({ post }: any) => {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopyAccount = async () => {
+    if (!post.feeAccount) return;
+    try {
+      await navigator.clipboard.writeText(post.feeAccount);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // 클립보드 접근 실패 시 조용히 무시(브라우저 권한 문제 등)
+    }
+  };
+
+  const rows = [
+    { icon: Banknote, label: "금액", value: post.feeAmount },
+    { icon: Users, label: "대상 학기", value: post.feeTerm },
+    { icon: CalendarClock, label: "납부 기한", value: post.feeDeadline },
+  ].filter((r) => r.value);
+
+  return (
+    <div className="not-prose mb-8 md:mb-12 p-5 md:p-8 bg-amber-50/60 rounded-[1.5rem] md:rounded-[2.5rem] border border-amber-100">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
+        {rows.map((row) => (
+          <div key={row.label}>
+            <div className="flex items-center gap-1.5 text-amber-600 mb-1 md:mb-1.5">
+              <row.icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
+              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{row.label}</span>
+            </div>
+            <p className="text-slate-900 font-black text-base md:text-2xl tracking-tight">{row.value}</p>
+          </div>
+        ))}
+      </div>
+
+      {post.feeAccount && (
+        <div className="flex items-center justify-between gap-3 bg-white rounded-xl md:rounded-2xl px-4 py-3 md:px-6 md:py-4 border border-amber-100/80">
+          <div className="flex items-center gap-2 min-w-0">
+            <Landmark className="w-4 h-4 md:w-5 md:h-5 text-amber-500 shrink-0" />
+            <span className="font-bold text-xs md:text-base text-slate-700 truncate">{post.feeAccount}</span>
+          </div>
+          <button
+            onClick={handleCopyAccount}
+            className={`flex items-center gap-1 shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-black text-[10px] md:text-xs transition-all ${
+              copied ? "bg-emerald-50 text-emerald-600" : "bg-amber-100 text-amber-700 hover:bg-amber-200"
+            }`}
+          >
+            {copied ? <Check className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Copy className="w-3 h-3 md:w-3.5 md:h-3.5" />}
+            {copied ? "복사됨" : "계좌 복사"}
+          </button>
+        </div>
+      )}
     </div>
   );
 };

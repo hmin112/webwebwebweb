@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, PencilLine, AlertCircle,
-  ImagePlus, Trash2, Wallet, Hash
+  ImagePlus, Trash2, Wallet, Hash, Banknote, Landmark, CalendarClock, Users
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -14,8 +14,16 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
   const [images, setImages] = useState<string[]>([]);
   // ✨ imageFiles: 서버 전송용 실제 파일 객체 저장
   const [imageFiles, setImageFiles] = useState<File[]>([]);
-  
+
   const [category, setCategory] = useState(isAdmin ? "회비" : "자유");
+  const isFee = category === "회비";
+
+  // ✨ [신규] 회비 게시글 전용 구조화 필드
+  const [feeAmount, setFeeAmount] = useState("");
+  const [feeAccount, setFeeAccount] = useState("");
+  const [feeDeadline, setFeeDeadline] = useState("");
+  const [feeTerm, setFeeTerm] = useState("");
+
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,8 +33,19 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
       setContent(post.content);
       setCategory(post.category);
       setImages(post.images || []); // 기존 서버에 저장된 이미지 URL들
+      setFeeAmount(post.feeAmount || "");
+      setFeeAccount(post.feeAccount || "");
+      setFeeDeadline(post.feeDeadline || "");
+      setFeeTerm(post.feeTerm || "");
     }
   }, [post]);
+
+  // 카테고리를 회비에서 다른 카테고리로 바꾸면 회비 전용 입력값은 비워서 헷갈리지 않게 함
+  useEffect(() => {
+    if (!isFee) {
+      setFeeAmount(""); setFeeAccount(""); setFeeDeadline(""); setFeeTerm("");
+    }
+  }, [isFee]);
 
   useEffect(() => {
     if (post && post.loginId !== user?.loginId) {
@@ -73,7 +92,12 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
       return;
     }
 
-    if (!title.trim() || !content.trim()) {
+    if (isFee) {
+      if (!title.trim() || !feeAmount.trim() || !feeDeadline.trim() || !feeAccount.trim()) {
+        alert("제목, 금액, 납부 기한, 입금 계좌는 필수로 입력해주세요.");
+        return;
+      }
+    } else if (!title.trim() || !content.trim()) {
       alert("제목과 내용을 모두 입력해주세요.");
       return;
     }
@@ -86,7 +110,13 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
       formData.append("title", title);
       formData.append("content", content);
       formData.append("category", category);
-      
+      if (isFee) {
+        formData.append("feeAmount", feeAmount);
+        formData.append("feeAccount", feeAccount);
+        formData.append("feeDeadline", feeDeadline);
+        formData.append("feeTerm", feeTerm);
+      }
+
       // 실제 파일들만 'files'라는 이름으로 추가
       imageFiles.forEach((file) => {
         formData.append("files", file);
@@ -194,17 +224,68 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder="제목을 입력해주세요"
+                placeholder={isFee ? "예: 2026년 2학기 회비 안내" : "제목을 입력해주세요"}
                 className="w-full px-5 py-4 md:px-8 md:py-6 bg-slate-50 rounded-[1.25rem] md:rounded-[2rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm md:text-xl text-slate-900 placeholder:text-slate-300 transition-all"
               />
             </div>
 
+            {isFee && (
+              <div className="space-y-3 md:space-y-4 p-4 md:p-8 bg-amber-50/50 rounded-[1.25rem] md:rounded-[2.5rem] border border-amber-100">
+                <label className="text-[10px] md:text-xs font-black text-amber-700 uppercase ml-1 tracking-widest flex items-center gap-1.5 md:gap-2">
+                  <Wallet className="w-3.5 h-3.5 md:w-4 md:h-4" /> 회비 정보
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-4">
+                  <div className="relative">
+                    <Banknote className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400" />
+                    <input
+                      type="text"
+                      value={feeAmount}
+                      onChange={(e) => setFeeAmount(e.target.value)}
+                      placeholder="금액 (예: 50,000원)"
+                      className="w-full pl-11 md:pl-14 pr-4 py-3.5 md:py-5 bg-white rounded-xl md:rounded-2xl border border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-xs md:text-base text-slate-800 placeholder:text-slate-300"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Users className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400" />
+                    <input
+                      type="text"
+                      value={feeTerm}
+                      onChange={(e) => setFeeTerm(e.target.value)}
+                      placeholder="대상 학기 (예: 2026년 2학기)"
+                      className="w-full pl-11 md:pl-14 pr-4 py-3.5 md:py-5 bg-white rounded-xl md:rounded-2xl border border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-xs md:text-base text-slate-800 placeholder:text-slate-300"
+                    />
+                  </div>
+                  <div className="relative">
+                    <CalendarClock className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400 pointer-events-none" />
+                    <input
+                      type="date"
+                      value={feeDeadline}
+                      onChange={(e) => setFeeDeadline(e.target.value)}
+                      className="w-full pl-11 md:pl-14 pr-4 py-3.5 md:py-5 bg-white rounded-xl md:rounded-2xl border border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-xs md:text-base text-slate-800"
+                    />
+                  </div>
+                  <div className="relative">
+                    <Landmark className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400" />
+                    <input
+                      type="text"
+                      value={feeAccount}
+                      onChange={(e) => setFeeAccount(e.target.value)}
+                      placeholder="입금 계좌 (예: 카카오뱅크 3333-01-1234567 김형민)"
+                      className="w-full pl-11 md:pl-14 pr-4 py-3.5 md:py-5 bg-white rounded-xl md:rounded-2xl border border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-xs md:text-base text-slate-800 placeholder:text-slate-300"
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2 md:space-y-4">
-              <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">상세 내용</label>
+              <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">
+                {isFee ? "추가 안내사항 (선택)" : "상세 내용"}
+              </label>
               <textarea
                 value={content}
                 onChange={(e) => setContent(e.target.value)}
-                placeholder="내용을 입력해주세요."
+                placeholder={isFee ? "그 외 회비 관련 안내가 있다면 적어주세요." : "내용을 입력해주세요."}
                 className="w-full px-5 py-5 md:px-8 md:py-8 bg-slate-50 rounded-[1.25rem] md:rounded-[2.5rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-base text-slate-700 min-h-[200px] md:min-h-[300px] resize-none leading-relaxed"
               />
             </div>

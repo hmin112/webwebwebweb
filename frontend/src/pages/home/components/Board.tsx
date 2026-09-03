@@ -59,10 +59,17 @@ export const Board = ({ onNavigate, posts }: BoardSectionProps) => {
                 {post.title}
               </h3>
               
-              {/* 내용 */}
-              <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">
-                {post.content}
-              </p>
+              {/* 내용 — 회비 글은 구조화 정보(금액/기한)를 우선 요약해서 보여줌 */}
+              {post.category === "회비" && post.feeAmount ? (
+                <p className="text-amber-700 font-black text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">
+                  {post.feeAmount}
+                  {post.feeDeadline && <span className="text-amber-400 font-bold"> · {post.feeDeadline}까지</span>}
+                </p>
+              ) : (
+                <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">
+                  {post.content}
+                </p>
+              )}
 
               {/* 하단 정보 영역 */}
               {/* ✨ 모바일 여백 축소 (pt-4), 데스크탑 유지 (md:pt-6) */}
