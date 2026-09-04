@@ -29,11 +29,15 @@ public class Post {
     @Column(columnDefinition = "LONGTEXT")
     private String profileImage; // 작성자 프로필 이미지 (Base64)
 
-    // ✨ [신규] 회비(category="회비") 게시글 전용 구조화 필드 — 다른 카테고리는 항상 null
-    private String feeAmount;    // 회비 금액 (예: "50,000원")
-    private String feeAccount;   // 납부 계좌 (예: "카카오뱅크 3333-01-1234567 (김형민)")
-    private String feeDeadline;  // 납부 기한 (예: "2026-09-30")
-    private String feeTerm;      // 대상 학기 (예: "2026년 2학기")
+    // ✨ 회비(category="회비") 게시글 전용 구조화 필드 — 회비를 걷는 공지가 아니라
+    // "회비 사용 내역"을 정리해서 올리는 용도. 다른 카테고리는 항상 null/빈 값.
+    private String feeTerm;              // 대상 학기 (예: "2026년 2학기")
+    private Long feeOpeningBalance;      // 기존(이월) 금액 — 이번 내역이 시작되는 시점의 잔액
+
+    @ElementCollection
+    @CollectionTable(name = "post_fee_items", joinColumns = @JoinColumn(name = "post_id"))
+    @OrderColumn(name = "item_order")
+    private List<FeeLedgerItem> feeItems = new ArrayList<>(); // 입금/사용 내역 한 줄씩
 
     private int views = 0;
     private int likes = 0;

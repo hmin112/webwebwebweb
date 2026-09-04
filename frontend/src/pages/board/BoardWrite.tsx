@@ -1,11 +1,15 @@
 import { api } from "../../api/axios";
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, ChevronLeft, PencilLine, AlertCircle,
-  ImagePlus, Trash2, Wallet, Hash, Banknote, Landmark, CalendarClock, Users
+  ImagePlus, Trash2, Wallet, Hash, Users, Plus, TrendingUp, TrendingDown, Scale
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+
+type LedgerItem = { type: "입금" | "사용"; date: string; description: string; amount: string };
+
+const emptyLedgerItem = (): LedgerItem => ({ type: "사용", date: "", description: "", amount: "" });
 
 export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any) => {
   const [title, setTitle] = useState("");
@@ -18,11 +22,11 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
   const [category, setCategory] = useState(isAdmin ? "회비" : "자유");
   const isFee = category === "회비";
 
-  // ✨ [신규] 회비 게시글 전용 구조화 필드
-  const [feeAmount, setFeeAmount] = useState("");
-  const [feeAccount, setFeeAccount] = useState("");
-  const [feeDeadline, setFeeDeadline] = useState("");
+  // ✨ 회비 = "회비 사용 내역" 게시글. 대상 학기 + 기존(이월) 금액 + 입금/사용 내역 목록으로
+  // 엑셀 표처럼 한 줄씩 입력받아 최종 잔액을 자동 계산해서 보여준다.
   const [feeTerm, setFeeTerm] = useState("");
+  const [feeOpeningBalance, setFeeOpeningBalance] = useState("");
+  const [feeItems, setFeeItems] = useState<LedgerItem[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -30,20 +34,26 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
   useEffect(() => {
     if (post) {
       setTitle(post.title);
-      setContent(post.content);
+      setContent(post.content || "");
       setCategory(post.category);
       setImages(post.images || []); // 기존 서버에 저장된 이미지 URL들
-      setFeeAmount(post.feeAmount || "");
-      setFeeAccount(post.feeAccount || "");
-      setFeeDeadline(post.feeDeadline || "");
       setFeeTerm(post.feeTerm || "");
+      setFeeOpeningBalance(post.feeOpeningBalance != null ? String(post.feeOpeningBalance) : "");
+      setFeeItems(
+        (post.feeItems || []).map((it: any) => ({
+          type: it.type === "입금" ? "입금" : "사용",
+          date: it.date || "",
+          description: it.description || "",
+          amount: it.amount != null ? String(it.amount) : "",
+        }))
+      );
     }
   }, [post]);
 
   // 카테고리를 회비에서 다른 카테고리로 바꾸면 회비 전용 입력값은 비워서 헷갈리지 않게 함
   useEffect(() => {
     if (!isFee) {
-      setFeeAmount(""); setFeeAccount(""); setFeeDeadline(""); setFeeTerm("");
+      setFeeTerm(""); setFeeOpeningBalance(""); setFeeItems([]);
     }
   }, [isFee]);
 
@@ -56,12 +66,30 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
 
   const categories = isAdmin ? ["회비", "자유", "질문"] : ["자유", "질문"];
 
+  // ✨ 입력한 내역을 기준으로 실시간 합산 — 저장 전에도 미리 결과를 보여줌
+  const feeSummary = useMemo(() => {
+    const opening = Number(feeOpeningBalance) || 0;
+    let income = 0;
+    let expense = 0;
+    feeItems.forEach((item) => {
+      const amount = Number(item.amount) || 0;
+      if (item.type === "입금") income += amount;
+      else expense += amount;
+    });
+    return { opening, income, expense, final: opening + income - expense };
+  }, [feeOpeningBalance, feeItems]);
+
+  const addFeeItem = () => setFeeItems((prev) => [...prev, emptyLedgerItem()]);
+  const removeFeeItem = (index: number) => setFeeItems((prev) => prev.filter((_, i) => i !== index));
+  const updateFeeItem = (index: number, patch: Partial<LedgerItem>) =>
+    setFeeItems((prev) => prev.map((item, i) => (i === index ? { ...item, ...patch } : item)));
+
   // ✨ 이미지 업로드 핸들러 최적화
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (files) {
       const fileArray = Array.from(files);
-      
+
       // 1. 서버로 보낼 실제 파일 객체 추가
       setImageFiles(prev => [...prev, ...fileArray]);
 
@@ -93,8 +121,12 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
     }
 
     if (isFee) {
-      if (!title.trim() || !feeAmount.trim() || !feeDeadline.trim() || !feeAccount.trim()) {
-        alert("제목, 금액, 납부 기한, 입금 계좌는 필수로 입력해주세요.");
+      if (!title.trim() || !feeTerm.trim()) {
+        alert("제목과 대상 학기는 필수로 입력해주세요.");
+        return;
+      }
+      if (feeItems.some((item) => !item.description.trim() || !item.amount.trim())) {
+        alert("추가한 내역에는 내용과 금액을 모두 입력해주세요. (빈 줄은 삭제해주세요)");
         return;
       }
     } else if (!title.trim() || !content.trim()) {
@@ -111,10 +143,12 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
       formData.append("content", content);
       formData.append("category", category);
       if (isFee) {
-        formData.append("feeAmount", feeAmount);
-        formData.append("feeAccount", feeAccount);
-        formData.append("feeDeadline", feeDeadline);
         formData.append("feeTerm", feeTerm);
+        formData.append("feeOpeningBalance", String(Number(feeOpeningBalance) || 0));
+        formData.append(
+          "feeItemsJson",
+          JSON.stringify(feeItems.map((item) => ({ ...item, amount: Number(item.amount) || 0 })))
+        );
       }
 
       // 실제 파일들만 'files'라는 이름으로 추가
@@ -172,9 +206,9 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
           </div>
 
           <div className="flex gap-1.5 md:gap-3 shrink-0">
-            <Button 
-              variant="ghost" 
-              onClick={() => onNavigate("board-page")} 
+            <Button
+              variant="ghost"
+              onClick={() => onNavigate("board-page")}
               className="px-3 py-2 md:px-8 md:py-3.5 rounded-lg md:rounded-2xl font-black text-slate-400 text-[11px] md:text-sm h-auto"
             >
               취소
@@ -189,9 +223,9 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
           </div>
         </div>
 
-        <motion.div 
-          initial={{ opacity: 0, y: 20 }} 
-          animate={{ opacity: 1, y: 0 }} 
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
           className="bg-white rounded-[1.5rem] md:rounded-[3rem] p-5 md:p-14 shadow-sm border border-slate-100"
         >
           <form className="space-y-6 md:space-y-10" onSubmit={handleSubmit}>
@@ -224,27 +258,18 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
                 type="text"
                 value={title}
                 onChange={(e) => setTitle(e.target.value)}
-                placeholder={isFee ? "예: 2026년 2학기 회비 안내" : "제목을 입력해주세요"}
+                placeholder={isFee ? "예: 2026년 2학기 회비 사용 내역" : "제목을 입력해주세요"}
                 className="w-full px-5 py-4 md:px-8 md:py-6 bg-slate-50 rounded-[1.25rem] md:rounded-[2rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-black text-sm md:text-xl text-slate-900 placeholder:text-slate-300 transition-all"
               />
             </div>
 
             {isFee && (
-              <div className="space-y-3 md:space-y-4 p-4 md:p-8 bg-amber-50/50 rounded-[1.25rem] md:rounded-[2.5rem] border border-amber-100">
+              <div className="space-y-4 md:space-y-6 p-4 md:p-8 bg-amber-50/50 rounded-[1.25rem] md:rounded-[2.5rem] border border-amber-100">
                 <label className="text-[10px] md:text-xs font-black text-amber-700 uppercase ml-1 tracking-widest flex items-center gap-1.5 md:gap-2">
-                  <Wallet className="w-3.5 h-3.5 md:w-4 md:h-4" /> 회비 정보
+                  <Wallet className="w-3.5 h-3.5 md:w-4 md:h-4" /> 회비 사용 내역
                 </label>
+
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 md:gap-4">
-                  <div className="relative">
-                    <Banknote className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400" />
-                    <input
-                      type="text"
-                      value={feeAmount}
-                      onChange={(e) => setFeeAmount(e.target.value)}
-                      placeholder="금액 (예: 50,000원)"
-                      className="w-full pl-11 md:pl-14 pr-4 py-3.5 md:py-5 bg-white rounded-xl md:rounded-2xl border border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-xs md:text-base text-slate-800 placeholder:text-slate-300"
-                    />
-                  </div>
                   <div className="relative">
                     <Users className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400" />
                     <input
@@ -256,23 +281,124 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
                     />
                   </div>
                   <div className="relative">
-                    <CalendarClock className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400 pointer-events-none" />
+                    <Scale className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400" />
                     <input
-                      type="date"
-                      value={feeDeadline}
-                      onChange={(e) => setFeeDeadline(e.target.value)}
-                      className="w-full pl-11 md:pl-14 pr-4 py-3.5 md:py-5 bg-white rounded-xl md:rounded-2xl border border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-xs md:text-base text-slate-800"
-                    />
-                  </div>
-                  <div className="relative">
-                    <Landmark className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 w-4 h-4 md:w-5 md:h-5 text-amber-400" />
-                    <input
-                      type="text"
-                      value={feeAccount}
-                      onChange={(e) => setFeeAccount(e.target.value)}
-                      placeholder="입금 계좌 (예: 카카오뱅크 3333-01-1234567 김형민)"
+                      type="number"
+                      value={feeOpeningBalance}
+                      onChange={(e) => setFeeOpeningBalance(e.target.value)}
+                      placeholder="기존(이월) 금액"
                       className="w-full pl-11 md:pl-14 pr-4 py-3.5 md:py-5 bg-white rounded-xl md:rounded-2xl border border-amber-100 outline-none focus:ring-2 focus:ring-amber-400 font-bold text-xs md:text-base text-slate-800 placeholder:text-slate-300"
                     />
+                  </div>
+                </div>
+
+                {/* 엑셀 스타일 내역 표 */}
+                <div className="rounded-xl md:rounded-2xl border border-amber-100 bg-white overflow-hidden">
+                  <div className="overflow-x-auto">
+                    <table className="w-full min-w-[560px] text-xs md:text-sm">
+                      <thead>
+                        <tr className="bg-amber-100/60 text-amber-700 text-[10px] md:text-xs font-black uppercase tracking-wider">
+                          <th className="px-3 py-2.5 md:px-4 md:py-3 text-left w-20 md:w-24">구분</th>
+                          <th className="px-3 py-2.5 md:px-4 md:py-3 text-left w-28 md:w-36">날짜</th>
+                          <th className="px-3 py-2.5 md:px-4 md:py-3 text-left">내역</th>
+                          <th className="px-3 py-2.5 md:px-4 md:py-3 text-right w-28 md:w-36">금액</th>
+                          <th className="px-2 py-2.5 md:px-3 md:py-3 w-9"></th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {feeItems.length === 0 && (
+                          <tr>
+                            <td colSpan={5} className="px-4 py-6 text-center text-slate-300 font-bold text-xs md:text-sm">
+                              아래 "+ 내역 추가"로 입금/사용 내역을 한 줄씩 추가해주세요.
+                            </td>
+                          </tr>
+                        )}
+                        {feeItems.map((item, index) => (
+                          <tr key={index} className="border-t border-amber-50">
+                            <td className="px-2 py-1.5 md:px-3 md:py-2">
+                              <select
+                                value={item.type}
+                                onChange={(e) => updateFeeItem(index, { type: e.target.value as "입금" | "사용" })}
+                                className={`w-full px-1.5 py-1.5 md:px-2 md:py-2 rounded-lg border-none outline-none font-black text-[10px] md:text-xs cursor-pointer ${
+                                  item.type === "입금" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                                }`}
+                              >
+                                <option value="입금">입금</option>
+                                <option value="사용">사용</option>
+                              </select>
+                            </td>
+                            <td className="px-2 py-1.5 md:px-3 md:py-2">
+                              <input
+                                type="date"
+                                value={item.date}
+                                onChange={(e) => updateFeeItem(index, { date: e.target.value })}
+                                className="w-full px-1.5 py-1.5 md:px-2 md:py-2 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-amber-400 font-bold text-[10px] md:text-xs text-slate-700"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 md:px-3 md:py-2">
+                              <input
+                                type="text"
+                                value={item.description}
+                                onChange={(e) => updateFeeItem(index, { description: e.target.value })}
+                                placeholder="예: 간식 구입"
+                                className="w-full px-2 py-1.5 md:px-3 md:py-2 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-amber-400 font-bold text-[11px] md:text-sm text-slate-800 placeholder:text-slate-300"
+                              />
+                            </td>
+                            <td className="px-2 py-1.5 md:px-3 md:py-2">
+                              <input
+                                type="number"
+                                value={item.amount}
+                                onChange={(e) => updateFeeItem(index, { amount: e.target.value })}
+                                placeholder="금액"
+                                className="w-full px-2 py-1.5 md:px-3 md:py-2 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-amber-400 font-bold text-[11px] md:text-sm text-slate-800 text-right placeholder:text-slate-300"
+                              />
+                            </td>
+                            <td className="px-1 py-1.5 md:px-2 md:py-2 text-center">
+                              <button
+                                type="button"
+                                onClick={() => removeFeeItem(index)}
+                                className="text-slate-300 hover:text-red-500 transition-colors p-1"
+                              >
+                                <Trash2 className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={addFeeItem}
+                  className="flex items-center gap-1.5 text-xs md:text-sm font-black text-amber-700 hover:text-amber-800 transition-colors"
+                >
+                  <Plus className="w-3.5 h-3.5 md:w-4 md:h-4" /> 내역 추가
+                </button>
+
+                {/* 자동 합산 요약 */}
+                <div className="grid grid-cols-3 gap-2 md:gap-4 pt-4 md:pt-6 border-t border-amber-100">
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
+                      <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">총 입금</span>
+                    </div>
+                    <p className="text-sm md:text-lg font-black text-slate-900">+{feeSummary.income.toLocaleString()}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 text-rose-500 mb-1">
+                      <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">총 사용</span>
+                    </div>
+                    <p className="text-sm md:text-lg font-black text-slate-900">-{feeSummary.expense.toLocaleString()}</p>
+                  </div>
+                  <div className="text-center">
+                    <div className="flex items-center justify-center gap-1 text-amber-600 mb-1">
+                      <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">최종 잔액</span>
+                    </div>
+                    <p className="text-base md:text-xl font-black text-amber-700">{feeSummary.final.toLocaleString()}원</p>
                   </div>
                 </div>
               </div>

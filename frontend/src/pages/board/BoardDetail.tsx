@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Eye, MessageSquare, Heart,
   User, Send, Wallet, Trash2, Edit3, Trash, ChevronDown,
-  Banknote, Landmark, CalendarClock, Users, Copy, Check, Lock
+  Users, Lock, TrendingUp, TrendingDown, Scale
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -168,7 +168,7 @@ export const BoardDetail = ({
           </header>
 
           <div className="prose prose-slate max-w-none mb-10 md:mb-16">
-            {post.category === "회비" && post.feeAmount && (
+            {post.category === "회비" && (post.feeTerm || (post.feeItems && post.feeItems.length > 0)) && (
               <FeeInfoCard post={post} />
             )}
 
@@ -293,57 +293,91 @@ export const BoardDetail = ({
 };
 
 // ✨ 회비 게시글 전용 구조화 정보 카드 — 금액/대상학기/납부기한/입금계좌를 한눈에, 계좌는 복사 버튼 제공
+// ✨ 회비 "사용 내역" 게시글 전용 — 대상 학기 + 입금/사용 내역을 엑셀 표처럼 보여주고,
+// 기존 금액에서 입금/사용을 반영한 최종 잔액을 강조해서 표시한다(전부 서버가 계산해서 내려줌).
 const FeeInfoCard = ({ post }: any) => {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopyAccount = async () => {
-    if (!post.feeAccount) return;
-    try {
-      await navigator.clipboard.writeText(post.feeAccount);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 1500);
-    } catch {
-      // 클립보드 접근 실패 시 조용히 무시(브라우저 권한 문제 등)
-    }
-  };
-
-  const rows = [
-    { icon: Banknote, label: "금액", value: post.feeAmount },
-    { icon: Users, label: "대상 학기", value: post.feeTerm },
-    { icon: CalendarClock, label: "납부 기한", value: post.feeDeadline },
-  ].filter((r) => r.value);
+  const items = post.feeItems || [];
+  const income = items.filter((i: any) => i.type === "입금").reduce((sum: number, i: any) => sum + (i.amount || 0), 0);
+  const expense = items.filter((i: any) => i.type !== "입금").reduce((sum: number, i: any) => sum + (i.amount || 0), 0);
 
   return (
     <div className="not-prose mb-8 md:mb-12 p-5 md:p-8 bg-amber-50/60 rounded-[1.5rem] md:rounded-[2.5rem] border border-amber-100">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 md:gap-6 mb-4 md:mb-6">
-        {rows.map((row) => (
-          <div key={row.label}>
-            <div className="flex items-center gap-1.5 text-amber-600 mb-1 md:mb-1.5">
-              <row.icon className="w-3.5 h-3.5 md:w-4 md:h-4" />
-              <span className="text-[9px] md:text-[10px] font-black uppercase tracking-widest">{row.label}</span>
-            </div>
-            <p className="text-slate-900 font-black text-base md:text-2xl tracking-tight">{row.value}</p>
+      <div className="flex items-center justify-between flex-wrap gap-3 mb-5 md:mb-6">
+        {post.feeTerm && (
+          <div className="flex items-center gap-1.5 text-amber-600">
+            <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="font-black text-xs md:text-base text-slate-800">{post.feeTerm}</span>
           </div>
-        ))}
+        )}
+        <div className="flex items-center gap-1.5 ml-auto">
+          <Scale className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
+          <span className="text-[10px] md:text-xs font-black text-amber-600 uppercase tracking-widest">최종 잔액</span>
+          <span className="text-lg md:text-2xl font-black text-amber-700 tracking-tight">
+            {(post.feeFinalBalance ?? 0).toLocaleString()}원
+          </span>
+        </div>
       </div>
 
-      {post.feeAccount && (
-        <div className="flex items-center justify-between gap-3 bg-white rounded-xl md:rounded-2xl px-4 py-3 md:px-6 md:py-4 border border-amber-100/80">
-          <div className="flex items-center gap-2 min-w-0">
-            <Landmark className="w-4 h-4 md:w-5 md:h-5 text-amber-500 shrink-0" />
-            <span className="font-bold text-xs md:text-base text-slate-700 truncate">{post.feeAccount}</span>
+      {items.length > 0 && (
+        <div className="rounded-xl md:rounded-2xl border border-amber-100 bg-white overflow-hidden mb-4 md:mb-6">
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[420px] text-xs md:text-sm">
+              <thead>
+                <tr className="bg-amber-100/60 text-amber-700 text-[10px] md:text-xs font-black uppercase tracking-wider">
+                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-left">구분</th>
+                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-left">날짜</th>
+                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-left">내역</th>
+                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-right">금액</th>
+                </tr>
+              </thead>
+              <tbody>
+                {items.map((item: any, idx: number) => (
+                  <tr key={idx} className="border-t border-amber-50">
+                    <td className="px-3 py-2.5 md:px-4 md:py-3">
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] md:text-xs font-black ${
+                        item.type === "입금" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
+                      }`}>
+                        {item.type}
+                      </span>
+                    </td>
+                    <td className="px-3 py-2.5 md:px-4 md:py-3 text-slate-400 font-bold">{item.date || "-"}</td>
+                    <td className="px-3 py-2.5 md:px-4 md:py-3 text-slate-700 font-bold">{item.description}</td>
+                    <td className={`px-3 py-2.5 md:px-4 md:py-3 text-right font-black ${
+                      item.type === "입금" ? "text-emerald-600" : "text-rose-600"
+                    }`}>
+                      {item.type === "입금" ? "+" : "-"}{(item.amount || 0).toLocaleString()}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <button
-            onClick={handleCopyAccount}
-            className={`flex items-center gap-1 shrink-0 px-3 py-1.5 md:px-4 md:py-2 rounded-lg md:rounded-xl font-black text-[10px] md:text-xs transition-all ${
-              copied ? "bg-emerald-50 text-emerald-600" : "bg-amber-100 text-amber-700 hover:bg-amber-200"
-            }`}
-          >
-            {copied ? <Check className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Copy className="w-3 h-3 md:w-3.5 md:h-3.5" />}
-            {copied ? "복사됨" : "계좌 복사"}
-          </button>
         </div>
       )}
+
+      <div className="grid grid-cols-3 gap-2 md:gap-4">
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-slate-400 mb-1">
+            <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">기존 금액</span>
+          </div>
+          <p className="text-sm md:text-lg font-black text-slate-700">{(post.feeOpeningBalance ?? 0).toLocaleString()}</p>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
+            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">총 입금</span>
+          </div>
+          <p className="text-sm md:text-lg font-black text-slate-900">+{income.toLocaleString()}</p>
+        </div>
+        <div className="text-center">
+          <div className="flex items-center justify-center gap-1 text-rose-500 mb-1">
+            <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
+            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">총 사용</span>
+          </div>
+          <p className="text-sm md:text-lg font-black text-slate-900">-{expense.toLocaleString()}</p>
+        </div>
+      </div>
     </div>
   );
 };

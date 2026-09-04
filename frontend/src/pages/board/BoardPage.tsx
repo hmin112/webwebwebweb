@@ -159,10 +159,10 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
                   <h3 className="text-[15px] md:text-xl font-[900] text-slate-900 group-hover:text-indigo-600 transition-colors mb-1.5 md:mb-2 tracking-tight truncate md:whitespace-normal md:line-clamp-1">
                     {post.title}
                   </h3>
-                  {post.category === "회비" && post.feeAmount ? (
+                  {post.category === "회비" && post.feeTerm ? (
                     <p className="text-amber-700 font-black text-xs md:text-sm line-clamp-1 md:leading-relaxed">
-                      {post.feeAmount}
-                      {post.feeDeadline && <span className="text-amber-400 font-bold"> · {post.feeDeadline}까지</span>}
+                      {post.feeTerm}
+                      <span className="text-amber-400 font-bold"> · 잔액 {(post.feeFinalBalance ?? 0).toLocaleString()}원</span>
                     </p>
                   ) : (
                     <p className="text-slate-400 font-bold text-xs md:text-sm line-clamp-1 md:leading-relaxed">

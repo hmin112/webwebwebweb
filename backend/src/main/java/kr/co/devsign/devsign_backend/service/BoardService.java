@@ -14,12 +14,16 @@ import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import kr.co.devsign.devsign_backend.repository.PostLikeRepository;
 import kr.co.devsign.devsign_backend.repository.PostRepository;
 import kr.co.devsign.devsign_backend.repository.PostViewRepository;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import kr.co.devsign.devsign_backend.dto.board.CommentResponse;
 import kr.co.devsign.devsign_backend.dto.board.CreateCommentRequest;
 import kr.co.devsign.devsign_backend.dto.board.CreatePostRequest;
+import kr.co.devsign.devsign_backend.dto.board.FeeLedgerItemDto;
 import kr.co.devsign.devsign_backend.dto.board.PostResponse;
 import kr.co.devsign.devsign_backend.dto.board.UpdatePostRequest;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.entity.FeeLedgerItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -49,6 +53,9 @@ public class BoardService {
     private final CommentLikeRepository commentLikeRepository;
 
     private final AccessLogService accessLogService;
+    // ✨ 이 프로젝트의 Spring 컨텍스트에는 자동구성된 ObjectMapper 빈이 없어(주입 시 기동 실패),
+    // 회비 내역 JSON 파싱 전용으로 직접 생성해서 사용한다.
+    private static final ObjectMapper FEE_ITEMS_MAPPER = new ObjectMapper();
 
     // ✨ application.properties에서 설정한 저장 경로를 가져옵니다.
     @Value("${app.upload.base-dir}")
@@ -75,14 +82,14 @@ public class BoardService {
                 .toList();
     }
 
-    // ✨ 비로그인 사용자에게는 회비 게시글의 제목/금액/기한 등 "미리보기"에 필요한 정보만 남기고,
-    // 계좌번호(feeAccount)·상세 내용(content)·이미지·댓글처럼 민감하거나 상세한 정보는 비워서 응답
+    // ✨ 비로그인 사용자에게는 회비 게시글의 제목/대상학기/최종잔액 등 "미리보기"에 필요한 정보만
+    // 남기고, 항목별 내역(feeItems)·상세 내용(content)·이미지·댓글처럼 상세한 정보는 비워서 응답
     private PostResponse redactFeePostForAnonymous(PostResponse r) {
         return new PostResponse(
                 r.id(), r.title(), null, r.category(), r.author(), r.loginId(), r.studentId(),
                 r.profileImage(), r.views(), r.likes(), r.likedByMe(), List.of(), List.of(),
                 r.createdAt(), r.date(),
-                r.feeAmount(), null, r.feeDeadline(), r.feeTerm()
+                r.feeTerm(), null, List.of(), r.feeFinalBalance()
         );
     }
 
@@ -95,7 +102,7 @@ public class BoardService {
         post.setTitle(payload.title());
         post.setContent(payload.content());
         post.setCategory(payload.category());
-        applyFeeFields(post, payload.category(), payload.feeAmount(), payload.feeAccount(), payload.feeDeadline(), payload.feeTerm());
+        applyFeeFields(post, payload.category(), payload.feeTerm(), payload.feeOpeningBalance(), payload.feeItemsJson());
 
         // 🚀 이미지 파일 저장 처리
         List<String> imageUrls = saveFiles(files);
@@ -147,7 +154,7 @@ public class BoardService {
         post.setTitle(payload.title());
         post.setContent(payload.content());
         post.setCategory(payload.category());
-        applyFeeFields(post, payload.category(), payload.feeAmount(), payload.feeAccount(), payload.feeDeadline(), payload.feeTerm());
+        applyFeeFields(post, payload.category(), payload.feeTerm(), payload.feeOpeningBalance(), payload.feeItemsJson());
 
         // 🚀 이미지 수정 로직: 기존 이미지(프론트에서 남겨둔 것) + 새로 업로드한 파일
         List<String> currentImages = payload.images() != null ? new ArrayList<>(payload.images()) : new ArrayList<>();
@@ -158,13 +165,42 @@ public class BoardService {
         return toPostResponse(postRepository.save(post));
     }
 
-    // ✨ [신규] 회비 카테고리일 때만 구조화 필드를 저장 — 다른 카테고리로 바뀌면(수정 시) 함께 비운다
-    private void applyFeeFields(Post post, String category, String amount, String account, String deadline, String term) {
+    // ✨ 회비 카테고리일 때만 구조화 필드를 저장 — 다른 카테고리로 바뀌면(수정 시) 함께 비운다
+    private void applyFeeFields(Post post, String category, String term, Long openingBalance, String itemsJson) {
         boolean isFee = FEE_CATEGORY.equals(category);
-        post.setFeeAmount(isFee ? amount : null);
-        post.setFeeAccount(isFee ? account : null);
-        post.setFeeDeadline(isFee ? deadline : null);
         post.setFeeTerm(isFee ? term : null);
+        post.setFeeOpeningBalance(isFee ? openingBalance : null);
+        post.setFeeItems(isFee ? parseFeeItems(itemsJson) : new ArrayList<>());
+    }
+
+    // ✨ 프론트가 멀티파트 폼 필드 하나(feeItemsJson)에 JSON 배열로 실어 보낸 내역 목록을 파싱
+    private List<FeeLedgerItem> parseFeeItems(String itemsJson) {
+        if (itemsJson == null || itemsJson.isBlank()) return new ArrayList<>();
+        try {
+            List<FeeLedgerItemDto> dtos = FEE_ITEMS_MAPPER.readValue(itemsJson, new TypeReference<List<FeeLedgerItemDto>>() {});
+            return dtos.stream()
+                    .map(d -> new FeeLedgerItem(d.type(), d.date(), d.description(), d.amount()))
+                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new));
+        } catch (Exception e) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "회비 내역 형식이 올바르지 않습니다.");
+        }
+    }
+
+    // ✨ 기존 금액 + 입금 합계 - 사용 합계 = 최종 잔액
+    private long calculateFeeFinalBalance(Post post) {
+        long openingBalance = post.getFeeOpeningBalance() != null ? post.getFeeOpeningBalance() : 0L;
+        long income = 0L;
+        long expense = 0L;
+        if (post.getFeeItems() != null) {
+            for (FeeLedgerItem item : post.getFeeItems()) {
+                if ("입금".equals(item.getType())) {
+                    income += item.getAmount();
+                } else {
+                    expense += item.getAmount();
+                }
+            }
+        }
+        return openingBalance + income - expense;
     }
 
     // ✨ [신규] 파일을 물리적으로 저장하고 접근 가능한 URL 리스트를 반환하는 공통 메서드
@@ -397,6 +433,12 @@ public class BoardService {
                 ? List.of()
                 : post.getCommentsList().stream().map(this::toCommentResponse).toList();
 
+        List<FeeLedgerItemDto> feeItems = post.getFeeItems() == null
+                ? List.of()
+                : post.getFeeItems().stream()
+                        .map(i -> new FeeLedgerItemDto(i.getType(), i.getDate(), i.getDescription(), i.getAmount()))
+                        .toList();
+
         return new PostResponse(
                 post.getId(),
                 post.getTitle(),
@@ -413,10 +455,10 @@ public class BoardService {
                 comments,
                 post.getCreatedAt(),
                 post.getDate(),
-                post.getFeeAmount(),
-                post.getFeeAccount(),
-                post.getFeeDeadline(),
-                post.getFeeTerm()
+                post.getFeeTerm(),
+                post.getFeeOpeningBalance(),
+                feeItems,
+                calculateFeeFinalBalance(post)
         );
     }
 

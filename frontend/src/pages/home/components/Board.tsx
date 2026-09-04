@@ -65,11 +65,11 @@ export const Board = ({ onNavigate, posts, isLoggedIn }: BoardSectionProps) => {
                 {post.title}
               </h3>
               
-              {/* 내용 — 회비 글은 구조화 정보(금액/기한)를 우선 요약해서 보여줌 */}
-              {post.category === "회비" && post.feeAmount ? (
+              {/* 내용 — 회비 글은 최종 잔액을 요약해서 보여줌(항목별 내역은 상세에서만) */}
+              {post.category === "회비" && post.feeTerm ? (
                 <p className="text-amber-700 font-black text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">
-                  {post.feeAmount}
-                  {post.feeDeadline && <span className="text-amber-400 font-bold"> · {post.feeDeadline}까지</span>}
+                  {post.feeTerm}
+                  <span className="text-amber-400 font-bold"> · 잔액 {(post.feeFinalBalance ?? 0).toLocaleString()}원</span>
                 </p>
               ) : (
                 <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">
