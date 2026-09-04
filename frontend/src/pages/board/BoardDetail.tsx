@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Eye, MessageSquare, Heart,
   User, Send, Wallet, Trash2, Edit3, Trash, ChevronDown,
-  Banknote, Landmark, CalendarClock, Users, Copy, Check
+  Banknote, Landmark, CalendarClock, Users, Copy, Check, Lock
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
@@ -46,6 +46,38 @@ export const BoardDetail = ({
   }, [post?.id, isLoggedIn]);
 
   if (!post) return <div className="pt-40 text-center text-slate-400 font-bold">게시글을 찾을 수 없습니다.</div>;
+
+  // ✨ 회비 게시글은 목록에는 보이지만(제목/금액/기한), 상세 내용(계좌번호 등)은 로그인해야 확인 가능
+  if (post.category === "회비" && !isLoggedIn) {
+    return (
+      <div className="min-h-screen bg-slate-50 pt-24 md:pt-40 pb-16 md:pb-20 font-sans flex items-center justify-center px-4">
+        <div className="max-w-md w-full text-center bg-white rounded-[2rem] md:rounded-[3rem] p-10 md:p-16 shadow-sm border border-slate-100">
+          <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-5 md:mb-6 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
+            <Lock className="w-6 h-6 md:w-7 md:h-7" />
+          </div>
+          <h2 className="text-lg md:text-2xl font-[900] text-slate-900 mb-2 tracking-tight">{post.title}</h2>
+          <p className="text-slate-400 font-bold text-xs md:text-sm mb-8 md:mb-10">
+            로그인한 부원만 회비 게시글의 상세 내용을 확인할 수 있습니다.
+          </p>
+          <div className="flex gap-2 md:gap-3">
+            <Button
+              onClick={() => onNavigate("board-page")}
+              variant="ghost"
+              className="flex-1 py-3 md:py-6 rounded-xl md:rounded-2xl font-black text-slate-400 text-xs md:text-sm h-auto"
+            >
+              목록으로
+            </Button>
+            <Button
+              onClick={() => onNavigate("login")}
+              className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-3 md:py-6 rounded-xl md:rounded-2xl font-black shadow-lg shadow-indigo-100 text-xs md:text-sm h-auto"
+            >
+              로그인하러 가기
+            </Button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const isAuthor = isLoggedIn && post.loginId === user?.loginId;
   // ✨ 핵심 수정 1: 작성자거나(isAuthor), 관리자(isAdmin)면 삭제 권한 획득!

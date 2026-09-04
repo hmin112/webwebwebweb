@@ -1,12 +1,13 @@
 import { motion } from "framer-motion";
-import { MessageSquare, Eye, Heart, ArrowRight, User, Wallet } from "lucide-react";
+import { MessageSquare, Eye, Heart, ArrowRight, User, Wallet, Lock } from "lucide-react";
 
 interface BoardSectionProps {
   onNavigate: (pageId: string, itemId?: any) => void;
   posts: any[];
+  isLoggedIn?: boolean;
 }
 
-export const Board = ({ onNavigate, posts }: BoardSectionProps) => {
+export const Board = ({ onNavigate, posts, isLoggedIn }: BoardSectionProps) => {
   return (
     <div id="board" className="py-10 md:py-16 bg-slate-50 scroll-mt-20 px-4 md:px-6">
       <div className="max-w-7xl mx-auto px-2 md:px-6">
@@ -52,6 +53,11 @@ export const Board = ({ onNavigate, posts }: BoardSectionProps) => {
                   {post.category === "회비" && <Wallet size={10} className="inline mr-1 mb-0.5" />}
                   {post.category || "일반"}
                 </span>
+                {post.category === "회비" && !isLoggedIn && (
+                  <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] md:text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100">
+                    <Lock size={9} /> 로그인 필요
+                  </span>
+                )}
               </div>
               
               {/* 제목 */}

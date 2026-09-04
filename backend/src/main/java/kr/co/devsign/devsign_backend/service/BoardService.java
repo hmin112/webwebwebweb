@@ -59,14 +59,31 @@ public class BoardService {
 
     private static final String FEE_CATEGORY = "회비";
 
-    // ✨ 회비 게시글은 로그인한 사용자에게만 노출 — 계좌번호 등 민감한 정보가 있어 목록 단계부터
-    // 완전히 제외한다(비로그인 요청에는 아예 응답에 포함되지 않음, 프론트 숨김이 아니라 서버단 필터).
+    // ✨ 회비 게시글은 목록 자체는 비로그인 사용자에게도 노출(홈/게시판에서 존재를 알 수 있어야
+    // 하므로)하되, 계좌번호·상세 내용처럼 민감한 정보는 비로그인 응답에서 서버단에서 지운다.
+    // "자세히보기"(상세 조회)는 별도로 getPostDetail()에서 로그인 필수로 막음.
     public List<PostResponse> getAllPosts(String loginId) {
         boolean isLoggedIn = loginId != null && !loginId.isBlank();
         return postRepository.findAllByOrderByIdDesc().stream()
-                .filter(post -> isLoggedIn || !FEE_CATEGORY.equals(post.getCategory()))
-                .map(this::toPostResponse)
+                .map(post -> {
+                    PostResponse response = toPostResponse(post);
+                    if (!isLoggedIn && FEE_CATEGORY.equals(post.getCategory())) {
+                        return redactFeePostForAnonymous(response);
+                    }
+                    return response;
+                })
                 .toList();
+    }
+
+    // ✨ 비로그인 사용자에게는 회비 게시글의 제목/금액/기한 등 "미리보기"에 필요한 정보만 남기고,
+    // 계좌번호(feeAccount)·상세 내용(content)·이미지·댓글처럼 민감하거나 상세한 정보는 비워서 응답
+    private PostResponse redactFeePostForAnonymous(PostResponse r) {
+        return new PostResponse(
+                r.id(), r.title(), null, r.category(), r.author(), r.loginId(), r.studentId(),
+                r.profileImage(), r.views(), r.likes(), r.likedByMe(), List.of(), List.of(),
+                r.createdAt(), r.date(),
+                r.feeAmount(), null, r.feeDeadline(), r.feeTerm()
+        );
     }
 
     // ✨ [수정] MultipartFile 리스트를 받아 파일로 저장하는 로직이 추가되었습니다.

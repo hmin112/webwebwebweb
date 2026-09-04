@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { 
-  MessageSquare, Pencil, Eye, Heart, 
-  ArrowLeft, Search, Hash, MessageCircle, Wallet,
+import {
+  MessageSquare, Pencil, Eye, Heart,
+  ArrowLeft, Search, Hash, MessageCircle, Wallet, Lock,
   ChevronLeft, ChevronRight // ✨ 페이지 이동 화살표 아이콘 추가
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
@@ -15,9 +15,10 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
   const [currentPage, setCurrentPage] = useState(1);
   const postsPerPage = 10; // ✨ 20개에서 10개로 수정됨
 
-  // ✨ 회비 게시글은 로그인해야만 노출되므로(백엔드에서도 필터링됨), 비로그인 상태에서는
-  // 카테고리 탭 자체를 숨겨 "숨겨진 카테고리가 있다"는 티도 나지 않게 한다.
-  const categories = isLoggedIn ? ["전체", "회비", "자유", "질문"] : ["전체", "자유", "질문"];
+  // ✨ 회비 게시글 자체(제목/금액/기한)는 비로그인 사용자에게도 노출되고, 상세 내용/계좌번호만
+  // 로그인해야 볼 수 있음(백엔드가 목록 응답에서 그 정보만 지워서 내려줌) — 그래서 카테고리 탭도
+  // 로그인 여부와 상관없이 항상 노출
+  const categories = ["전체", "회비", "자유", "질문"];
 
   // 기존 검색/필터링 로직 유지
   const filteredPosts = posts
@@ -148,6 +149,11 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
                     }`}>
                       {post.category}
                     </span>
+                    {post.category === "회비" && !isLoggedIn && (
+                      <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] md:text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100 shrink-0">
+                        <Lock size={9} /> 로그인 필요
+                      </span>
+                    )}
                     <span className="text-slate-300 text-[10px] md:text-xs font-bold truncate">{post.date}</span>
                   </div>
                   <h3 className="text-[15px] md:text-xl font-[900] text-slate-900 group-hover:text-indigo-600 transition-colors mb-1.5 md:mb-2 tracking-tight truncate md:whitespace-normal md:line-clamp-1">

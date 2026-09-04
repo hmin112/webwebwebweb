@@ -73,7 +73,7 @@ export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, 
             </div>
             {/* 게시판에도 id와 scroll-mt-20 속성을 추가했습니다 */}
             <div id="board" className="scroll-mt-20">
-                <Board onNavigate={onNavigate} posts={homeDisplayPosts} />
+                <Board onNavigate={onNavigate} posts={homeDisplayPosts} isLoggedIn={isLoggedIn} />
             </div>
             <div id="about" className="scroll-mt-20">
                 <About />
