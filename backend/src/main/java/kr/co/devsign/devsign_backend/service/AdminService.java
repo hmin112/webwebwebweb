@@ -24,12 +24,14 @@ import kr.co.devsign.devsign_backend.entity.AssemblyProject;
 import kr.co.devsign.devsign_backend.entity.AssemblyReport;
 import kr.co.devsign.devsign_backend.entity.Member;
 import kr.co.devsign.devsign_backend.entity.TeamMember;
+import kr.co.devsign.devsign_backend.entity.TeamSubmission;
 import kr.co.devsign.devsign_backend.repository.AccessLogRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyProjectRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
+import kr.co.devsign.devsign_backend.repository.TeamSubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -50,6 +52,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -74,6 +77,7 @@ public class AdminService {
     private final AssemblyProjectRepository assemblyProjectRepository;
     private final kr.co.devsign.devsign_backend.util.PlanPdfGenerator planPdfGenerator;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamSubmissionRepository teamSubmissionRepository;
     private final AccessLogService accessLogService;
     private final DiscordBotClient discordBotClient;
     private final BCryptPasswordEncoder passwordEncoder;
@@ -201,8 +205,9 @@ public class AdminService {
                             ? period.getEndDate()
                             : LocalDate.of(year, month, 28);
 
-                    long submittedCount = assemblyReportRepository
-                            .countByYearAndSemesterAndMonthAndStatus(year, semester, month, SUBMITTED);
+                    // ✨ [2026-09-04] 개인 제출 또는 팀 공유 자료 제출, 둘 중 하나라도 있으면 제출한
+                    // 것으로 집계 — 팀에 속한 인원이 팀 자료로만 제출해도 인원수에 정확히 반영되도록
+                    long submittedCount = countUniqueSubmitted(year, semester, month);
 
                     return new AdminPeriodResponse(
                             period != null ? period.getId() : null,
@@ -258,45 +263,86 @@ public class AdminService {
         }
     }
 
+    // ✨ [2026-09-04 재구성] 개인 제출과 팀 공유 자료 제출이 완전히 분리된 이후의 관리자 화면 로직.
+    // 팀이 그 달에 제출했으면 팀원 전원에게 "팀 자료" 행을 하나씩 만들어서 기존 프론트의
+    // teamId 기준 그룹핑(공동제출 N명 표시)이 그대로 재사용되게 하고, 그와는 별개로 개인이
+    // 직접 제출한 게 있으면(팀 소속 여부와 무관하게) 그 사람만의 개인 행을 추가로 만든다.
+    // 즉 팀만 제출 -> 팀 행만, 개인만 제출 -> 개인 행만, 둘 다 제출 -> 두 행 모두 노출.
     public List<AdminPeriodSubmissionResponse> getSubmittedMembers(int year, int semester, int month) {
+        List<AdminPeriodSubmissionResponse> result = new ArrayList<>();
+
+        List<TeamSubmission> teamSubs = teamSubmissionRepository.findByYearAndSemesterAndMonthAndStatus(year, semester, month, SUBMITTED);
+        for (TeamSubmission ts : teamSubs) {
+            List<TeamMember> members = teamMemberRepository.findByTeam_IdAndStatus(ts.getTeam().getId(), "ACCEPTED");
+            for (TeamMember tm : members) {
+                Optional<Member> member = memberRepository.findByLoginId(tm.getLoginId());
+                String name = member.map(Member::getName).orElse(tm.getLoginId());
+                String studentId = member.map(Member::getStudentId).orElse("");
+
+                result.add(new AdminPeriodSubmissionResponse(
+                        tm.getLoginId(),
+                        name,
+                        studentId,
+                        ts.getDate(),
+                        ts.getPresentationPath(),
+                        ts.getPdfPath(),
+                        ts.getOtherPath(),
+                        ts.getMemo(),
+                        ts.getTeam().getId(),
+                        ts.getTeam().getTeamName()
+                ));
+            }
+        }
+
         List<AssemblyReport> reports = assemblyReportRepository
                 .findByYearAndSemesterAndMonthAndStatusOrderByIdDesc(year, semester, month, SUBMITTED);
+        for (AssemblyReport report : reports) {
+            Optional<Member> member = memberRepository.findByLoginId(report.getLoginId());
+            String name = member.map(Member::getName).orElse(report.getLoginId());
+            String studentId = member.map(Member::getStudentId).orElse("");
 
-        return reports.stream()
-                .map(report -> {
-                    Optional<Member> member = memberRepository.findByLoginId(report.getLoginId());
-                    String name = member.map(Member::getName).orElse(report.getLoginId());
-                    String studentId = member.map(Member::getStudentId).orElse("");
+            // ✨ 개인 제출은 팀 소속 여부와 무관하게 항상 별도 행(teamId=null) — 팀 자료와
+            // 섞여서 그룹핑되면 안 되므로 여기서는 절대 teamId를 채우지 않는다.
+            result.add(new AdminPeriodSubmissionResponse(
+                    report.getLoginId(),
+                    name,
+                    studentId,
+                    report.getDate(),
+                    report.getPresentationPath(),
+                    report.getPdfPath(),
+                    report.getOtherPath(),
+                    report.getMemo(),
+                    null,
+                    null
+            ));
+        }
 
-                    // ✨ [신규] 같은 팀(ACCEPTED)에 속해 있으면 팀 정보를 함께 내려줘서
-                    // 관리자 화면에서 "같은 팀=같은 파일" 임을 구분해서 보여줄 수 있게 한다.
-                    Optional<TeamMember> membership = findAcceptedTeamMembership(report.getLoginId(), report.getYear(), report.getSemester());
-                    Long teamId = membership.map(m -> m.getTeam().getId()).orElse(null);
-                    String teamName = membership.map(m -> m.getTeam().getTeamName()).orElse(null);
-
-                    return new AdminPeriodSubmissionResponse(
-                            report.getLoginId(),
-                            name,
-                            studentId,
-                            report.getDate(),
-                            report.getPresentationPath(),
-                            report.getPdfPath(),
-                            report.getOtherPath(),
-                            report.getMemo(),
-                            teamId,
-                            teamName
-                    );
-                })
-                .toList();
+        return result;
     }
 
-    // ✨ [신규] loginId가 해당 연도/학기에 속한 ACCEPTED 팀 멤버십을 찾는다 (팀 없으면 empty)
+    // ✨ [2026-09-04 신규] 개인 제출 또는 팀 제출, 둘 중 하나라도 있으면 제출한 것으로 집계한
+    // 고유 인원 수(loginId 기준 중복 제거)
+    private long countUniqueSubmitted(int year, int semester, int month) {
+        Set<String> loginIds = new HashSet<>();
+        assemblyReportRepository.findByYearAndSemesterAndMonthAndStatusOrderByIdDesc(year, semester, month, SUBMITTED)
+                .forEach(r -> loginIds.add(r.getLoginId()));
+        teamSubmissionRepository.findByYearAndSemesterAndMonthAndStatus(year, semester, month, SUBMITTED)
+                .forEach(ts -> teamMemberRepository.findByTeam_IdAndStatus(ts.getTeam().getId(), "ACCEPTED")
+                        .forEach(tm -> loginIds.add(tm.getLoginId())));
+        return loginIds.size();
+    }
+
+    // ✨ loginId가 해당 연도/학기에 속한 ACCEPTED 팀 멤버십을 찾는다 (팀 없으면 empty)
     private Optional<TeamMember> findAcceptedTeamMembership(String loginId, int year, int semester) {
         return teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(loginId, year, semester).stream()
                 .filter(m -> "ACCEPTED".equals(m.getStatus()))
                 .findFirst();
     }
 
+    // ✨ [2026-09-04 재구성] 개인 제출과 팀 공유 자료가 분리된 이후의 ZIP 다운로드.
+    // 요청된 인원의 개인 제출 자료는 "(개인)" 폴더로, 그 인원이 속한 팀의 공유 자료가 그 달에
+    // 제출되어 있으면 "(팀 공유자료)" 폴더로 별도 담는다 — 같은 팀에 요청 인원이 여러 명이어도
+    // 팀 폴더는 한 번만 담는다(중복 방지).
     public ResponseEntity<byte[]> downloadPeriodZip(AdminPeriodZipRequest request) {
         if (request == null || request.year() == null || request.month() == null
                 || request.userIds() == null || request.userIds().isEmpty()) {
@@ -304,12 +350,27 @@ public class AdminService {
         }
 
         String fileType = normalizeFileType(request.fileType());
-        List<AssemblyReport> reports = assemblyReportRepository.findByLoginIdInAndYearAndMonthAndStatus(
+        int semester = request.month() <= 6 ? 1 : 2;
+
+        List<AssemblyReport> individualReports = assemblyReportRepository.findByLoginIdInAndYearAndMonthAndStatus(
                 request.userIds(),
                 request.year(),
                 request.month(),
                 SUBMITTED
         );
+
+        Set<Long> teamIdsToInclude = new LinkedHashSet<>();
+        for (String loginId : request.userIds()) {
+            findAcceptedTeamMembership(loginId, request.year(), semester)
+                    .ifPresent(m -> teamIdsToInclude.add(m.getTeam().getId()));
+        }
+        List<TeamSubmission> teamSubs = new ArrayList<>();
+        for (Long teamId : teamIdsToInclude) {
+            teamSubmissionRepository.findByTeam_IdAndYearAndSemesterOrderByMonthAsc(teamId, request.year(), semester).stream()
+                    .filter(ts -> ts.getMonth() == request.month() && SUBMITTED.equals(ts.getStatus()))
+                    .findFirst()
+                    .ifPresent(teamSubs::add);
+        }
 
         try (ByteArrayOutputStream buffer = new ByteArrayOutputStream();
              ZipOutputStream zipOut = new ZipOutputStream(buffer)) {
@@ -318,48 +379,21 @@ public class AdminService {
             boolean includePdf = "all".equals(fileType) || "pdf".equals(fileType);
             boolean includeOther = "all".equals(fileType);
 
-            // ✨ [신규] 팀 동기화로 인해 여러 팀원의 제출 기록이 같은 물리 파일을 가리키는 경우,
-            // 팀 단위로 묶어서 파일을 딱 한 번만 zip에 담는다 (중복 다운로드 방지).
-            Map<Long, List<AssemblyReport>> teamGroups = new LinkedHashMap<>();
-            List<AssemblyReport> soloReports = new ArrayList<>();
-
-            for (AssemblyReport report : reports) {
-                Optional<TeamMember> membership = findAcceptedTeamMembership(report.getLoginId(), report.getYear(), report.getSemester());
-                if (membership.isPresent()) {
-                    teamGroups.computeIfAbsent(membership.get().getTeam().getId(), k -> new ArrayList<>()).add(report);
-                } else {
-                    soloReports.add(report);
-                }
-            }
-
-            for (AssemblyReport report : soloReports) {
-                String folderName = buildMemberFolderName(report.getLoginId());
+            for (AssemblyReport report : individualReports) {
+                String folderName = buildMemberFolderName(report.getLoginId()) + " (개인)";
                 addFileToZip(zipOut, folderName, report.getPresentationPath(), includePresentation, Set.of("ppt", "pptx"));
                 addFileToZip(zipOut, folderName, report.getPdfPath(), includePdf, Set.of("pdf"));
                 addFileToZip(zipOut, folderName, report.getOtherPath(), includeOther, Collections.emptySet());
                 addPlanPdfToZip(zipOut, folderName, report, includePdf);
             }
 
-            for (Map.Entry<Long, List<AssemblyReport>> entry : teamGroups.entrySet()) {
-                List<AssemblyReport> teamReports = entry.getValue();
-                // ✨ 팀 동기화 구조상 팀원들의 파일 경로는 모두 동일하므로, 대표로 1건만 사용한다.
-                AssemblyReport representative = teamReports.get(0);
-
-                String teamName = teamMemberRepository.findByTeam_Id(entry.getKey()).stream()
-                        .findFirst()
-                        .map(m -> m.getTeam().getTeamName())
-                        .filter(StringUtils::hasText)
-                        .orElse("팀 프로젝트");
-                String memberNames = teamReports.stream()
-                        .map(r -> buildMemberFolderName(r.getLoginId()))
-                        .distinct()
-                        .collect(Collectors.joining(", "));
-                String folderName = teamName + " (공동제출 - " + memberNames + ")";
-
-                addFileToZip(zipOut, folderName, representative.getPresentationPath(), includePresentation, Set.of("ppt", "pptx"));
-                addFileToZip(zipOut, folderName, representative.getPdfPath(), includePdf, Set.of("pdf"));
-                addFileToZip(zipOut, folderName, representative.getOtherPath(), includeOther, Collections.emptySet());
-                addPlanPdfToZip(zipOut, folderName, representative, includePdf);
+            for (TeamSubmission ts : teamSubs) {
+                String teamName = StringUtils.hasText(ts.getTeam().getTeamName()) ? ts.getTeam().getTeamName() : "팀 프로젝트";
+                String folderName = teamName + " (팀 공유자료)";
+                addFileToZip(zipOut, folderName, ts.getPresentationPath(), includePresentation, Set.of("ppt", "pptx"));
+                addFileToZip(zipOut, folderName, ts.getPdfPath(), includePdf, Set.of("pdf"));
+                addFileToZip(zipOut, folderName, ts.getOtherPath(), includeOther, Collections.emptySet());
+                addTeamPlanPdfToZip(zipOut, folderName, ts, includePdf);
             }
 
             zipOut.finish();
@@ -739,6 +773,53 @@ public class AdminService {
                         || !report.getPlanRoles().isEmpty()
                         || !report.getPlanLinks().isEmpty()
                         || StringUtils.hasText(report.getPlanNotes())
+        );
+    }
+
+    // ✨ [2026-09-04 신규] 팀 공유 자료의 계획서(PLAN) 버전 — addPlanPdfToZip과 동일한 방식이지만
+    // Team.projectTitle을 그대로 제목으로 쓴다(개인용처럼 별도 조회 불필요).
+    private void addTeamPlanPdfToZip(ZipOutputStream zipOut, String folderName, TeamSubmission ts, boolean includePdf) throws IOException {
+        if (!includePdf || !isWebAuthoredTeamPlan(ts)) {
+            return;
+        }
+
+        String projectTitle = StringUtils.hasText(ts.getTeam().getProjectTitle())
+                ? ts.getTeam().getProjectTitle()
+                : ts.getMonth() + "월 팀 프로젝트 계획서";
+
+        byte[] pdf = planPdfGenerator.generate(
+                projectTitle,
+                folderName,
+                ts.getDate(),
+                ts.getPlanOverview(),
+                ts.getPlanGoals(),
+                ts.getPlanRoadmapItems().stream()
+                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoadmapItemDto(t.getTitle(), t.getStartDate(), t.getEndDate(), t.getDetail()))
+                        .toList(),
+                ts.getPlanRoles().stream()
+                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getLoginId(), r.getName(), r.getRole(), r.getDuties()))
+                        .toList(),
+                ts.getPlanLinks().stream()
+                        .map(l -> new kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto(l.getLabel(), l.getUrl()))
+                        .toList(),
+                ts.getPlanNotes()
+        );
+
+        String safeTitle = projectTitle.replaceAll("[\\\\/:*?\"<>|]", "_");
+        String entryName = folderName + "/" + safeTitle + ".pdf";
+        zipOut.putNextEntry(new ZipEntry(entryName));
+        zipOut.write(pdf);
+        zipOut.closeEntry();
+    }
+
+    private boolean isWebAuthoredTeamPlan(TeamSubmission ts) {
+        return "PLAN".equals(ts.getType()) && (
+                StringUtils.hasText(ts.getPlanOverview())
+                        || !ts.getPlanGoals().isEmpty()
+                        || !ts.getPlanRoadmapItems().isEmpty()
+                        || !ts.getPlanRoles().isEmpty()
+                        || !ts.getPlanLinks().isEmpty()
+                        || StringUtils.hasText(ts.getPlanNotes())
         );
     }
 

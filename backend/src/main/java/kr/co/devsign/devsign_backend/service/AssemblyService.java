@@ -7,11 +7,9 @@ import kr.co.devsign.devsign_backend.entity.AssemblyReport;
 import kr.co.devsign.devsign_backend.entity.PlanLink;
 import kr.co.devsign.devsign_backend.entity.PlanRoadmapItem;
 import kr.co.devsign.devsign_backend.entity.PlanRole;
-import kr.co.devsign.devsign_backend.entity.TeamMember;
 import kr.co.devsign.devsign_backend.repository.AssemblyPeriodRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyProjectRepository;
 import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
-import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
 import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
@@ -48,12 +46,10 @@ import java.util.Set;
 public class AssemblyService {
 
     private static final int[] ACTIVE_MONTHS = new int[]{3, 4, 5, 6, 9, 10, 11, 12};
-    private static final String TEAM_STATUS_ACCEPTED = "ACCEPTED";
 
     private final AssemblyPeriodRepository periodRepository;
     private final AssemblyReportRepository reportRepository;
     private final AssemblyProjectRepository projectRepository;
-    private final TeamMemberRepository teamMemberRepository;
     @Value("${app.upload.base-dir:uploads}")
     private String uploadBaseDir;
 
@@ -187,9 +183,6 @@ public class AssemblyService {
 
         reportRepository.save(report);
 
-        // ✨ [신규] 같은 팀(ACCEPTED) 소속이라면, 방금 제출한 내용을 팀원 전체에게 동기화한다.
-        syncToTeammates(report);
-
         return "submitted";
     }
 
@@ -226,8 +219,6 @@ public class AssemblyService {
     }
 
     // ✨ [2026-09-02 추가] 계획서(PLAN)를 웹에서 작성 중일 때 자동/수동 임시저장.
-    // 팀 동기화는 여기서 하지 않음 — 타이핑할 때마다 팀원 화면까지 계속 갱신되면 번잡하므로,
-    // 동기화는 "제출 확정"(submitPlan) 시점에만 한다.
     @Transactional
     public AssemblyReportResponse savePlanDraft(SavePlanRequest req) {
         AssemblyReport report = findOrCreateReport(req.loginId(), req.reportId(), req.year(), req.semester(), req.month());
@@ -238,7 +229,9 @@ public class AssemblyService {
         return toReportResponse(reportRepository.save(report));
     }
 
-    // ✨ [2026-09-02 추가] 계획서 제출 확정 — 상태를 SUBMITTED로 바꾸고 팀원에게 동기화.
+    // ✨ [2026-09-02 추가] 계획서 제출 확정 — 상태를 SUBMITTED로 바꿈.
+    // ✨ [2026-09-04] 팀원 간 자동 동기화(syncToTeammates)는 제거함 — 개인 제출은 팀 소속 여부와
+    // 무관하게 항상 독립적으로 유지된다. 팀 단위 공유 자료는 TeamSubmissionService가 별도로 담당.
     @Transactional
     public AssemblyReportResponse submitPlan(SavePlanRequest req) {
         AssemblyReport report = findOrCreateReport(req.loginId(), req.reportId(), req.year(), req.semester(), req.month());
@@ -247,7 +240,6 @@ public class AssemblyService {
         report.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
 
         AssemblyReport saved = reportRepository.save(report);
-        syncToTeammates(saved);
         return toReportResponse(saved);
     }
 
@@ -265,69 +257,6 @@ public class AssemblyService {
                 ? req.planLinks().stream().map(l -> new PlanLink(l.label(), l.url())).collect(java.util.stream.Collectors.toCollection(ArrayList::new))
                 : new ArrayList<>());
         report.setPlanNotes(req.planNotes());
-    }
-
-    // ✨ [신규] 제출자가 속한 팀의 다른 accepted 팀원들에게 제출 내용을 그대로 복사해준다.
-    // 팀이 없는 사용자는 기존과 동일하게 아무 영향이 없다.
-    private void syncToTeammates(AssemblyReport report) {
-        List<TeamMember> myMemberships = teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(
-                report.getLoginId(), report.getYear(), report.getSemester());
-
-        TeamMember myMembership = myMemberships.stream()
-                .filter(m -> TEAM_STATUS_ACCEPTED.equals(m.getStatus()))
-                .findFirst()
-                .orElse(null);
-
-        if (myMembership == null) {
-            return;
-        }
-
-        Long teamId = myMembership.getTeam().getId();
-        List<TeamMember> teammates = teamMemberRepository.findByTeam_IdAndStatus(teamId, TEAM_STATUS_ACCEPTED);
-
-        for (TeamMember teammate : teammates) {
-            if (teammate.getLoginId().equals(report.getLoginId())) {
-                continue;
-            }
-
-            AssemblyReport teammateReport = reportRepository
-                    .findByLoginIdAndYearAndSemesterOrderByMonthAsc(teammate.getLoginId(), report.getYear(), report.getSemester())
-                    .stream()
-                    .filter(r -> r.getMonth() == report.getMonth())
-                    .findFirst()
-                    .orElseGet(() -> {
-                        AssemblyReport r = new AssemblyReport();
-                        r.setLoginId(teammate.getLoginId());
-                        r.setYear(report.getYear());
-                        r.setSemester(report.getSemester());
-                        r.setMonth(report.getMonth());
-                        return r;
-                    });
-
-            teammateReport.setType(report.getType());
-            teammateReport.setStatus(report.getStatus());
-            teammateReport.setMemo(report.getMemo());
-            teammateReport.setDate(report.getDate());
-            teammateReport.setPresentationPath(report.getPresentationPath());
-            teammateReport.setPdfPath(report.getPdfPath());
-            teammateReport.setOtherPath(report.getOtherPath());
-            // ✨ [2026-09-02 추가] 웹 작성 계획서도 팀원에게 그대로 동기화
-            // (리스트는 두 엔티티가 같은 List 인스턴스를 공유하면 안 되므로 반드시 새로 복사)
-            teammateReport.setPlanOverview(report.getPlanOverview());
-            teammateReport.setPlanGoals(new ArrayList<>(report.getPlanGoals()));
-            teammateReport.setPlanRoadmapItems(report.getPlanRoadmapItems().stream()
-                    .map(t -> new PlanRoadmapItem(t.getTitle(), t.getStartDate(), t.getEndDate(), t.getDetail()))
-                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
-            teammateReport.setPlanRoles(report.getPlanRoles().stream()
-                    .map(r -> new PlanRole(r.getLoginId(), r.getName(), r.getRole(), r.getDuties()))
-                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
-            teammateReport.setPlanLinks(report.getPlanLinks().stream()
-                    .map(l -> new PlanLink(l.getLabel(), l.getUrl()))
-                    .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
-            teammateReport.setPlanNotes(report.getPlanNotes());
-
-            reportRepository.save(teammateReport);
-        }
     }
 
     public ResponseEntity<byte[]> downloadFile(String path) {

@@ -1,9 +1,10 @@
 import { api } from "../../../api/axios";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Layers, Crown, UserPlus, X, LogOut, Trash2, Loader2,
-  Mail, Search, PlusCircle, Save, Edit2, Users, CalendarDays, ChevronDown
+  Mail, Search, PlusCircle, Save, Edit2, Users, CalendarDays, ChevronDown,
+  FileText, Check, Clock, Presentation, Download, Upload, FileArchive, MessageCircle, Lock,
 } from "lucide-react";
 
 // ✨ CommunityTab과 동일한 학번 포맷 규칙 (8자리 학번 -> 2자리 연도 등)
@@ -16,7 +17,19 @@ const formatStudentId = (id?: string) => {
   return strId;
 };
 
-export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?: (page: string, identifier?: string) => void }) => {
+const isSubmittedStatus = (status?: string) => status === "SUBMITTED" || status === "제출완료";
+// 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 팀 전용 계획서 작성 페이지로 이동.
+const isPlanMonth = (month: number) => month === 3 || month === 9;
+
+export const TeamTab = ({
+  loginId,
+  onNavigate,
+  onOpenTeamPlanEditor,
+}: {
+  loginId: string;
+  onNavigate?: (page: string, identifier?: string) => void;
+  onOpenTeamPlanEditor?: (submission: any, team: any) => void;
+}) => {
   // ✨ 마이페이지와 동일한 연도/학기 계산 및 선택 로직 (2~7월: 1학기, 그 외: 2학기)
   const { currentYear, currentSemester } = useMemo(() => {
     const now = new Date();
@@ -61,6 +74,19 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
   const [allTeams, setAllTeams] = useState<any[]>([]);
   const [teamSearch, setTeamSearch] = useState("");
 
+  // ✨ [신규] 팀 공유 자료 — 개인 마이페이지와 완전히 독립된 별도 제출 트랙
+  const [teamSubmissions, setTeamSubmissions] = useState<any[]>([]);
+  const [submissionPeriods, setSubmissionPeriods] = useState<any[]>([]);
+  const [selectedSubmission, setSelectedSubmission] = useState<any>(null);
+  const [submissionMemo, setSubmissionMemo] = useState("");
+  const [uploadedFiles, setUploadedFiles] = useState<{ presentation: File | null; pdf: File | null; other: File | null }>({ presentation: null, pdf: null, other: null });
+  const [isSubmittingFile, setIsSubmittingFile] = useState(false);
+  const fileRefs = {
+    presentation: useRef<HTMLInputElement>(null),
+    pdf: useRef<HTMLInputElement>(null),
+    other: useRef<HTMLInputElement>(null),
+  };
+
   const isLeader = Boolean(team && team.leaderLoginId === loginId);
 
   const fetchStatus = async () => {
@@ -82,6 +108,159 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
   };
 
   useEffect(() => { fetchStatus(); }, [loginId, selectedTerm]);
+
+  const fetchTeamSubmissions = async () => {
+    if (!team) {
+      setTeamSubmissions([]);
+      return;
+    }
+    try {
+      const [subsRes, periodRes] = await Promise.all([
+        api.get("/team-submissions/my", { params: { teamId: team.teamId, year: selectedTerm.year, semester: selectedTerm.semester } }),
+        api.get(`/assembly/periods/${selectedTerm.year}`),
+      ]);
+      setTeamSubmissions(subsRes.data || []);
+      setSubmissionPeriods(periodRes.data || []);
+    } catch (e) {
+      console.error("팀 공유 자료 로드 실패:", e);
+    }
+  };
+
+  useEffect(() => { fetchTeamSubmissions(); }, [team?.teamId, selectedTerm]);
+
+  const displaySubmissions = useMemo(() => {
+    if (!team) return [];
+    const targetMonths = selectedTerm.semester === 1 ? [3, 4, 5, 6] : [9, 10, 11, 12];
+    const today = new Date().toISOString().split("T")[0];
+
+    return targetMonths.map((month) => {
+      const serverData = teamSubmissions.find((s: any) =>
+        Number(s.month) === Number(month) &&
+        Number(s.year) === Number(selectedTerm.year) &&
+        Number(s.semester) === Number(selectedTerm.semester)
+      );
+
+      const periodInfo = submissionPeriods.find((p: any) =>
+        Number(p.month) === Number(month) && Number(p.semester) === Number(selectedTerm.semester)
+      );
+
+      const isWithinPeriod = periodInfo ? (today >= periodInfo.startDate && today <= periodInfo.endDate) : false;
+      const isPast = periodInfo ? (today > periodInfo.endDate) : false;
+
+      const baseData = serverData || {
+        id: `temp-${month}`,
+        year: selectedTerm.year,
+        semester: selectedTerm.semester,
+        month,
+        type: month === 3 || month === 9 ? "계획서" : month === 6 || month === 12 ? "결과물" : "진행보고",
+        status: "NOT_SUBMITTED",
+      };
+
+      return { ...baseData, isWithinPeriod, isPast, startDate: periodInfo?.startDate, endDate: periodInfo?.endDate };
+    });
+  }, [teamSubmissions, selectedTerm, submissionPeriods, team]);
+
+  const handleSubmissionCardClick = (submission: any) => {
+    if (isPlanMonth(submission.month)) {
+      onOpenTeamPlanEditor?.(submission, team);
+      return;
+    }
+    setSelectedSubmission(submission);
+    setSubmissionMemo(submission.memo || "");
+    setUploadedFiles({ presentation: null, pdf: null, other: null });
+  };
+
+  const canSubmitFile = useMemo(() => {
+    if (!selectedSubmission || !selectedSubmission.isWithinPeriod) return false;
+    const hasNewFile = Boolean(uploadedFiles.presentation || uploadedFiles.pdf || uploadedFiles.other);
+    const hasExistingFile = Boolean(selectedSubmission.presentationPath || selectedSubmission.pdfPath || selectedSubmission.otherPath);
+    return hasNewFile || hasExistingFile;
+  }, [uploadedFiles, selectedSubmission]);
+
+  const handlePresentationFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) { setUploadedFiles({ ...uploadedFiles, presentation: null }); return; }
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith(".ppt") && !lowerName.endsWith(".pptx")) {
+      alert("발표자료는 .ppt 또는 .pptx 파일만 업로드할 수 있습니다.");
+      e.target.value = "";
+      return;
+    }
+    setUploadedFiles({ ...uploadedFiles, presentation: file });
+  };
+
+  const handlePdfFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    if (!file) { setUploadedFiles({ ...uploadedFiles, pdf: null }); return; }
+    const lowerName = file.name.toLowerCase();
+    if (!lowerName.endsWith(".pdf")) {
+      alert("PDF 항목에는 .pdf 파일만 업로드할 수 있습니다.");
+      e.target.value = "";
+      return;
+    }
+    setUploadedFiles({ ...uploadedFiles, pdf: file });
+  };
+
+  const getFilenameFromDisposition = (contentDisposition?: string, fallback = "downloaded-file") => {
+    if (!contentDisposition) return fallback;
+    const utf8Match = contentDisposition.match(/filename\*=UTF-8''([^;]+)/i);
+    if (utf8Match?.[1]) return decodeURIComponent(utf8Match[1]);
+    const plainMatch = contentDisposition.match(/filename="?([^"]+)"?/i);
+    if (plainMatch?.[1]) return plainMatch[1];
+    return fallback;
+  };
+
+  const handleDownloadFile = async (path: string) => {
+    if (!path) return;
+    try {
+      const response = await api.get("/assembly/download", { params: { path }, responseType: "blob" });
+      const fallbackName = path.split(/[\\/]/).pop() || "downloaded-file";
+      const filename = getFilenameFromDisposition(response.headers["content-disposition"], fallbackName);
+      const blobUrl = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (e) {
+      console.error("파일 다운로드 실패:", e);
+      alert("파일 다운로드 중 오류가 발생했습니다.");
+    }
+  };
+
+  const handleSubmitTeamFiles = async () => {
+    const hasNewFile = Boolean(uploadedFiles.presentation || uploadedFiles.pdf || uploadedFiles.other);
+    const hasExistingFile = Boolean(selectedSubmission?.presentationPath || selectedSubmission?.pdfPath || selectedSubmission?.otherPath);
+    if (!hasNewFile && !hasExistingFile) {
+      alert("발표자료, PDF, 기타자료 중 하나 이상 업로드해 주세요.");
+      return;
+    }
+    setIsSubmittingFile(true);
+    try {
+      const formData = new FormData();
+      formData.append("loginId", loginId);
+      formData.append("teamId", String(team.teamId));
+      const sId = selectedSubmission.id?.toString() || "0";
+      formData.append("submissionId", sId.includes("temp") ? "0" : sId);
+      formData.append("month", selectedSubmission.month.toString());
+      formData.append("year", selectedTerm.year.toString());
+      formData.append("semester", selectedTerm.semester.toString());
+      formData.append("memo", submissionMemo);
+      if (uploadedFiles.presentation) formData.append("presentation", uploadedFiles.presentation);
+      if (uploadedFiles.pdf) formData.append("pdf", uploadedFiles.pdf);
+      if (uploadedFiles.other) formData.append("other", uploadedFiles.other);
+      await api.post("/team-submissions/submit", formData);
+      alert("팀 공유 자료가 제출되었습니다! 🎉");
+      setSelectedSubmission(null);
+      await fetchTeamSubmissions();
+    } catch (e: any) {
+      alert(`제출 실패: ${e.response?.data?.message || e.message}`);
+    } finally {
+      setIsSubmittingFile(false);
+    }
+  };
 
   const otherTeams = useMemo(() => {
     return allTeams
@@ -124,15 +303,6 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
   };
 
   const handleAccept = async (teamMemberId: number) => {
-    // ✨ [신규] 합류 시 이번 학기 자료가 팀과 공유된다는 점을 미리 안내
-    const confirmed = confirm(
-      "팀에 합류하면 이번 학기 총회자료가 팀과 공유됩니다.\n\n" +
-      "- 아직 제출하지 않은 달은 팀에 이미 제출된 자료로 채워집니다.\n" +
-      "- 이미 개인적으로 제출한 달의 자료는 그대로 유지되니 안심하세요.\n\n" +
-      "계속해서 수락하시겠습니까?"
-    );
-    if (!confirmed) return;
-
     try {
       await api.post(`/teams/invitations/${teamMemberId}/accept`, null, { params: { loginId } });
       await fetchStatus();
@@ -256,7 +426,8 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
         <div>
           <h1 className="text-2xl md:text-4xl font-[900] text-slate-900 tracking-tighter uppercase mb-1 md:mb-2">팀 프로젝트</h1>
           <p className="text-slate-400 font-bold text-[11px] md:text-sm">
-            팀으로 묶이면 팀원 중 한 명만 총회자료를 제출해도 팀 전체가 제출한 것으로 처리됩니다.
+            팀 공유 자료는 개인 마이페이지와 별개로 운영됩니다 — 팀원 누구나 아래 "팀 공유 자료"에서
+            함께 제출하고, 개인 마이페이지 제출은 그대로 각자 유지돼요.
           </p>
         </div>
         <div className="relative h-12 md:h-14 w-full sm:w-auto">
@@ -444,6 +615,50 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
             </div>
           )}
 
+          {/* ✨ [신규] 팀 공유 자료 — 개인 마이페이지와 완전히 별개의 제출 트랙, 팀원 누구나 제출/수정 가능 */}
+          {team && (
+            <div className="mt-10 md:mt-14">
+              <h3 className="text-sm md:text-base font-black text-slate-900 flex items-center gap-2 mb-4 md:mb-6">
+                <FileText size={16} className="text-indigo-500" /> 팀 공유 자료
+              </h3>
+              <div className="space-y-3 md:space-y-4">
+                {displaySubmissions.map((s) => (
+                  <motion.div
+                    key={s.id}
+                    whileHover={{ scale: 1.01, y: -2 }}
+                    onClick={() => handleSubmissionCardClick(s)}
+                    className="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group transition-all cursor-pointer hover:shadow-lg"
+                  >
+                    <div className="flex items-center gap-3 md:gap-6">
+                      <span className={`text-lg md:text-2xl font-bold shrink-0 ${isSubmittedStatus(s.status) ? "text-indigo-600" : "text-slate-400"}`}>{s.month}월</span>
+                      <div className="h-8 md:h-10 w-px bg-slate-200"></div>
+                      <div className="min-w-0">
+                        <div className="flex items-center gap-2 mb-0.5 md:mb-1.5">
+                          <span className={`px-1.5 py-0.5 rounded-md text-[8px] md:text-[10px] font-bold uppercase shrink-0 ${isSubmittedStatus(s.status) ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{s.type}</span>
+                          <h4 className="font-bold text-slate-900 text-sm md:text-lg truncate">{s.month}월 팀 자료</h4>
+                        </div>
+                        <div className="flex items-center gap-2 md:gap-4 text-[9px] md:text-[11px] text-slate-400 font-bold uppercase truncate">
+                          {isSubmittedStatus(s.status) ? (
+                            <span className="flex items-center gap-1 text-indigo-500"><Check size={12} /> {s.date || "최근"} 제출됨{s.updatedBy ? ` · ${s.updatedBy}` : ""}</span>
+                          ) : s.isWithinPeriod ? (
+                            <span className="flex items-center gap-1 text-green-500 font-black"><Clock size={12} /> 현재 제출 가능</span>
+                          ) : s.isPast ? (
+                            <span className="flex items-center gap-1 text-pink-500 font-black"><X size={12} /> 제출 종료</span>
+                          ) : (
+                            <span className="flex items-center gap-1"><Clock size={12} /> {s.startDate || "미설정"}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                    <span className={`text-[9px] md:text-[10px] font-bold px-2 md:px-4 py-1.5 md:py-2 rounded-full border shrink-0 ${isSubmittedStatus(s.status) ? "text-green-600 bg-green-50 border-green-100" : s.isWithinPeriod ? "text-indigo-600 bg-indigo-50 border-indigo-100" : "text-orange-600 bg-orange-50 border-orange-100"}`}>
+                      {isSubmittedStatus(s.status) ? "완료" : s.isWithinPeriod ? "가능" : "불가"}
+                    </span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* ✨ 다른 팀 둘러보기 — 초대 대기중인 인원은 백엔드에서부터 제외되어 내려온다 */}
           <div className="mt-10 md:mt-14">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
@@ -545,6 +760,100 @@ export const TeamTab = ({ loginId, onNavigate }: { loginId: string; onNavigate?:
           </div>
         )}
       </AnimatePresence>
+
+      {/* ✨ [신규] 팀 공유 자료 — 파일 업로드 모달 (진행보고/결과물 달 전용, 계획서 달은 팀 전용 페이지로 이동) */}
+      <AnimatePresence>
+        {selectedSubmission && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedSubmission(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+              <div className="flex justify-between items-start mb-6 md:mb-8">
+                <div>
+                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] md:text-[10px] font-bold rounded-md uppercase border border-indigo-100">{selectedSubmission.month}월 팀 자료</span>
+                  <h3 className="text-xl md:text-3xl font-bold text-slate-900 mt-1 md:mt-2">
+                    {isSubmittedStatus(selectedSubmission.status) ? (selectedSubmission.isWithinPeriod ? "제출 내용 수정" : "제출 자료 확인") : "팀 자료 제출"}
+                  </h3>
+                </div>
+                <button onClick={() => setSelectedSubmission(null)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"><X size={18} /></button>
+              </div>
+
+              {!selectedSubmission.isWithinPeriod && (
+                <div className="mb-6 p-3 md:p-4 bg-slate-900 rounded-xl md:rounded-2xl border border-slate-800 flex items-center gap-2 md:gap-3 text-white">
+                  <Lock size={16} className="text-indigo-400 shrink-0" />
+                  <div>
+                    <p className="text-xs font-bold">현재 제출 및 수정 가능 기간이 아닙니다.</p>
+                  </div>
+                </div>
+              )}
+
+              <p className="text-[11px] md:text-xs text-slate-400 font-bold mb-6 md:mb-8 -mt-2">팀원 누구나 이 자료를 올리거나 수정할 수 있어요.</p>
+
+              <div className="mb-6 md:mb-8">
+                <div className="flex items-center gap-1.5 mb-2 ml-1"><MessageCircle size={14} className="text-indigo-500" /><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">활동 요약</p></div>
+                <textarea
+                  value={submissionMemo}
+                  onChange={(e) => setSubmissionMemo(e.target.value)}
+                  disabled={!selectedSubmission.isWithinPeriod}
+                  placeholder="활동 내용을 입력해주세요."
+                  className="w-full p-4 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm min-h-[80px] md:min-h-[100px] disabled:opacity-50 resize-none"
+                />
+              </div>
+
+              <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
+                <p className="text-[10px] md:text-xs font-bold text-slate-400 ml-1 uppercase">제출 파일 관리</p>
+                <div className="grid grid-cols-1 gap-2 md:gap-3">
+                  <input type="file" accept=".ppt,.pptx" ref={fileRefs.presentation} className="hidden" onChange={handlePresentationFileChange} />
+                  <input type="file" accept=".pdf" ref={fileRefs.pdf} className="hidden" onChange={handlePdfFileChange} />
+                  <input type="file" ref={fileRefs.other} className="hidden" onChange={(e) => setUploadedFiles({ ...uploadedFiles, other: e.target.files![0] })} />
+
+                  <UploadSlot label="발표자료" disabled={!selectedSubmission.isWithinPeriod} existingPath={selectedSubmission.presentationPath} fileName={uploadedFiles.presentation?.name} onDownload={() => handleDownloadFile(selectedSubmission.presentationPath)} onClick={() => selectedSubmission.isWithinPeriod && fileRefs.presentation.current?.click()} />
+                  <UploadSlot label="PDF" disabled={!selectedSubmission.isWithinPeriod} existingPath={selectedSubmission.pdfPath} fileName={uploadedFiles.pdf?.name} onDownload={() => handleDownloadFile(selectedSubmission.pdfPath)} onClick={() => selectedSubmission.isWithinPeriod && fileRefs.pdf.current?.click()} />
+                  <UploadSlot label="기타 자료" disabled={!selectedSubmission.isWithinPeriod} existingPath={selectedSubmission.otherPath} fileName={uploadedFiles.other?.name} onDownload={() => handleDownloadFile(selectedSubmission.otherPath)} onClick={() => selectedSubmission.isWithinPeriod && fileRefs.other.current?.click()} />
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => setSelectedSubmission(null)} className="flex-1 py-3.5 md:py-5 bg-slate-50 text-slate-500 rounded-xl md:rounded-2xl font-bold text-xs md:text-base hover:bg-slate-100 transition-all">닫기</button>
+                {selectedSubmission.isWithinPeriod && (
+                  <button
+                    onClick={handleSubmitTeamFiles}
+                    disabled={!canSubmitFile || isSubmittingFile}
+                    className={`flex-[2] py-3.5 md:py-5 rounded-xl md:rounded-2xl font-bold text-xs md:text-base transition-all flex items-center justify-center gap-2 ${canSubmitFile && !isSubmittingFile ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
+                  >
+                    {isSubmittingFile ? <Loader2 className="animate-spin" size={18} /> : (isSubmittedStatus(selectedSubmission.status) ? "수정 저장" : "제출 완료")}
+                  </button>
+                )}
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 };
+
+const UploadSlot = ({ label, fileName, onClick, disabled, existingPath, onDownload }: any) => (
+  <div className={`flex items-center justify-between p-3 md:p-5 rounded-xl md:rounded-2xl border transition-all ${fileName || existingPath ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"}`}>
+    <div className="flex items-center gap-2 md:gap-4 min-w-0">
+      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${fileName || existingPath ? "bg-indigo-600 text-white" : "bg-white text-slate-400 border"}`}>
+        {label === "발표자료" ? <Presentation size={16} /> : label === "PDF" ? <FileText size={16} /> : <FileArchive size={16} />}
+      </div>
+      <div className="text-left min-w-0">
+        <p className="text-[11px] md:text-sm font-bold text-slate-800">{label}</p>
+        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase truncate max-w-[100px] md:max-w-[150px]">{fileName || (existingPath ? "파일 있음" : "자료 없음")}</p>
+      </div>
+    </div>
+    <div className="flex items-center gap-1.5">
+      {existingPath && (
+        <button onClick={onDownload} className="p-1.5 md:p-2 bg-white text-indigo-600 rounded-lg shadow-sm border border-indigo-100 shrink-0">
+          <Download size={14} />
+        </button>
+      )}
+      {!disabled && (
+        <button onClick={onClick} className="p-1.5 md:p-2 bg-indigo-600 text-white rounded-lg shadow-sm shrink-0">
+          <Upload size={14} />
+        </button>
+      )}
+    </div>
+  </div>
+);

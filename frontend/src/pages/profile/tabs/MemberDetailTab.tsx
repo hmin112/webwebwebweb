@@ -4,8 +4,18 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, FileText, Check, Clock, X,
   Download, Presentation, CalendarDays, MessageCircle,
-  FileArchive, ExternalLink, Loader2, ChevronDown, Eye
+  FileArchive, ExternalLink, Loader2, ChevronDown, Eye,
+  Layers, Crown,
 } from "lucide-react";
+
+// ✨ TeamTab/CommunityTab과 동일한 학번 포맷 규칙
+const formatShortStudentId = (id?: string) => {
+  if (!id) return "??";
+  const strId = String(id).trim();
+  if (strId.length === 8) return strId.substring(2, 4);
+  if (strId.length === 2) return strId;
+  return strId;
+};
 
 // 부모 컴포넌트(AssemblyPage)로부터 전달받는 프롭스 정의
 interface MemberDetailProps {
@@ -18,6 +28,8 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   const [memberInfo, setMemberInfo] = useState<any>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  // ✨ [신규] 이번 학기 팀 프로젝트 소속 여부 — 개인 정보와는 별개로 추가 노출
+  const [teamInfo, setTeamInfo] = useState<any>(null);
 
   // 학기 선택 상태 (기본 2026년 1학기)
   const [selectedTerm, setSelectedTerm] = useState({ year: 2026, semester: 1 });
@@ -90,6 +102,16 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         });
 
         setReports(submissionRes.data.reports || []);
+
+        // 4. 이번 학기 팀 프로젝트 소속 여부 (기존 팀 프로젝트 기능이 이미 쓰던 엔드포인트 재사용)
+        try {
+          const teamRes = await api.get("/teams/my", {
+            params: { loginId: targetMember.loginId, year: selectedTerm.year, semester: selectedTerm.semester },
+          });
+          setTeamInfo(teamRes.data?.team || null);
+        } catch {
+          setTeamInfo(null);
+        }
 
       } catch (e) {
         console.error("데이터 로딩 중 에러 발생:", e);
@@ -251,6 +273,32 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* ✨ [신규] 이번 학기 팀 프로젝트 소속 정보 — 개인 정보와 별개로 추가 표시 */}
+      {teamInfo && (
+        <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
+            <Layers size={14} />
+            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">팀 프로젝트</p>
+          </div>
+          <h4 className="font-black text-slate-900 text-base md:text-xl mb-1">{teamInfo.teamName}</h4>
+          <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-5">{teamInfo.projectTitle}</p>
+          <div className="flex flex-wrap gap-2">
+            {(teamInfo.members || []).map((m: any) => (
+              <div key={m.teamMemberId} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-slate-50 rounded-full border border-slate-100">
+                <img
+                  src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                  onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
+                  className="w-5 h-5 rounded-full object-cover shrink-0"
+                  alt={m.name}
+                />
+                <span className="text-[11px] font-bold text-slate-600">{formatShortStudentId(m.studentId)} {m.name}</span>
+                {m.isLeader && <Crown size={11} className="text-amber-500 shrink-0" />}
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* 📋 리포트 타임라인 목록 */}
       <div className="space-y-4 md:space-y-6">

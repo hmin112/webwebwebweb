@@ -14,6 +14,7 @@ import { MemberDetailTab } from "../profile/tabs/MemberDetailTab";
 import { AttendanceMemberTab } from "./tabs/AttendanceMemberTab";
 import { AttendanceAdminTab } from "./tabs/AttendanceAdminTab";
 import { AssemblyPlanPage } from "../profile/tabs/AssemblyPlanPage";
+import { TeamPlanPage } from "../profile/tabs/TeamPlanPage";
 
 export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   isAdmin: boolean,
@@ -37,6 +38,13 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
     setActiveTab("plan-editor");
   };
 
+  // ✨ [신규] 팀 공유 자료의 계획서(3월/9월) 작성 — 개인용 plan-editor와 동일한 패턴
+  const [teamPlanEditorState, setTeamPlanEditorState] = useState<{ submission: any; team: any } | null>(null);
+  const handleOpenTeamPlanEditor = (submission: any, team: any) => {
+    setTeamPlanEditorState({ submission, team });
+    setActiveTab("team-plan-editor");
+  };
+
   const userMenus = [
     ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={18} /> }] : []),
     { id: "community", name: "커뮤니티", icon: <Users size={18} /> },
@@ -57,6 +65,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
     setActiveTab(id);
     setSelectedLoginId(null);
     setPlanEditorReport(null);
+    setTeamPlanEditorState(null);
     setIsMobileMenuOpen(false);
   };
 
@@ -72,7 +81,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
       {/* 📱 모바일 전용: 알약 모양 상단 탭 (Sticky) */}
       <div className="lg:hidden sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-3 overflow-x-auto no-scrollbar flex gap-2">
         {allMenus.map((menu) => {
-          const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor");
+          const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor") || (menu.id === "team" && activeTab === "team-plan-editor");
           return (
             <button
               key={menu.id}
@@ -104,7 +113,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
           {userMenus.map((menu) => (
             <SidebarLink
               key={menu.id}
-              active={activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor")}
+              active={activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor") || (menu.id === "team" && activeTab === "team-plan-editor")}
               onClick={() => handleTabChange(menu.id)}
               icon={menu.icon}
               name={menu.name}
@@ -148,6 +157,18 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
               key="team"
               loginId={loginId}
               onNavigate={(_page, identifier) => identifier ? handleShowMemberDetail(String(identifier)) : onNavigate(_page)}
+              onOpenTeamPlanEditor={handleOpenTeamPlanEditor}
+            />
+          )}
+
+          {activeTab === "team-plan-editor" && teamPlanEditorState && (
+            <TeamPlanPage
+              key="team-plan-editor"
+              loginId={loginId}
+              teamId={teamPlanEditorState.team.teamId}
+              team={teamPlanEditorState.team}
+              submission={teamPlanEditorState.submission}
+              onBack={() => setActiveTab("team")}
             />
           )}
 
