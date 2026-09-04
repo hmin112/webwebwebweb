@@ -43,6 +43,12 @@ public class MemberController {
         return memberService.getAllMembers();
     }
 
+    // ✨ [신규] 홈 화면 하단 연락처(회장/부회장/총무)용 — 비로그인 방문자도 조회 가능
+    @GetMapping("/officers")
+    public List<kr.co.devsign.devsign_backend.dto.member.OfficerContactResponse> getOfficerContacts() {
+        return memberService.getOfficerContacts();
+    }
+
     @PostMapping("/login")
     public LoginResponse login(@RequestBody LoginRequest loginRequest, HttpServletRequest request) {
         return memberService.login(loginRequest, request);

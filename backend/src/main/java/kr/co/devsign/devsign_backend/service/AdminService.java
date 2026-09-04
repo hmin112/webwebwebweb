@@ -94,6 +94,10 @@ public class AdminService {
         heroSettings.put("recruitmentText", "2026 recruitment open");
         heroSettings.put("applyLink", "https://open.kakao.com/o/example");
         heroSettings.put("applyButtonText", "지원하기");
+        // ✨ [신규] 홈 화면 하단 연락처 전화번호 기본값(기존에 프론트에 하드코딩돼 있던 값 그대로)
+        heroSettings.put("presidentPhone", "010-9171-8162");
+        heroSettings.put("vicePresidentPhone", "010-6545-1948");
+        heroSettings.put("treasurerPhone", "010-8639-5557");
     }
 
     // ✨ 핵심 3: 서버가 켜질 때마다 안전한 uploads 폴더에서 설정 파일을 읽어옵니다.
@@ -117,6 +121,15 @@ public class AdminService {
                     }
                     if (props.containsKey("applyButtonText")) {
                         heroSettings.put("applyButtonText", props.getProperty("applyButtonText"));
+                    }
+                    if (props.containsKey("presidentPhone")) {
+                        heroSettings.put("presidentPhone", props.getProperty("presidentPhone"));
+                    }
+                    if (props.containsKey("vicePresidentPhone")) {
+                        heroSettings.put("vicePresidentPhone", props.getProperty("vicePresidentPhone"));
+                    }
+                    if (props.containsKey("treasurerPhone")) {
+                        heroSettings.put("treasurerPhone", props.getProperty("treasurerPhone"));
                     }
                 }
             }
@@ -151,7 +164,14 @@ public class AdminService {
     }
 
     public HeroSettingsResponse getHeroSettings() {
-        return new HeroSettingsResponse(heroSettings.get("recruitmentText"), heroSettings.get("applyLink"), heroSettings.get("applyButtonText"));
+        return new HeroSettingsResponse(
+                heroSettings.get("recruitmentText"),
+                heroSettings.get("applyLink"),
+                heroSettings.get("applyButtonText"),
+                heroSettings.get("presidentPhone"),
+                heroSettings.get("vicePresidentPhone"),
+                heroSettings.get("treasurerPhone")
+        );
     }
 
     public StatusResponse updateHeroSettings(HeroSettingsRequest settings) {
@@ -160,6 +180,15 @@ public class AdminService {
         // ConcurrentHashMap은 null 값을 허용하지 않으므로, 혹시 프론트에서 값이 안 왔다면 기본값 유지
         if (settings.applyButtonText() != null && !settings.applyButtonText().isBlank()) {
             heroSettings.put("applyButtonText", settings.applyButtonText());
+        }
+        if (settings.presidentPhone() != null && !settings.presidentPhone().isBlank()) {
+            heroSettings.put("presidentPhone", settings.presidentPhone());
+        }
+        if (settings.vicePresidentPhone() != null && !settings.vicePresidentPhone().isBlank()) {
+            heroSettings.put("vicePresidentPhone", settings.vicePresidentPhone());
+        }
+        if (settings.treasurerPhone() != null && !settings.treasurerPhone().isBlank()) {
+            heroSettings.put("treasurerPhone", settings.treasurerPhone());
         }
 
         // ✨ 핵심 4: 메모리가 아닌 도커 볼륨(uploads 폴더)의 실제 파일에 영구 저장합니다.

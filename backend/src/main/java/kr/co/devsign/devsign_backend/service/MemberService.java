@@ -104,6 +104,26 @@ public class MemberService {
                 .toList();
     }
 
+    // ✨ [신규] 홈 화면 하단 연락처용 — 회장/부회장/총무만 뽑아서 공개. 임원진은 이름에
+    // "김형민(회장)"처럼 직책이 붙어 저장되는 관례(디스코드 별명 동기화)를 그대로 이용해 찾는다.
+    // 회원 전체 목록(/members/all)은 인증이 필요하지만, 이 엔드포인트는 이름+학번만 공개하므로
+    // 비로그인 방문자도 볼 수 있는 홈 화면 하단에서 안전하게 쓸 수 있다.
+    public List<kr.co.devsign.devsign_backend.dto.member.OfficerContactResponse> getOfficerContacts() {
+        List<Member> activeMembers = memberRepository.findByDeletedFalseOrderByStudentIdDesc();
+        List<kr.co.devsign.devsign_backend.dto.member.OfficerContactResponse> result = new java.util.ArrayList<>();
+
+        for (String role : List.of("회장", "부회장", "총무")) {
+            String suffix = "(" + role + ")";
+            activeMembers.stream()
+                    .filter(m -> m.getName() != null && m.getName().contains(suffix))
+                    .findFirst()
+                    .ifPresent(m -> result.add(new kr.co.devsign.devsign_backend.dto.member.OfficerContactResponse(
+                            role, m.getName().replace(suffix, "").trim(), m.getStudentId()
+                    )));
+        }
+        return result;
+    }
+
     public LoginResponse login(LoginRequest loginRequest, HttpServletRequest request) {
         Optional<Member> memberOpt = memberRepository.findByLoginId(loginRequest.loginId());
 

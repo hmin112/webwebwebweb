@@ -375,7 +375,7 @@ function AppContent() {
         </Routes>
       </main>
 
-      {!isLayoutHidden && <Footer onNavigate={handleNavigateCompat} />}
+      {!isLayoutHidden && <Footer onNavigate={handleNavigateCompat} isAdmin={isAdmin && isLoggedIn} />}
     </>
   );
 }

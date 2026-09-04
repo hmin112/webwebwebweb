@@ -3,6 +3,9 @@ package kr.co.devsign.devsign_backend.dto.admin;
 public record HeroSettingsResponse(
         String recruitmentText,
         String applyLink,
-        String applyButtonText
+        String applyButtonText,
+        String presidentPhone,
+        String vicePresidentPhone,
+        String treasurerPhone
 ) {
 }
