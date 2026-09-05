@@ -147,7 +147,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
   };
 
   return (
-    <section id="home" className="relative pt-24 pb-4 md:pt-32 md:pb-8 overflow-hidden bg-gradient-to-b from-[#f8faff] to-white">
+    <section id="home" className="relative pt-16 lg:pt-20 pb-4 md:pb-8 overflow-hidden bg-gradient-to-b from-[#f8faff] to-white">
       
       {/* 배경 플로팅 아이콘 레이어 (원본 보존) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
@@ -176,6 +176,42 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
 
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
 
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
+        {/* ✨ 모집 문구 영역: 다시 상단으로. navbar 바로 아래라 여백은 최소로 */}
+        <div className="flex justify-center mb-6 md:mb-8">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-full bg-white border border-indigo-100 shadow-sm shadow-indigo-100/30"
+          >
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse" />
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text" value={recruitmentText}
+                  onChange={(e) => setRecruitmentText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
+                  className="text-xs md:text-sm font-bold text-indigo-600 outline-none border-b border-indigo-200 bg-transparent w-auto"
+                  autoFocus
+                />
+                <button onClick={handleTextSubmit} className="text-green-500 hover:text-green-600">
+                  <Check className="w-3 h-3 md:w-[14px] md:h-[14px]" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs md:text-sm font-bold text-indigo-600">{recruitmentText}</span>
+                {isAdmin && (
+                  <button onClick={() => setIsEditing(true)} className="text-slate-300 hover:text-indigo-600 transition-colors">
+                    <Pencil className="w-3 h-3 md:w-[14px] md:h-[14px]" />
+                  </button>
+                )}
+              </div>
+            )}
+          </motion.div>
+        </div>
+      </div>
+
       {/* 🏆 명예의 전당 쇼케이스: 조선대 홈페이지 메인 배너 참고 — 화면 전체 폭 사진 위에 정보를 바로 얹고, 하단 중앙에 점 인디케이터 + 일시정지 버튼 */}
       <div className="relative z-10 mb-10">
         {currentHofEntry ? (
@@ -202,7 +238,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                     <img
                       src={currentHofEntry.image}
                       alt={currentHofEntry.title}
-                      className="absolute inset-0 w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+                      className="absolute inset-0 w-full h-full object-contain object-[65%_center] transition-transform duration-700 group-hover:scale-105"
                     />
                   </>
                 ) : (
@@ -309,40 +345,6 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
-
-        {/* ✨ 모집 문구 영역: 명예의 전당 배너 아래로 이동. 모바일에서 더 작게(px-3 py-1.5), 폰트 작게(text-xs) */}
-        <div className="flex justify-center mb-10">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-full bg-white border border-indigo-100 shadow-sm shadow-indigo-100/30"
-          >
-            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse" />
-            {isEditing ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text" value={recruitmentText}
-                  onChange={(e) => setRecruitmentText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
-                  className="text-xs md:text-sm font-bold text-indigo-600 outline-none border-b border-indigo-200 bg-transparent w-auto"
-                  autoFocus
-                />
-                <button onClick={handleTextSubmit} className="text-green-500 hover:text-green-600">
-                  <Check className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs md:text-sm font-bold text-indigo-600">{recruitmentText}</span>
-                {isAdmin && (
-                  <button onClick={() => setIsEditing(true)} className="text-slate-300 hover:text-indigo-600 transition-colors">
-                    <Pencil className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                  </button>
-                )}
-              </div>
-            )}
-          </motion.div>
-        </div>
 
         {/* 💡 ✨ 버튼 및 링크 편집 영역: 모바일에서 버튼 크기(px-6 py-4), 연필 아이콘 축소 */}
         <div className="flex flex-col items-center gap-4 md:gap-6 mb-4 md:mb-8">
