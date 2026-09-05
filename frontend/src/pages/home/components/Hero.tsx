@@ -7,7 +7,6 @@ import {
   Layers, Monitor, Smartphone, Zap, Braces,
   Trophy, CalendarDays, Pause, Play
 } from "lucide-react";
-import { Button } from "../../../components/ui/button";
 
 const formatStudentId = (id?: string) => {
   if (!id) return "??";
@@ -176,55 +175,20 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
 
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
 
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
-        {/* ✨ 모집 문구 영역: 다시 상단으로. navbar 바로 아래라 여백은 최소로 */}
-        <div className="flex justify-center mb-6 md:mb-8">
-          <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-full bg-white border border-indigo-100 shadow-sm shadow-indigo-100/30"
-          >
-            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse" />
-            {isEditing ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text" value={recruitmentText}
-                  onChange={(e) => setRecruitmentText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
-                  className="text-xs md:text-sm font-bold text-indigo-600 outline-none border-b border-indigo-200 bg-transparent w-auto"
-                  autoFocus
-                />
-                <button onClick={handleTextSubmit} className="text-green-500 hover:text-green-600">
-                  <Check className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs md:text-sm font-bold text-indigo-600">{recruitmentText}</span>
-                {isAdmin && (
-                  <button onClick={() => setIsEditing(true)} className="text-slate-300 hover:text-indigo-600 transition-colors">
-                    <Pencil className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                  </button>
-                )}
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </div>
-
-      {/* 🏆 명예의 전당 쇼케이스: 조선대 홈페이지 메인 배너 참고 — 화면 전체 폭 사진 위에 정보를 바로 얹고, 하단 중앙에 점 인디케이터 + 일시정지 버튼 */}
-      <div className="relative z-10 mb-10">
+      {/* 🏆 명예의 전당 쇼케이스: 조선대 홈페이지 메인 배너 참고 — 화면 전체 폭 사진 위에 정보를 바로 얹고, 하단 중앙에 점 인디케이터 + 일시정지 버튼. 상단 여백 없이 navbar 바로 아래에 배치 */}
+      <div className="relative z-10 mb-6">
         {currentHofEntry ? (
-          <div className="relative left-1/2 -translate-x-1/2 w-screen">
-            <AnimatePresence mode="wait">
+          <div className="relative left-1/2 -translate-x-1/2 w-screen h-[420px] sm:h-[480px] md:h-[560px] overflow-hidden bg-slate-900">
+            {/* 슬라이드 전환: 겹쳐서 크로스페이드(교체 순간 하얗게 비는 텀 없이 자연스럽게) */}
+            <AnimatePresence>
               <motion.div
                 key={currentHofEntry.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.7, ease: "easeInOut" }}
+                transition={{ duration: 0.6, ease: "easeInOut" }}
                 onClick={() => onNavigate && onNavigate("halloffame-detail", currentHofEntry.id)}
-                className="group cursor-pointer relative w-full h-[420px] sm:h-[480px] md:h-[560px] overflow-hidden bg-slate-900"
+                className="group cursor-pointer absolute inset-0"
               >
                 {/* 사진: 비율은 그대로 유지(잘리지 않음), 남는 공간은 같은 사진을 흐리게 확대해 깐 배경으로 자연스럽게 채움 */}
                 {currentHofEntry.image ? (
@@ -301,34 +265,34 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                     </div>
                   </div>
                 </div>
-
-                {/* 하단 중앙: 점 인디케이터 + 일시정지 버튼 (조선대 메인 배너 참고) */}
-                {hallOfFame.length > 1 && (
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="absolute bottom-5 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3"
-                  >
-                    <div className="flex items-center gap-1.5">
-                      {hallOfFame.map((entry, i) => (
-                        <button
-                          key={entry.id}
-                          onClick={() => setHofIndex(i)}
-                          aria-label={`${i + 1}번째 수상 소식 보기`}
-                          className={`h-1.5 rounded-full transition-all ${i === hofIndex ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
-                        />
-                      ))}
-                    </div>
-                    <button
-                      onClick={() => setIsHofPaused((prev) => !prev)}
-                      aria-label={isHofPaused ? "자동 전환 재생" : "자동 전환 일시정지"}
-                      className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
-                    >
-                      {isHofPaused ? <Play className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Pause className="w-3 h-3 md:w-3.5 md:h-3.5" />}
-                    </button>
-                  </div>
-                )}
               </motion.div>
             </AnimatePresence>
+
+            {/* 하단 중앙: 점 인디케이터 + 일시정지 버튼 (조선대 메인 배너 참고) — 전환과 무관하게 항상 고정 표시 */}
+            {hallOfFame.length > 1 && (
+              <div
+                onClick={(e) => e.stopPropagation()}
+                className="absolute z-10 bottom-5 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3"
+              >
+                <div className="flex items-center gap-1.5">
+                  {hallOfFame.map((entry, i) => (
+                    <button
+                      key={entry.id}
+                      onClick={() => setHofIndex(i)}
+                      aria-label={`${i + 1}번째 수상 소식 보기`}
+                      className={`h-1.5 rounded-full transition-all ${i === hofIndex ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
+                    />
+                  ))}
+                </div>
+                <button
+                  onClick={() => setIsHofPaused((prev) => !prev)}
+                  aria-label={isHofPaused ? "자동 전환 재생" : "자동 전환 일시정지"}
+                  className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+                >
+                  {isHofPaused ? <Play className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Pause className="w-3 h-3 md:w-3.5 md:h-3.5" />}
+                </button>
+              </div>
+            )}
           </div>
         ) : (
           <div className="max-w-7xl mx-auto px-6 text-center">
@@ -346,65 +310,95 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
 
-        {/* 💡 ✨ 버튼 및 링크 편집 영역: 모바일에서 버튼 크기(px-6 py-4), 연필 아이콘 축소 */}
-        <div className="flex flex-col items-center gap-4 md:gap-6 mb-4 md:mb-8">
-          <div className="flex items-center gap-3 md:gap-4">
-            <Button 
+        {/* ✨ 모집 문구(좌) / 지원 링크(우) — 배너 바로 아래에 박스 없이 가로 배치 */}
+        <div className="flex items-center justify-between flex-wrap gap-x-6 gap-y-3 py-4 md:py-6">
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="flex items-center gap-2"
+          >
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text" value={recruitmentText}
+                  onChange={(e) => setRecruitmentText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
+                  className="text-xs md:text-sm font-bold text-indigo-600 outline-none border-b border-indigo-200 bg-transparent w-auto"
+                  autoFocus
+                />
+                <button onClick={handleTextSubmit} className="text-green-500 hover:text-green-600">
+                  <Check className="w-3 h-3 md:w-[14px] md:h-[14px]" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs md:text-sm font-bold text-indigo-600">{recruitmentText}</span>
+                {isAdmin && (
+                  <button onClick={() => setIsEditing(true)} className="text-slate-300 hover:text-indigo-600 transition-colors">
+                    <Pencil className="w-3 h-3 md:w-[14px] md:h-[14px]" />
+                  </button>
+                )}
+              </div>
+            )}
+          </motion.div>
+
+          <div className="flex items-center gap-2">
+            <button
               onClick={handleApply}
-              size="lg" 
-              className="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-4 md:px-10 md:py-7 rounded-xl md:rounded-2xl font-extrabold text-sm md:text-lg group shadow-xl shadow-indigo-100 transition-all hover:scale-105 active:scale-95"
+              className="group inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-extrabold text-sm md:text-base transition-colors"
             >
-              {applyButtonText} <ArrowRight className="ml-2 w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
-            </Button>
-            
+              {applyButtonText} <ArrowRight className="w-4 h-4 md:w-[18px] md:h-[18px] group-hover:translate-x-1 transition-transform" />
+            </button>
+
             {isAdmin && (
-              <button 
+              <button
                 onClick={() => {
                   if (isEditingLink) handleLinkSubmit();
                   else setIsEditingLink(true);
                 }}
-                className={`p-3 md:p-4 rounded-xl border transition-all ${isEditingLink ? "bg-indigo-600 text-white border-indigo-600 shadow-lg" : "bg-white text-slate-300 border-slate-100 hover:text-indigo-600 shadow-sm"}`}
+                className={`transition-colors ${isEditingLink ? "text-indigo-600" : "text-slate-300 hover:text-indigo-600"}`}
               >
-                {isEditingLink ? <Check className="w-4 h-4 md:w-5 md:h-5" /> : <Pencil className="w-4 h-4 md:w-5 md:h-5" />}
+                {isEditingLink ? <Check className="w-4 h-4 md:w-[18px] md:h-[18px]" /> : <Pencil className="w-4 h-4 md:w-[18px] md:h-[18px]" />}
               </button>
             )}
           </div>
-
-          <AnimatePresence>
-            {isEditingLink && (
-              <motion.div
-                initial={{ opacity: 0, y: -10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -10 }}
-                className="w-full max-w-[280px] md:max-w-md bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/20 flex flex-col gap-2.5 md:gap-3"
-              >
-                <div className="flex items-center gap-2 md:gap-3">
-                  <Type className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
-                  <input
-                    type="text"
-                    value={applyButtonText}
-                    onChange={(e) => setApplyButtonText(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
-                    placeholder="버튼 문구 입력 (예: 지원하기)"
-                    className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
-                    autoFocus
-                  />
-                </div>
-                <div className="flex items-center gap-2 md:gap-3">
-                  <LinkIcon className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
-                  <input
-                    type="text"
-                    value={applyLink}
-                    onChange={(e) => setApplyLink(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
-                    placeholder="카카오톡 오픈채팅 링크 입력"
-                    className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
-                  />
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
+
+        <AnimatePresence>
+          {isEditingLink && (
+            <motion.div
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="w-full max-w-[280px] md:max-w-md md:ml-auto bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/20 flex flex-col gap-2.5 md:gap-3 mb-4 md:mb-8"
+            >
+              <div className="flex items-center gap-2 md:gap-3">
+                <Type className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
+                <input
+                  type="text"
+                  value={applyButtonText}
+                  onChange={(e) => setApplyButtonText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
+                  placeholder="버튼 문구 입력 (예: 지원하기)"
+                  className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
+                  autoFocus
+                />
+              </div>
+              <div className="flex items-center gap-2 md:gap-3">
+                <LinkIcon className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
+                <input
+                  type="text"
+                  value={applyLink}
+                  onChange={(e) => setApplyLink(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
+                  placeholder="카카오톡 오픈채팅 링크 입력"
+                  className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
+                />
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </div>
     </section>
