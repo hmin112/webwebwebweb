@@ -175,124 +175,196 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
 
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
 
-      {/* 🏆 명예의 전당 쇼케이스: 조선대 홈페이지 메인 배너 참고 — 화면 전체 폭 사진 위에 정보를 바로 얹고, 하단 중앙에 점 인디케이터 + 일시정지 버튼. 상단 여백 없이 navbar 바로 아래에 배치 */}
+      {/* 🏆 명예의 전당 쇼케이스: 조선대 홈페이지 메인 배너 참고 — 화면 전체 폭 사진 위에 정보를 바로 얹고, 하단 중앙에 점 인디케이터 + 일시정지 버튼. 상단 여백 없이 navbar 바로 아래에 배치.
+          모집 문구/지원 링크 줄도 같은 슬라이드 안에 넣어 흐린 사진 배경이 그 밑까지 자연스럽게 이어지도록 함 */}
       <div className="relative z-10 mb-6">
         {currentHofEntry ? (
-          <div className="relative left-1/2 -translate-x-1/2 w-screen h-[420px] sm:h-[480px] md:h-[560px] overflow-hidden bg-slate-900">
-            {/* 슬라이드 전환: 겹쳐서 크로스페이드(교체 순간 하얗게 비는 텀 없이 자연스럽게) */}
-            <AnimatePresence>
+          <div className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden bg-slate-900 grid">
+            {/* 슬라이드 전환: 바깥 박스가 항상 어두운 배경(bg-slate-900)을 유지하고 있어서, 교체 중 하얗게 비치치 않고 자연스럽게 넘어감 */}
+            <AnimatePresence mode="wait">
               <motion.div
                 key={currentHofEntry.id}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ duration: 0.6, ease: "easeInOut" }}
-                onClick={() => onNavigate && onNavigate("halloffame-detail", currentHofEntry.id)}
-                className="group cursor-pointer absolute inset-0"
+                transition={{ duration: 0.5, ease: "easeInOut" }}
+                className="col-start-1 row-start-1 relative"
               >
-                {/* 사진: 비율은 그대로 유지(잘리지 않음), 남는 공간은 같은 사진을 흐리게 확대해 깐 배경으로 자연스럽게 채움 */}
+                {/* 배경: 흐린 사진을 배너 + 하단 문구 줄 전체 높이로 확장해서 깐다 */}
                 {currentHofEntry.image ? (
-                  <>
-                    <img
-                      src={currentHofEntry.image}
-                      alt=""
-                      aria-hidden="true"
-                      className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
-                    />
-                    <img
-                      src={currentHofEntry.image}
-                      alt={currentHofEntry.title}
-                      className="absolute inset-0 w-full h-full object-contain object-[75%_center] scale-[1.18] transition-transform duration-700 group-hover:scale-[1.24]"
-                    />
-                  </>
+                  <img
+                    src={currentHofEntry.image}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
+                  />
                 ) : (
-                  <div className="absolute inset-0 bg-amber-50 flex items-center justify-center">
-                    <Trophy className="w-16 h-16 text-amber-200" />
-                  </div>
+                  <div className="absolute inset-0 bg-slate-800" />
                 )}
+                <div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/85" />
 
-                {/* 텍스트 가독성을 위한 스크림 */}
-                <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/10 to-transparent" />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
-
-                {/* 정보: 사진 위에 바로 얹음 (좌측 정렬) */}
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full max-w-7xl mx-auto px-6 md:px-10">
-                    <div className="max-w-xl text-left text-white">
-                      <div className="mb-3 md:mb-4">
-                        <span className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-black ${getAwardBadgeStyle(currentHofEntry.awardName)}`}>
-                          {currentHofEntry.awardName}
-                        </span>
+                {/* 전경: 이 안의 콘텐츠(고정 높이 배너 + 자연스러운 높이의 문구 줄)가 슬라이드 전체 높이를 결정 */}
+                <div className="relative">
+                  {/* 상단: 실제 배너(사진 비율 유지 + 텍스트 오버레이 + 점/일시정지), 클릭 시 상세 이동 */}
+                  <div
+                    onClick={() => onNavigate && onNavigate("halloffame-detail", currentHofEntry.id)}
+                    className="group cursor-pointer relative h-[420px] sm:h-[480px] md:h-[560px] overflow-hidden"
+                  >
+                    {/* 사진: 비율은 그대로 유지(잘리지 않음) */}
+                    {currentHofEntry.image ? (
+                      <img
+                        src={currentHofEntry.image}
+                        alt={currentHofEntry.title}
+                        className="absolute inset-0 w-full h-full object-contain object-[75%_center] scale-[1.18] transition-transform duration-700 group-hover:scale-[1.24]"
+                      />
+                    ) : (
+                      <div className="absolute inset-0 flex items-center justify-center">
+                        <Trophy className="w-16 h-16 text-amber-300/60" />
                       </div>
-                      <div className="inline-flex items-center gap-1.5 text-amber-300 font-black text-xs md:text-sm mb-2 md:mb-3">
-                        <Trophy className="w-4 h-4 md:w-5 md:h-5" /> Hall of Fame
-                      </div>
-                      <h3 className="text-2xl sm:text-3xl md:text-5xl font-black leading-snug line-clamp-2 mb-2 md:mb-3 drop-shadow-sm">
-                        {currentHofEntry.title}
-                      </h3>
-                      <p className="text-white/70 font-bold text-sm md:text-lg line-clamp-1 mb-2 md:mb-3">{currentHofEntry.competitionName}</p>
+                    )}
 
-                      {currentHofEntry.date && (
-                        <div className="flex items-center gap-1.5 text-white/70 font-bold text-xs md:text-sm mb-4 md:mb-6">
-                          <CalendarDays className="w-4 h-4 shrink-0" />
-                          <span className="truncate">{currentHofEntry.date}</span>
-                        </div>
-                      )}
+                    {/* 텍스트 가독성을 위한 스크림 */}
+                    <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/10 to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
 
-                      {currentHofEntry.participants && currentHofEntry.participants.length > 0 && (
-                        <div className="flex items-center gap-2 flex-wrap">
-                          {currentHofEntry.participants.slice(0, 6).map((p: any) => (
-                            <div key={p.loginId} className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 border border-white/20">
-                              <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
-                                {p.profileImage ? (
-                                  <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
-                                ) : (
-                                  <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
-                                    {p.name?.[0] || "?"}
-                                  </div>
-                                )}
-                              </div>
-                              <span className="text-[11px] md:text-xs font-bold text-white whitespace-nowrap">
-                                {formatStudentId(p.studentId)} {p.name}
-                              </span>
+                    {/* 정보: 사진 위에 바로 얹음 (좌측 정렬) */}
+                    <div className="absolute inset-0 flex items-center">
+                      <div className="w-full max-w-7xl mx-auto px-6 md:px-10">
+                        <div className="max-w-xl text-left text-white">
+                          <div className="mb-3 md:mb-4">
+                            <span className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-black ${getAwardBadgeStyle(currentHofEntry.awardName)}`}>
+                              {currentHofEntry.awardName}
+                            </span>
+                          </div>
+                          <div className="inline-flex items-center gap-1.5 text-amber-300 font-black text-xs md:text-sm mb-2 md:mb-3">
+                            <Trophy className="w-4 h-4 md:w-5 md:h-5" /> Hall of Fame
+                          </div>
+                          <h3 className="text-2xl sm:text-3xl md:text-5xl font-black leading-snug line-clamp-2 break-keep mb-2 md:mb-3 drop-shadow-sm">
+                            {currentHofEntry.title}
+                          </h3>
+                          <p className="text-white/70 font-bold text-sm md:text-lg line-clamp-1 break-keep mb-2 md:mb-3">{currentHofEntry.competitionName}</p>
+
+                          {currentHofEntry.date && (
+                            <div className="flex items-center gap-1.5 text-white/70 font-bold text-xs md:text-sm mb-4 md:mb-6">
+                              <CalendarDays className="w-4 h-4 shrink-0" />
+                              <span className="truncate">{currentHofEntry.date}</span>
                             </div>
-                          ))}
-                          {currentHofEntry.participants.length > 6 && (
-                            <span className="text-[11px] md:text-xs font-bold text-white/70">+{currentHofEntry.participants.length - 6}명</span>
+                          )}
+
+                          {currentHofEntry.participants && currentHofEntry.participants.length > 0 && (
+                            <div className="flex items-center gap-2 flex-wrap">
+                              {currentHofEntry.participants.slice(0, 6).map((p: any) => (
+                                <div key={p.loginId} className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 border border-white/20">
+                                  <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
+                                    {p.profileImage ? (
+                                      <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
+                                    ) : (
+                                      <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
+                                        {p.name?.[0] || "?"}
+                                      </div>
+                                    )}
+                                  </div>
+                                  <span className="text-[11px] md:text-xs font-bold text-white whitespace-nowrap">
+                                    {formatStudentId(p.studentId)} {p.name}
+                                  </span>
+                                </div>
+                              ))}
+                              {currentHofEntry.participants.length > 6 && (
+                                <span className="text-[11px] md:text-xs font-bold text-white/70">+{currentHofEntry.participants.length - 6}명</span>
+                              )}
+                            </div>
                           )}
                         </div>
+                      </div>
+                    </div>
+
+                    {/* 하단 중앙: 점 인디케이터 + 일시정지 버튼 (조선대 메인 배너 참고) */}
+                    {hallOfFame.length > 1 && (
+                      <div
+                        onClick={(e) => e.stopPropagation()}
+                        className="absolute z-10 bottom-5 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3"
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {hallOfFame.map((entry, i) => (
+                            <button
+                              key={entry.id}
+                              onClick={() => setHofIndex(i)}
+                              aria-label={`${i + 1}번째 수상 소식 보기`}
+                              className={`h-1.5 rounded-full transition-all ${i === hofIndex ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
+                            />
+                          ))}
+                        </div>
+                        <button
+                          onClick={() => setIsHofPaused((prev) => !prev)}
+                          aria-label={isHofPaused ? "자동 전환 재생" : "자동 전환 일시정지"}
+                          className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+                        >
+                          {isHofPaused ? <Play className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Pause className="w-3 h-3 md:w-3.5 md:h-3.5" />}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 하단: 모집 문구(좌) / 지원 링크(우) — 배너 사진의 흐린 배경이 그대로 이어짐, 박스 없이. 클릭해도 상세로 이동하지 않음 */}
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    className="relative max-w-7xl mx-auto px-6 md:px-10 flex items-center justify-between flex-wrap gap-x-6 gap-y-2 py-3 md:py-4"
+                  >
+                    <motion.div
+                      initial={{ opacity: 0, y: -10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="flex items-center gap-2"
+                    >
+                      <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+                      {isEditing ? (
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text" value={recruitmentText}
+                            onChange={(e) => setRecruitmentText(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
+                            className="text-sm md:text-base font-bold text-white outline-none border-b border-white/30 bg-transparent w-auto placeholder:text-white/40"
+                            autoFocus
+                          />
+                          <button onClick={handleTextSubmit} className="text-green-400 hover:text-green-300">
+                            <Check className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2">
+                          <span className="text-sm md:text-base font-bold text-white">{recruitmentText}</span>
+                          {isAdmin && (
+                            <button onClick={() => setIsEditing(true)} className="text-white/40 hover:text-white transition-colors">
+                              <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </motion.div>
+
+                    <div className="flex items-center gap-2">
+                      <button
+                        onClick={handleApply}
+                        className="group inline-flex items-center gap-1.5 text-white hover:text-white/80 font-extrabold text-sm md:text-base transition-colors"
+                      >
+                        {applyButtonText} <ArrowRight className="w-4 h-4 md:w-[18px] md:h-[18px] group-hover:translate-x-1 transition-transform" />
+                      </button>
+
+                      {isAdmin && (
+                        <button
+                          onClick={() => {
+                            if (isEditingLink) handleLinkSubmit();
+                            else setIsEditingLink(true);
+                          }}
+                          className={`transition-colors ${isEditingLink ? "text-white" : "text-white/40 hover:text-white"}`}
+                        >
+                          {isEditingLink ? <Check className="w-4 h-4 md:w-[18px] md:h-[18px]" /> : <Pencil className="w-4 h-4 md:w-[18px] md:h-[18px]" />}
+                        </button>
                       )}
                     </div>
                   </div>
                 </div>
               </motion.div>
             </AnimatePresence>
-
-            {/* 하단 중앙: 점 인디케이터 + 일시정지 버튼 (조선대 메인 배너 참고) — 전환과 무관하게 항상 고정 표시 */}
-            {hallOfFame.length > 1 && (
-              <div
-                onClick={(e) => e.stopPropagation()}
-                className="absolute z-10 bottom-5 md:bottom-8 left-1/2 -translate-x-1/2 flex items-center gap-3"
-              >
-                <div className="flex items-center gap-1.5">
-                  {hallOfFame.map((entry, i) => (
-                    <button
-                      key={entry.id}
-                      onClick={() => setHofIndex(i)}
-                      aria-label={`${i + 1}번째 수상 소식 보기`}
-                      className={`h-1.5 rounded-full transition-all ${i === hofIndex ? "w-6 bg-white" : "w-1.5 bg-white/40"}`}
-                    />
-                  ))}
-                </div>
-                <button
-                  onClick={() => setIsHofPaused((prev) => !prev)}
-                  aria-label={isHofPaused ? "자동 전환 재생" : "자동 전환 일시정지"}
-                  className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
-                >
-                  {isHofPaused ? <Play className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Pause className="w-3 h-3 md:w-3.5 md:h-3.5" />}
-                </button>
-              </div>
-            )}
           </div>
         ) : (
           <div className="max-w-7xl mx-auto px-6 text-center">
@@ -309,69 +381,14 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
-
-        {/* ✨ 모집 문구(좌) / 지원 링크(우) — 배너 바로 아래에 박스 없이 가로 배치 */}
-        <div className="flex items-center justify-between flex-wrap gap-x-6 gap-y-2 py-2 md:py-3">
-          <motion.div
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex items-center gap-2"
-          >
-            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse shrink-0" />
-            {isEditing ? (
-              <div className="flex items-center gap-2">
-                <input
-                  type="text" value={recruitmentText}
-                  onChange={(e) => setRecruitmentText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
-                  className="text-xs md:text-sm font-bold text-indigo-600 outline-none border-b border-indigo-200 bg-transparent w-auto"
-                  autoFocus
-                />
-                <button onClick={handleTextSubmit} className="text-green-500 hover:text-green-600">
-                  <Check className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs md:text-sm font-bold text-indigo-600">{recruitmentText}</span>
-                {isAdmin && (
-                  <button onClick={() => setIsEditing(true)} className="text-slate-300 hover:text-indigo-600 transition-colors">
-                    <Pencil className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                  </button>
-                )}
-              </div>
-            )}
-          </motion.div>
-
-          <div className="flex items-center gap-2">
-            <button
-              onClick={handleApply}
-              className="group inline-flex items-center gap-1.5 text-indigo-600 hover:text-indigo-700 font-extrabold text-sm md:text-base transition-colors"
-            >
-              {applyButtonText} <ArrowRight className="w-4 h-4 md:w-[18px] md:h-[18px] group-hover:translate-x-1 transition-transform" />
-            </button>
-
-            {isAdmin && (
-              <button
-                onClick={() => {
-                  if (isEditingLink) handleLinkSubmit();
-                  else setIsEditingLink(true);
-                }}
-                className={`transition-colors ${isEditingLink ? "text-indigo-600" : "text-slate-300 hover:text-indigo-600"}`}
-              >
-                {isEditingLink ? <Check className="w-4 h-4 md:w-[18px] md:h-[18px]" /> : <Pencil className="w-4 h-4 md:w-[18px] md:h-[18px]" />}
-              </button>
-            )}
-          </div>
-        </div>
-
+        {/* 지원 링크 편집 팝업 (관리자 전용) — 배너 바깥, 일반 배경 위 */}
         <AnimatePresence>
           {isEditingLink && (
             <motion.div
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="w-full max-w-[280px] md:max-w-md md:ml-auto bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/20 flex flex-col gap-2.5 md:gap-3 mb-4 md:mb-8"
+              className="w-full max-w-[280px] md:max-w-md md:ml-auto bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/20 flex flex-col gap-2.5 md:gap-3 mt-4 mb-4 md:mb-8"
             >
               <div className="flex items-center gap-2 md:gap-3">
                 <Type className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
@@ -399,7 +416,6 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
             </motion.div>
           )}
         </AnimatePresence>
-
       </div>
     </section>
   );
