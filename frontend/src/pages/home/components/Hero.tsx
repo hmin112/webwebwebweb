@@ -17,13 +17,13 @@ const formatStudentId = (id?: string) => {
   return strId;
 };
 
-// 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
+// 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조 — 히어로 배너에서는 채움 없이 테두리만
 const getAwardBadgeStyle = (awardName?: string) => {
   const name = awardName || "";
-  if (name.includes("금")) return "bg-gradient-to-br from-[#FFDD66] to-[#B8860B] text-white shadow-lg shadow-amber-300/50";
-  if (name.includes("은")) return "bg-gradient-to-br from-[#F4F4F5] to-[#9CA3AF] text-slate-900 shadow-lg shadow-slate-300/50";
-  if (name.includes("동")) return "bg-gradient-to-br from-[#E0985A] to-[#8B5A2B] text-white shadow-lg shadow-orange-300/50";
-  return "bg-amber-500 text-white shadow-lg";
+  if (name.includes("금")) return "bg-transparent border-[1.5px] border-[#FFDD66] text-[#FFDD66]";
+  if (name.includes("은")) return "bg-transparent border-[1.5px] border-white text-white";
+  if (name.includes("동")) return "bg-transparent border-[1.5px] border-[#E0985A] text-[#E0985A]";
+  return "bg-transparent border-[1.5px] border-amber-300 text-amber-300";
 };
 
 interface HeroProps {
@@ -311,7 +311,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
       <div className="max-w-7xl mx-auto px-6 relative z-10">
 
         {/* ✨ 모집 문구(좌) / 지원 링크(우) — 배너 바로 아래에 박스 없이 가로 배치 */}
-        <div className="flex items-center justify-between flex-wrap gap-x-6 gap-y-3 py-4 md:py-6">
+        <div className="flex items-center justify-between flex-wrap gap-x-6 gap-y-2 py-2 md:py-3">
           <motion.div
             initial={{ opacity: 0, y: -10 }}
             animate={{ opacity: 1, y: 0 }}
