@@ -238,7 +238,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                     <img
                       src={currentHofEntry.image}
                       alt={currentHofEntry.title}
-                      className="absolute inset-0 w-full h-full object-contain object-[65%_center] transition-transform duration-700 group-hover:scale-105"
+                      className="absolute inset-0 w-full h-full object-contain object-[75%_center] scale-[1.18] transition-transform duration-700 group-hover:scale-[1.24]"
                     />
                   </>
                 ) : (
