@@ -179,7 +179,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
           모집 문구/지원 링크 줄도 같은 슬라이드 안에 넣어 흐린 사진 배경이 그 밑까지 자연스럽게 이어지도록 함 */}
       <div className="relative z-10 mb-6">
         {currentHofEntry ? (
-          <div className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden bg-slate-900 grid">
+          <div className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden bg-slate-900">
             {/* 슬라이드 전환: 바깥 박스가 항상 어두운 배경(bg-slate-900)을 유지하고 있어서, 교체 중 하얗게 비치치 않고 자연스럽게 넘어감 */}
             <AnimatePresence mode="wait">
               <motion.div
@@ -188,7 +188,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.5, ease: "easeInOut" }}
-                className="col-start-1 row-start-1 relative"
+                className="relative"
               >
                 {/* 배경: 흐린 사진을 배너 + 하단 문구 줄 전체 높이로 확장해서 깐다 */}
                 {currentHofEntry.image ? (
@@ -305,66 +305,65 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                     )}
                   </div>
 
-                  {/* 하단: 모집 문구(좌) / 지원 링크(우) — 배너 사진의 흐린 배경이 그대로 이어짐, 박스 없이. 클릭해도 상세로 이동하지 않음 */}
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    className="relative max-w-7xl mx-auto px-6 md:px-10 flex items-center justify-between flex-wrap gap-x-6 gap-y-2 py-3 md:py-4"
-                  >
-                    <motion.div
-                      initial={{ opacity: 0, y: -10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      className="flex items-center gap-2"
-                    >
-                      <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
-                      {isEditing ? (
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text" value={recruitmentText}
-                            onChange={(e) => setRecruitmentText(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
-                            className="text-sm md:text-base font-bold text-white outline-none border-b border-white/30 bg-transparent w-auto placeholder:text-white/40"
-                            autoFocus
-                          />
-                          <button onClick={handleTextSubmit} className="text-green-400 hover:text-green-300">
-                            <Check className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                          </button>
-                        </div>
-                      ) : (
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm md:text-base font-bold text-white">{recruitmentText}</span>
-                          {isAdmin && (
-                            <button onClick={() => setIsEditing(true)} className="text-white/40 hover:text-white transition-colors">
-                              <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
-                            </button>
-                          )}
-                        </div>
-                      )}
-                    </motion.div>
-
-                    <div className="flex items-center gap-2">
-                      <button
-                        onClick={handleApply}
-                        className="group inline-flex items-center gap-1.5 text-white hover:text-white/80 font-extrabold text-sm md:text-base transition-colors"
-                      >
-                        {applyButtonText} <ArrowRight className="w-4 h-4 md:w-[18px] md:h-[18px] group-hover:translate-x-1 transition-transform" />
-                      </button>
-
-                      {isAdmin && (
-                        <button
-                          onClick={() => {
-                            if (isEditingLink) handleLinkSubmit();
-                            else setIsEditingLink(true);
-                          }}
-                          className={`transition-colors ${isEditingLink ? "text-white" : "text-white/40 hover:text-white"}`}
-                        >
-                          {isEditingLink ? <Check className="w-4 h-4 md:w-[18px] md:h-[18px]" /> : <Pencil className="w-4 h-4 md:w-[18px] md:h-[18px]" />}
-                        </button>
-                      )}
-                    </div>
-                  </div>
+                  {/* 하단 문구/링크 줄 자리만큼 여백 확보 — 실제 내용은 전환과 무관하게 항상 고정된 아래 레이어에서 렌더링(깜빡이지 않도록) */}
+                  <div className="h-[76px] md:h-16" />
                 </div>
               </motion.div>
             </AnimatePresence>
+
+            {/* 모집 문구(중앙) / 지원 링크(우) — 슬라이드 전환과 무관하게 항상 고정 표시(깜빡이지 않음), 배너 사진의 흐린 배경 위에 그대로 얹힘 */}
+            <div className="absolute z-10 bottom-0 left-0 right-0 h-[76px] md:h-16">
+              <div className="w-full h-full max-w-7xl mx-auto px-6 md:px-10 flex flex-col items-center justify-center gap-1.5 md:grid md:grid-cols-[1fr_auto_1fr] md:gap-4">
+                <div className="hidden md:block" />
+                <div className="flex items-center justify-center gap-2 whitespace-nowrap">
+                  <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
+                  {isEditing ? (
+                    <div className="flex items-center gap-2">
+                      <input
+                        type="text" value={recruitmentText}
+                        onChange={(e) => setRecruitmentText(e.target.value)}
+                        onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
+                        className="text-sm md:text-base font-bold text-white outline-none border-b border-white/30 bg-transparent w-auto placeholder:text-white/40"
+                        autoFocus
+                      />
+                      <button onClick={handleTextSubmit} className="text-green-400 hover:text-green-300">
+                        <Check className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm md:text-base font-bold text-white">{recruitmentText}</span>
+                      {isAdmin && (
+                        <button onClick={() => setIsEditing(true)} className="text-white/40 hover:text-white transition-colors">
+                          <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                        </button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex items-center justify-center md:justify-end gap-2 whitespace-nowrap">
+                  <button
+                    onClick={handleApply}
+                    className="group inline-flex items-center gap-1.5 text-white hover:text-white/80 font-extrabold text-sm md:text-base transition-colors"
+                  >
+                    {applyButtonText} <ArrowRight className="w-4 h-4 md:w-[18px] md:h-[18px] group-hover:translate-x-1 transition-transform" />
+                  </button>
+
+                  {isAdmin && (
+                    <button
+                      onClick={() => {
+                        if (isEditingLink) handleLinkSubmit();
+                        else setIsEditingLink(true);
+                      }}
+                      className={`transition-colors ${isEditingLink ? "text-white" : "text-white/40 hover:text-white"}`}
+                    >
+                      {isEditingLink ? <Check className="w-4 h-4 md:w-[18px] md:h-[18px]" /> : <Pencil className="w-4 h-4 md:w-[18px] md:h-[18px]" />}
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
           </div>
         ) : (
           <div className="max-w-7xl mx-auto px-6 text-center">
