@@ -209,109 +209,119 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
             )}
           </motion.div>
         </div>
+      </div>
 
-        {/* 🏆 명예의 전당 쇼케이스: 대회 날짜 최신순으로 정렬된 수상 소식을 순서대로 자동 전환 */}
-        <div className="max-w-3xl mx-auto mb-10">
-          {currentHofEntry ? (
-            <>
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={currentHofEntry.id}
-                  initial={{ opacity: 0, x: 40 }}
-                  animate={{ opacity: 1, x: 0 }}
-                  exit={{ opacity: 0, x: -40 }}
-                  transition={{ duration: 0.6, ease: "easeInOut" }}
-                  onClick={() => onNavigate && onNavigate("halloffame-detail", currentHofEntry.id)}
-                  className="group cursor-pointer bg-white rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-xl shadow-indigo-100/30 overflow-hidden flex flex-col sm:flex-row"
-                >
-                  <div className="relative sm:w-2/5 h-40 sm:h-auto shrink-0 overflow-hidden">
-                    {currentHofEntry.image ? (
-                      <img
-                        src={currentHofEntry.image}
-                        alt={currentHofEntry.title}
-                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                      />
-                    ) : (
-                      <div className="w-full h-full bg-amber-50 flex items-center justify-center">
-                        <Trophy className="w-10 h-10 text-amber-200" />
-                      </div>
-                    )}
-                    <div className="absolute top-3 left-3">
-                      <span className={`px-3 py-1 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(currentHofEntry.awardName)}`}>
-                        {currentHofEntry.awardName}
-                      </span>
+      {/* 🏆 명예의 전당 쇼케이스: 배경을 가득 채우는 풀블리드 배너 — 좌측 사진 꽉 채움 / 우측 대회 정보, 대회 날짜 최신순으로 자동 전환 */}
+      <div className="relative z-10 mb-10">
+        {currentHofEntry ? (
+          <>
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentHofEntry.id}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ duration: 0.7, ease: "easeInOut" }}
+                onClick={() => onNavigate && onNavigate("halloffame-detail", currentHofEntry.id)}
+                className="group cursor-pointer relative left-1/2 -translate-x-1/2 w-screen flex flex-col md:flex-row md:h-[440px] lg:h-[520px] bg-white"
+              >
+                {/* 좌측: 사진을 여백 없이 꽉 채움 */}
+                <div className="relative w-full md:w-1/2 h-64 sm:h-80 md:h-full shrink-0 overflow-hidden">
+                  {currentHofEntry.image ? (
+                    <img
+                      src={currentHofEntry.image}
+                      alt={currentHofEntry.title}
+                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                    />
+                  ) : (
+                    <div className="w-full h-full bg-amber-50 flex items-center justify-center">
+                      <Trophy className="w-16 h-16 text-amber-200" />
                     </div>
+                  )}
+                  <div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-transparent" />
+                  <div className="hidden md:block absolute inset-y-0 right-0 w-20 bg-gradient-to-r from-transparent to-white" />
+                  <div className="md:hidden absolute inset-x-0 bottom-0 h-16 bg-gradient-to-t from-white to-transparent" />
+                  <div className="absolute top-5 left-5 md:top-8 md:left-8">
+                    <span className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-black ${getAwardBadgeStyle(currentHofEntry.awardName)}`}>
+                      {currentHofEntry.awardName}
+                    </span>
                   </div>
+                </div>
 
-                  <div className="flex-1 p-5 md:p-7 text-left flex flex-col justify-center gap-1.5 md:gap-2">
-                    <div className="inline-flex items-center gap-1.5 text-amber-600 font-black text-[11px] md:text-xs">
-                      <Trophy className="w-3.5 h-3.5" /> Hall of Fame
+                {/* 우측: 대회 정보 */}
+                <div className="relative w-full md:w-1/2 flex items-center bg-white px-6 md:px-0">
+                  <div className="w-full max-w-xl mx-auto md:mx-0 md:pl-12 lg:pl-20 md:pr-10 py-8 md:py-0 text-left">
+                    <div className="inline-flex items-center gap-1.5 text-amber-600 font-black text-xs md:text-sm mb-2 md:mb-3">
+                      <Trophy className="w-4 h-4 md:w-5 md:h-5" /> Hall of Fame
                     </div>
-                    <h3 className="text-lg md:text-2xl font-black text-slate-900 leading-snug line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                    <h3 className="text-2xl sm:text-3xl md:text-4xl font-black text-slate-900 leading-snug line-clamp-2 group-hover:text-indigo-600 transition-colors mb-2 md:mb-3">
                       {currentHofEntry.title}
                     </h3>
-                    <p className="text-slate-400 font-bold text-xs md:text-sm line-clamp-1">{currentHofEntry.competitionName}</p>
+                    <p className="text-slate-400 font-bold text-sm md:text-lg line-clamp-1 mb-2 md:mb-3">{currentHofEntry.competitionName}</p>
 
                     {currentHofEntry.date && (
-                      <div className="flex items-center gap-1 text-slate-400 font-bold text-[11px] md:text-xs">
-                        <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                      <div className="flex items-center gap-1.5 text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-6">
+                        <CalendarDays className="w-4 h-4 shrink-0" />
                         <span className="truncate">{currentHofEntry.date}</span>
                       </div>
                     )}
 
                     {currentHofEntry.participants && currentHofEntry.participants.length > 0 && (
-                      <div className="flex items-center gap-1.5 flex-wrap mt-1">
-                        {currentHofEntry.participants.slice(0, 4).map((p: any) => (
-                          <div key={p.loginId} className="flex items-center gap-1 bg-slate-50 rounded-full pl-0.5 pr-2 py-0.5">
-                            <div className="w-4 h-4 rounded-full overflow-hidden bg-indigo-100 shrink-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {currentHofEntry.participants.slice(0, 6).map((p: any) => (
+                          <div key={p.loginId} className="flex items-center gap-1.5 bg-slate-50 rounded-full pl-1 pr-2.5 py-1">
+                            <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
                               {p.profileImage ? (
                                 <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
                               ) : (
-                                <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[7px]">
+                                <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
                                   {p.name?.[0] || "?"}
                                 </div>
                               )}
                             </div>
-                            <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
+                            <span className="text-[11px] md:text-xs font-bold text-slate-600 whitespace-nowrap">
                               {formatStudentId(p.studentId)} {p.name}
                             </span>
                           </div>
                         ))}
-                        {currentHofEntry.participants.length > 4 && (
-                          <span className="text-[10px] font-bold text-slate-400">+{currentHofEntry.participants.length - 4}명</span>
+                        {currentHofEntry.participants.length > 6 && (
+                          <span className="text-[11px] md:text-xs font-bold text-slate-400">+{currentHofEntry.participants.length - 6}명</span>
                         )}
                       </div>
                     )}
                   </div>
-                </motion.div>
-              </AnimatePresence>
-
-              {hallOfFame.length > 1 && (
-                <div className="flex justify-center gap-1.5 mt-4">
-                  {hallOfFame.map((entry, i) => (
-                    <button
-                      key={entry.id}
-                      onClick={() => setHofIndex(i)}
-                      aria-label={`${i + 1}번째 수상 소식 보기`}
-                      className={`h-1.5 rounded-full transition-all ${i === hofIndex ? "w-6 bg-indigo-500" : "w-1.5 bg-slate-200"}`}
-                    />
-                  ))}
                 </div>
-              )}
-            </>
-          ) : (
-            <div className="text-center">
-              <motion.h1
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="text-3xl sm:text-4xl md:text-[72px] font-[900] tracking-wide text-slate-900 leading-[1.3] md:leading-[1.15]"
-              >
-                <span className="text-indigo-600 font-[900]">누구나 시작</span>하고,<br />
-                <span className="text-pink-500 font-[900]">모두가 성장</span>하는 동아리
-              </motion.h1>
-            </div>
-          )}
-        </div>
+              </motion.div>
+            </AnimatePresence>
+
+            {hallOfFame.length > 1 && (
+              <div className="flex justify-center gap-1.5 mt-4">
+                {hallOfFame.map((entry, i) => (
+                  <button
+                    key={entry.id}
+                    onClick={() => setHofIndex(i)}
+                    aria-label={`${i + 1}번째 수상 소식 보기`}
+                    className={`h-1.5 rounded-full transition-all ${i === hofIndex ? "w-6 bg-indigo-500" : "w-1.5 bg-slate-200"}`}
+                  />
+                ))}
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="max-w-7xl mx-auto px-6 text-center">
+            <motion.h1
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="text-3xl sm:text-4xl md:text-[72px] font-[900] tracking-wide text-slate-900 leading-[1.3] md:leading-[1.15]"
+            >
+              <span className="text-indigo-600 font-[900]">누구나 시작</span>하고,<br />
+              <span className="text-pink-500 font-[900]">모두가 성장</span>하는 동아리
+            </motion.h1>
+          </div>
+        )}
+      </div>
+
+      <div className="max-w-7xl mx-auto px-6 relative z-10">
 
         {/* 💡 ✨ 버튼 및 링크 편집 영역: 모바일에서 버튼 크기(px-6 py-4), 연필 아이콘 축소 */}
         <div className="flex flex-col items-center gap-4 md:gap-6 mb-4 md:mb-8">
