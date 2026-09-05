@@ -174,42 +174,6 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
       </div>
 
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
-      
-      <div className="max-w-7xl mx-auto px-6 relative z-10">
-        {/* ✨ 상단 모집 문구 영역: 모바일에서 더 작게(px-3 py-1.5), 폰트 작게(text-xs) */}
-        <div className="flex justify-center mb-10">
-          <motion.div 
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-full bg-white border border-indigo-100 shadow-sm shadow-indigo-100/30"
-          >
-            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse" />
-            {isEditing ? (
-              <div className="flex items-center gap-2">
-                <input 
-                  type="text" value={recruitmentText}
-                  onChange={(e) => setRecruitmentText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
-                  className="text-xs md:text-sm font-bold text-indigo-600 outline-none border-b border-indigo-200 bg-transparent w-auto"
-                  autoFocus
-                />
-                <button onClick={handleTextSubmit} className="text-green-500 hover:text-green-600">
-                  <Check className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                </button>
-              </div>
-            ) : (
-              <div className="flex items-center gap-2">
-                <span className="text-xs md:text-sm font-bold text-indigo-600">{recruitmentText}</span>
-                {isAdmin && (
-                  <button onClick={() => setIsEditing(true)} className="text-slate-300 hover:text-indigo-600 transition-colors">
-                    <Pencil className="w-3 h-3 md:w-[14px] md:h-[14px]" />
-                  </button>
-                )}
-              </div>
-            )}
-          </motion.div>
-        </div>
-      </div>
 
       {/* 🏆 명예의 전당 쇼케이스: 배경을 가득 채우는 풀블리드 배너 — 좌측 사진 꽉 채움 / 우측 대회 정보, 대회 날짜 최신순으로 자동 전환 */}
       <div className="relative z-10 mb-10">
@@ -225,14 +189,22 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                 onClick={() => onNavigate && onNavigate("halloffame-detail", currentHofEntry.id)}
                 className="group cursor-pointer relative left-1/2 -translate-x-1/2 w-screen flex flex-col md:flex-row md:h-[440px] lg:h-[520px] bg-white"
               >
-                {/* 좌측: 사진을 여백 없이 꽉 채움 */}
-                <div className="relative w-full md:w-1/2 h-64 sm:h-80 md:h-full shrink-0 overflow-hidden">
+                {/* 좌측: 사진 영역은 여백 없이 꽉 채우되, 사진 자체의 비율은 그대로 유지(잘리지 않음) — 뒤에 같은 사진을 흐리게 깔아 남는 공간을 자연스럽게 채움 */}
+                <div className="relative w-full md:w-1/2 h-64 sm:h-80 md:h-full shrink-0 overflow-hidden bg-slate-900">
                   {currentHofEntry.image ? (
-                    <img
-                      src={currentHofEntry.image}
-                      alt={currentHofEntry.title}
-                      className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
-                    />
+                    <>
+                      <img
+                        src={currentHofEntry.image}
+                        alt=""
+                        aria-hidden="true"
+                        className="absolute inset-0 w-full h-full object-cover blur-2xl scale-110 opacity-60"
+                      />
+                      <img
+                        src={currentHofEntry.image}
+                        alt={currentHofEntry.title}
+                        className="relative w-full h-full object-contain transition-transform duration-700 group-hover:scale-105"
+                      />
+                    </>
                   ) : (
                     <div className="w-full h-full bg-amber-50 flex items-center justify-center">
                       <Trophy className="w-16 h-16 text-amber-200" />
@@ -322,6 +294,40 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
       </div>
 
       <div className="max-w-7xl mx-auto px-6 relative z-10">
+
+        {/* ✨ 모집 문구 영역: 명예의 전당 배너 아래로 이동. 모바일에서 더 작게(px-3 py-1.5), 폰트 작게(text-xs) */}
+        <div className="flex justify-center mb-10">
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-5 md:py-2 rounded-full bg-white border border-indigo-100 shadow-sm shadow-indigo-100/30"
+          >
+            <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-500 animate-pulse" />
+            {isEditing ? (
+              <div className="flex items-center gap-2">
+                <input
+                  type="text" value={recruitmentText}
+                  onChange={(e) => setRecruitmentText(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
+                  className="text-xs md:text-sm font-bold text-indigo-600 outline-none border-b border-indigo-200 bg-transparent w-auto"
+                  autoFocus
+                />
+                <button onClick={handleTextSubmit} className="text-green-500 hover:text-green-600">
+                  <Check className="w-3 h-3 md:w-[14px] md:h-[14px]" />
+                </button>
+              </div>
+            ) : (
+              <div className="flex items-center gap-2">
+                <span className="text-xs md:text-sm font-bold text-indigo-600">{recruitmentText}</span>
+                {isAdmin && (
+                  <button onClick={() => setIsEditing(true)} className="text-slate-300 hover:text-indigo-600 transition-colors">
+                    <Pencil className="w-3 h-3 md:w-[14px] md:h-[14px]" />
+                  </button>
+                )}
+              </div>
+            )}
+          </motion.div>
+        </div>
 
         {/* 💡 ✨ 버튼 및 링크 편집 영역: 모바일에서 버튼 크기(px-6 py-4), 연필 아이콘 축소 */}
         <div className="flex flex-col items-center gap-4 md:gap-6 mb-4 md:mb-8">
