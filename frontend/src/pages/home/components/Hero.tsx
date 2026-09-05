@@ -4,11 +4,36 @@ import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowRight, Code2, Sparkles, Users2, Pencil, Check, Link as LinkIcon, Type,
   Cpu, Database, Globe, Terminal, Boxes,
-  Layers, Monitor, Smartphone, Zap, Braces
+  Layers, Monitor, Smartphone, Zap, Braces,
+  Trophy, CalendarDays
 } from "lucide-react";
 import { Button } from "../../../components/ui/button";
 
-export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
+const formatStudentId = (id?: string) => {
+  if (!id) return "??";
+  const strId = String(id).trim();
+  if (strId.includes("학번")) return strId.replace(/[^0-9]/g, "");
+  if (strId.length === 8) return strId.substring(2, 4);
+  if (strId.length === 2) return strId;
+  return strId;
+};
+
+// 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
+const getAwardBadgeStyle = (awardName?: string) => {
+  const name = awardName || "";
+  if (name.includes("금")) return "bg-gradient-to-br from-[#FFDD66] to-[#B8860B] text-white shadow-lg shadow-amber-300/50";
+  if (name.includes("은")) return "bg-gradient-to-br from-[#F4F4F5] to-[#9CA3AF] text-slate-900 shadow-lg shadow-slate-300/50";
+  if (name.includes("동")) return "bg-gradient-to-br from-[#E0985A] to-[#8B5A2B] text-white shadow-lg shadow-orange-300/50";
+  return "bg-amber-500 text-white shadow-lg";
+};
+
+interface HeroProps {
+  isAdmin: boolean;
+  hallOfFame?: any[];
+  onNavigate?: (page: string, id?: number) => void;
+}
+
+export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
   // 💡 기존 모집 문구 및 링크 상태 (로컬 스토리지 연동)
   const [recruitmentText, setRecruitmentText] = useState(() => localStorage.getItem("heroRecruitmentText") || "2026년 신입 부원 모집 중");
   const [applyLink, setApplyLink] = useState(() => localStorage.getItem("heroApplyLink") || "https://open.kakao.com/o/example");
@@ -16,6 +41,23 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
 
   const [isEditing, setIsEditing] = useState(false);
   const [isEditingLink, setIsEditingLink] = useState(false);
+
+  // 🏆 명예의 전당 쇼케이스: 대회 날짜 최신순으로 정렬되어 들어온 목록을 순서대로 자동 전환
+  const [hofIndex, setHofIndex] = useState(0);
+
+  useEffect(() => {
+    setHofIndex(0);
+  }, [hallOfFame.length]);
+
+  useEffect(() => {
+    if (hallOfFame.length < 2) return;
+    const timer = setInterval(() => {
+      setHofIndex((prev) => (prev + 1) % hallOfFame.length);
+    }, 4500);
+    return () => clearInterval(timer);
+  }, [hallOfFame.length]);
+
+  const currentHofEntry = hallOfFame[hofIndex];
 
   // ✨ 1. 초기 데이터 로드 (백엔드 연동)
   useEffect(() => {
@@ -168,25 +210,107 @@ export const Hero = ({ isAdmin }: { isAdmin: boolean }) => {
           </motion.div>
         </div>
 
-        {/* ✨ 타이틀 및 서브 타이틀: 모바일에서 정확히 2줄 개행 및 폰트 크기 조절 */}
-        <div className="text-center mb-10">
-          <motion.h1 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="text-3xl sm:text-4xl md:text-[72px] font-[900] tracking-wide text-slate-900 leading-[1.3] md:leading-[1.15]"
-          >
-            <span className="text-indigo-600 font-[900]">누구나 시작</span>하고,<br />
-            <span className="text-pink-500 font-[900]">모두가 성장</span>하는 동아리
-          </motion.h1>
-          <motion.p 
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.2 }}
-            className="mt-5 md:mt-10 text-[13px] md:text-xl text-slate-500 max-w-2xl mx-auto leading-relaxed font-medium px-4 md:px-0"
-          >
-            실력보다는 열정을, 혼자보다는 함께의 가치를 믿습니다.<br /> 
-            DEVSIGN에서 함께 발전해보아요.
-          </motion.p>
+        {/* 🏆 명예의 전당 쇼케이스: 대회 날짜 최신순으로 정렬된 수상 소식을 순서대로 자동 전환 */}
+        <div className="max-w-3xl mx-auto mb-10">
+          {currentHofEntry ? (
+            <>
+              <AnimatePresence mode="wait">
+                <motion.div
+                  key={currentHofEntry.id}
+                  initial={{ opacity: 0, x: 40 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -40 }}
+                  transition={{ duration: 0.6, ease: "easeInOut" }}
+                  onClick={() => onNavigate && onNavigate("halloffame-detail", currentHofEntry.id)}
+                  className="group cursor-pointer bg-white rounded-[1.5rem] md:rounded-[2rem] border border-slate-100 shadow-xl shadow-indigo-100/30 overflow-hidden flex flex-col sm:flex-row"
+                >
+                  <div className="relative sm:w-2/5 h-40 sm:h-auto shrink-0 overflow-hidden">
+                    {currentHofEntry.image ? (
+                      <img
+                        src={currentHofEntry.image}
+                        alt={currentHofEntry.title}
+                        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                      />
+                    ) : (
+                      <div className="w-full h-full bg-amber-50 flex items-center justify-center">
+                        <Trophy className="w-10 h-10 text-amber-200" />
+                      </div>
+                    )}
+                    <div className="absolute top-3 left-3">
+                      <span className={`px-3 py-1 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(currentHofEntry.awardName)}`}>
+                        {currentHofEntry.awardName}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="flex-1 p-5 md:p-7 text-left flex flex-col justify-center gap-1.5 md:gap-2">
+                    <div className="inline-flex items-center gap-1.5 text-amber-600 font-black text-[11px] md:text-xs">
+                      <Trophy className="w-3.5 h-3.5" /> Hall of Fame
+                    </div>
+                    <h3 className="text-lg md:text-2xl font-black text-slate-900 leading-snug line-clamp-2 group-hover:text-indigo-600 transition-colors">
+                      {currentHofEntry.title}
+                    </h3>
+                    <p className="text-slate-400 font-bold text-xs md:text-sm line-clamp-1">{currentHofEntry.competitionName}</p>
+
+                    {currentHofEntry.date && (
+                      <div className="flex items-center gap-1 text-slate-400 font-bold text-[11px] md:text-xs">
+                        <CalendarDays className="w-3.5 h-3.5 shrink-0" />
+                        <span className="truncate">{currentHofEntry.date}</span>
+                      </div>
+                    )}
+
+                    {currentHofEntry.participants && currentHofEntry.participants.length > 0 && (
+                      <div className="flex items-center gap-1.5 flex-wrap mt-1">
+                        {currentHofEntry.participants.slice(0, 4).map((p: any) => (
+                          <div key={p.loginId} className="flex items-center gap-1 bg-slate-50 rounded-full pl-0.5 pr-2 py-0.5">
+                            <div className="w-4 h-4 rounded-full overflow-hidden bg-indigo-100 shrink-0">
+                              {p.profileImage ? (
+                                <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[7px]">
+                                  {p.name?.[0] || "?"}
+                                </div>
+                              )}
+                            </div>
+                            <span className="text-[10px] font-bold text-slate-600 whitespace-nowrap">
+                              {formatStudentId(p.studentId)} {p.name}
+                            </span>
+                          </div>
+                        ))}
+                        {currentHofEntry.participants.length > 4 && (
+                          <span className="text-[10px] font-bold text-slate-400">+{currentHofEntry.participants.length - 4}명</span>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+
+              {hallOfFame.length > 1 && (
+                <div className="flex justify-center gap-1.5 mt-4">
+                  {hallOfFame.map((entry, i) => (
+                    <button
+                      key={entry.id}
+                      onClick={() => setHofIndex(i)}
+                      aria-label={`${i + 1}번째 수상 소식 보기`}
+                      className={`h-1.5 rounded-full transition-all ${i === hofIndex ? "w-6 bg-indigo-500" : "w-1.5 bg-slate-200"}`}
+                    />
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div className="text-center">
+              <motion.h1
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="text-3xl sm:text-4xl md:text-[72px] font-[900] tracking-wide text-slate-900 leading-[1.3] md:leading-[1.15]"
+              >
+                <span className="text-indigo-600 font-[900]">누구나 시작</span>하고,<br />
+                <span className="text-pink-500 font-[900]">모두가 성장</span>하는 동아리
+              </motion.h1>
+            </div>
+          )}
         </div>
 
         {/* 💡 ✨ 버튼 및 링크 편집 영역: 모바일에서 버튼 크기(px-6 py-4), 연필 아이콘 축소 */}

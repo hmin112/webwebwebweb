@@ -39,6 +39,27 @@ import { AdminPage } from "./pages/admin/AdminPage";
 import { ContactAdmin } from "./pages/admin/ContactAdmin";
 import { MemberDetailTab } from "./pages/profile/tabs/MemberDetailTab";
 
+// 명예의 전당 정렬: "게시 순서(id)"가 아니라 게시글 내부 대회 날짜(자유 텍스트, 범위 표기 가능) 기준 최신순.
+// 날짜 패턴을 찾지 못하면 맨 뒤로 보내고, 그 안에서는 id 내림차순으로 대체한다.
+const parseHallOfFameDate = (dateStr?: string): number => {
+  if (!dateStr) return -Infinity;
+  const matches = dateStr.match(/\d{4}\s*[.\-/]\s*\d{1,2}\s*[.\-/]\s*\d{1,2}/g);
+  if (!matches) return -Infinity;
+  const timestamps = matches
+    .map((m) => {
+      const [y, mo, d] = m.split(/[.\-/]/).map((p) => parseInt(p.trim(), 10));
+      return new Date(y, mo - 1, d).getTime();
+    })
+    .filter((t) => !Number.isNaN(t));
+  return timestamps.length > 0 ? Math.max(...timestamps) : -Infinity;
+};
+
+const sortHallOfFameByDate = (list: any[]) =>
+  [...list].sort((a, b) => {
+    const diff = parseHallOfFameDate(b.date) - parseHallOfFameDate(a.date);
+    return diff !== 0 ? diff : b.id - a.id;
+  });
+
 function AppContent() {
   const navigate = useNavigate();
 
@@ -361,7 +382,7 @@ function AppContent() {
           <Route path="/event/write/:id" element={(isAdmin && isLoggedIn) ? <EventWriteWrapper events={events} onNavigate={handleNavigateCompat} user={currentUser} fetchEvents={fetchData} /> : <Navigate to="/" replace />} />
           <Route path="/event/:id" element={<EventDetailWrapper events={events} isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} user={currentUser} setEvents={setEvents} onDelete={handleDeleteEvent} handleNavigateCompat={handleNavigateCompat} />} />
 
-          <Route path="/hall-of-fame" element={<HallOfFamePage onNavigate={handleNavigateCompat} isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} entries={[...hallOfFame].sort((a: any, b: any) => b.id - a.id)} />} />
+          <Route path="/hall-of-fame" element={<HallOfFamePage onNavigate={handleNavigateCompat} isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} entries={sortHallOfFameByDate(hallOfFame)} />} />
           <Route path="/hall-of-fame/write" element={(isAdmin && isLoggedIn) ? <HallOfFameWriteWrapper entries={hallOfFame} onNavigate={handleNavigateCompat} fetchHallOfFame={fetchData} /> : <Navigate to="/" replace />} />
           <Route path="/hall-of-fame/write/:id" element={(isAdmin && isLoggedIn) ? <HallOfFameWriteWrapper entries={hallOfFame} onNavigate={handleNavigateCompat} fetchHallOfFame={fetchData} /> : <Navigate to="/" replace />} />
           <Route path="/hall-of-fame/:id" element={<HallOfFameDetailWrapper entries={hallOfFame} isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} onDelete={handleDeleteHallOfFame} handleNavigateCompat={handleNavigateCompat} />} />

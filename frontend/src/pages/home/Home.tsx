@@ -50,15 +50,35 @@ export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, 
         return [...events].sort((a, b) => b.id - a.id).slice(0, 3);
     }, [events]);
 
-    // ✨ 명예의 전당: 최신 등록 순(ID 내림차순, 가장 왼쪽이 최신) 4개 추출
-    const recentHallOfFame = useMemo(() => {
-        return [...hallOfFame].sort((a, b) => b.id - a.id).slice(0, 4);
+    // 명예의 전당 정렬: "게시 순서(id)"가 아니라 게시글 내부 대회 날짜(자유 텍스트, 범위 표기 가능) 기준 최신순.
+    // 날짜 패턴을 찾지 못하면 맨 뒤로 보내고, 그 안에서는 id 내림차순으로 대체한다.
+    const parseHallOfFameDate = (dateStr?: string): number => {
+        if (!dateStr) return -Infinity;
+        const matches = dateStr.match(/\d{4}\s*[.\-/]\s*\d{1,2}\s*[.\-/]\s*\d{1,2}/g);
+        if (!matches) return -Infinity;
+        const timestamps = matches
+            .map((m) => {
+                const [y, mo, d] = m.split(/[.\-/]/).map((p) => parseInt(p.trim(), 10));
+                return new Date(y, mo - 1, d).getTime();
+            })
+            .filter((t) => !Number.isNaN(t));
+        return timestamps.length > 0 ? Math.max(...timestamps) : -Infinity;
+    };
+
+    const sortedHallOfFame = useMemo(() => {
+        return [...hallOfFame].sort((a, b) => {
+            const diff = parseHallOfFameDate(b.date) - parseHallOfFameDate(a.date);
+            return diff !== 0 ? diff : b.id - a.id;
+        });
     }, [hallOfFame]);
+
+    // ✨ 명예의 전당: 대회 날짜 기준 최신 4개 추출 (가장 왼쪽이 최신)
+    const recentHallOfFame = useMemo(() => sortedHallOfFame.slice(0, 4), [sortedHallOfFame]);
 
     return (
         <>
             <div id="home">
-                <Hero isAdmin={isAdmin} />
+                <Hero isAdmin={isAdmin} hallOfFame={sortedHallOfFame} onNavigate={onNavigate} />
             </div>
             <ChosunPrograms programs={chosunPrograms} />
             <div id="halloffame" className="scroll-mt-20">
