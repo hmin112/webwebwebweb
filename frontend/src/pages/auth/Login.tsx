@@ -8,6 +8,7 @@ import { Button } from "../../components/ui/button";
 export const Login = ({ onNavigate, onLoginSuccess }: { onNavigate: (page: string) => void; onLoginSuccess: (userData: any) => void }) => {
   const [userId, setUserId] = useState("");
   const [password, setPassword] = useState("");
+  const [rememberMe, setRememberMe] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -18,7 +19,8 @@ export const Login = ({ onNavigate, onLoginSuccess }: { onNavigate: (page: strin
       // 백엔드 로그인 API 호출
       const response = await api.post('/members/login', {
         loginId: userId,
-        password: password
+        password: password,
+        rememberMe: rememberMe
       });
 
       // ✨ 백엔드 응답 데이터 확인 로직
@@ -103,10 +105,19 @@ export const Login = ({ onNavigate, onLoginSuccess }: { onNavigate: (page: strin
                 </div>
               </div>
 
-              <div className="flex justify-end pt-0.5">
-                <button 
-                  type="button" 
-                  onClick={() => onNavigate("find-account")} 
+              <div className="flex items-center justify-between pt-0.5">
+                <label className="flex items-center gap-1.5 text-[11px] md:text-xs font-bold text-slate-500 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-3.5 h-3.5 md:w-4 md:h-4 rounded border-slate-300 text-indigo-600 focus:ring-indigo-500 accent-indigo-600"
+                  />
+                  자동 로그인
+                </label>
+                <button
+                  type="button"
+                  onClick={() => onNavigate("find-account")}
                   className="text-[11px] md:text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors"
                 >
                   계정 정보를 잊으셨나요?

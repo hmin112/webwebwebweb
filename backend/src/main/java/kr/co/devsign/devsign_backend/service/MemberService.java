@@ -162,7 +162,7 @@ public class MemberService {
                 );
             }
 
-            String token = jwtUtil.generateToken(m.getLoginId(), m.getRole(), m.getTokenVersion());
+            String token = jwtUtil.generateToken(m.getLoginId(), m.getRole(), m.getTokenVersion(), loginRequest.rememberMe());
 
             AccessLog log = new AccessLog();
             log.setName(m.getName());

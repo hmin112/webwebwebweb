@@ -20,16 +20,22 @@ public class JwtUtil {
     @Value("${jwt.expiration}")
     private Long expiration;
 
+    // 자동 로그인 체크를 안 했을 때 발급하는 짧은 세션의 유효기간 — 1시간
+    private static final long SHORT_SESSION_EXPIRATION_MS = 3_600_000L;
+
     // SecretKey 생성 헬퍼 메서드
     private SecretKey getSigningKey() {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
     // JWT 토큰 생성 — tokenVersion을 클레임에 심어둬서, 로그아웃 시 이 값이 바뀌면
-    // (만료 전이라도) 이 토큰은 더 이상 유효하지 않은 것으로 취급된다(JwtAuthenticationFilter 참고)
-    public String generateToken(String loginId, String role, long tokenVersion) {
+    // (만료 전이라도) 이 토큰은 더 이상 유효하지 않은 것으로 취급된다(JwtAuthenticationFilter 참고).
+    // rememberMe(자동 로그인 체크)가 false면 1시간짜리 짧은 토큰을, true면 jwt.expiration(사실상
+    // 무제한)짜리 토큰을 발급한다 — 어느 쪽이든 로그아웃하면 즉시 무효화되는 건 동일.
+    public String generateToken(String loginId, String role, long tokenVersion, boolean rememberMe) {
         Date now = new Date();
-        Date expiryDate = new Date(now.getTime() + expiration);
+        long ttl = rememberMe ? expiration : SHORT_SESSION_EXPIRATION_MS;
+        Date expiryDate = new Date(now.getTime() + ttl);
 
         return Jwts.builder()
                 .subject(loginId)
