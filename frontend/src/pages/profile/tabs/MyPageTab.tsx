@@ -5,7 +5,7 @@ import {
   FileText, Check, Clock, X,
   Download, Presentation, CalendarDays, ChevronDown,
   MessageCircle, Upload, FileArchive, Loader2,
-  Lock
+  Lock, Link2, Plus
 } from "lucide-react";
 
 // 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 별도 페이지(AssemblyPlanPage)에서 웹으로 작성.
@@ -17,6 +17,9 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   const [isLoading, setIsLoading] = useState(false);
   const [reports, setReports] = useState<any[]>([]);
   const [submissionPeriods, setSubmissionPeriods] = useState<any[]>([]);
+  // ✨ [2026-09-07 추가] 학기별 관련 링크(깃/노션 등) — 커뮤니티 부원 상세에도 그대로 노출됨
+  const [projectLinks, setProjectLinks] = useState<{ label: string; url: string }[]>([]);
+  const [isLinksSaving, setIsLinksSaving] = useState(false);
 
   const [uploadedFiles, setUploadedFiles] = useState<{
     presentation: File | null;
@@ -67,6 +70,11 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
 
       if (res.data) {
         setReports(res.data.reports || []);
+        setProjectLinks(
+          res.data.projectLinks && res.data.projectLinks.length > 0
+            ? res.data.projectLinks
+            : [{ label: "Git", url: "" }, { label: "Notion", url: "" }]
+        );
       }
       if (periodRes.data) {
         setSubmissionPeriods(periodRes.data);
@@ -201,6 +209,33 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
     }
   };
 
+  const updateLinkField = (idx: number, field: "label" | "url", value: string) => {
+    setProjectLinks((prev) => prev.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
+  };
+
+  const addLinkRow = () => setProjectLinks((prev) => [...prev, { label: "", url: "" }]);
+
+  const removeLinkRow = (idx: number) => setProjectLinks((prev) => prev.filter((_, i) => i !== idx));
+
+  const handleSaveLinks = async () => {
+    if (!loginId || loginId === "undefined") return;
+    setIsLinksSaving(true);
+    try {
+      await api.post("/assembly/project-links", {
+        loginId,
+        year: selectedTerm.year,
+        semester: selectedTerm.semester,
+        links: projectLinks.filter((l) => l.label.trim() && l.url.trim())
+      });
+      alert("링크가 저장되었습니다.");
+    } catch (e) {
+      console.error("링크 저장 실패", e);
+      alert("링크 저장 중 오류가 발생했습니다.");
+    } finally {
+      setIsLinksSaving(false);
+    }
+  };
+
   const handleSubmit = async () => {
     if (!loginId || loginId === "undefined") {
       alert("로그인 정보가 올바르지 않습니다. 다시 로그인해주세요.");
@@ -269,6 +304,49 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
           icon={<FileText size={16} />} 
           color="indigo" 
         />
+      </div>
+
+      {/* ✨ [2026-09-07 추가] 학기별 관련 링크(깃/노션 등) — 커뮤니티에서 부원 상세를 열면 그대로 노출됨 */}
+      <div className="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm mb-6 md:mb-8">
+        <div className="flex items-center justify-between mb-4 md:mb-6">
+          <div className="flex items-center gap-1.5 text-indigo-500">
+            <Link2 size={14} />
+            <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest">관련 링크 ({selectedTerm.year}년 {selectedTerm.semester}학기)</p>
+          </div>
+          <button
+            onClick={handleSaveLinks}
+            disabled={isLinksSaving}
+            className="text-[10px] md:text-xs font-bold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isLinksSaving ? "저장 중..." : "저장"}
+          </button>
+        </div>
+        <div className="space-y-2 md:space-y-3">
+          {projectLinks.map((link, idx) => (
+            <div key={idx} className="flex items-center gap-2">
+              <input
+                type="text"
+                value={link.label}
+                onChange={(e) => updateLinkField(idx, "label", e.target.value)}
+                placeholder="이름 (예: Git, Notion)"
+                className="w-24 md:w-40 shrink-0 px-3 py-2.5 bg-slate-50 rounded-lg md:rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm"
+              />
+              <input
+                type="text"
+                value={link.url}
+                onChange={(e) => updateLinkField(idx, "url", e.target.value)}
+                placeholder="https://..."
+                className="flex-1 min-w-0 px-3 py-2.5 bg-slate-50 rounded-lg md:rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm"
+              />
+              <button onClick={() => removeLinkRow(idx)} className="p-2 text-slate-300 hover:text-pink-500 shrink-0">
+                <X size={16} />
+              </button>
+            </div>
+          ))}
+          <button onClick={addLinkRow} className="flex items-center gap-1 text-[10px] md:text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
+            <Plus size={12} /> 링크 추가
+          </button>
+        </div>
       </div>
 
       <div className="space-y-4 md:space-y-6">

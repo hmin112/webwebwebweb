@@ -1,12 +1,22 @@
 import { api } from "../../../api/axios";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, FileText, Check, Clock, X,
   Download, Presentation, CalendarDays, MessageCircle,
   FileArchive, ExternalLink, Loader2, ChevronDown, Eye,
-  Layers, Crown,
+  Layers, Crown, Link2,
 } from "lucide-react";
+
+// MyPageTab/TeamTab과 동일한 규칙: 2~7월=1학기, 8월~다음해 1월=2학기
+const getCurrentTerm = () => {
+  const now = new Date();
+  const year = now.getFullYear();
+  const month = now.getMonth() + 1;
+  const semester = (month >= 2 && month <= 7) ? 1 : 2;
+  const academicYear = (month === 1) ? year - 1 : year;
+  return { year: academicYear, semester };
+};
 
 // ✨ TeamTab/CommunityTab과 동일한 학번 포맷 규칙
 const formatShortStudentId = (id?: string) => {
@@ -31,19 +41,32 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   // ✨ [신규] 이번 학기 팀 프로젝트 소속 여부 — 개인 정보와는 별개로 추가 노출
   const [teamInfo, setTeamInfo] = useState<any>(null);
 
-  // 학기 선택 상태 (기본 2026년 1학기)
-  const [selectedTerm, setSelectedTerm] = useState({ year: 2026, semester: 1 });
+  // 학기 선택 상태 — 예전엔 { year: 2026, semester: 1 }로 고정되어 있어서, 실제로 2학기가
+  // 되어도 커뮤니티에서 다른 부원을 보면 계속 1학기 자료가 뜨던 버그가 있었음. MyPageTab과
+  // 동일하게 현재 날짜 기준으로 계산한 "진짜 현재 학기"를 기본값으로 사용하도록 수정.
+  const [selectedTerm, setSelectedTerm] = useState(getCurrentTerm);
   const [isTermMenuOpen, setIsTermMenuOpen] = useState(false);
   const termMenuRef = useRef<HTMLDivElement>(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
+  const [projectLinks, setProjectLinks] = useState<{ label: string; url: string }[]>([]);
 
   const isSubmittedStatus = (status?: string) =>
     status === "SUBMITTED" || status === "제출완료";
 
-  const termOptions = [
-    { year: 2026, semester: 1, label: "2026학년도 1학기" },
-    { year: 2026, semester: 2, label: "2026학년도 2학기" },
-  ];
+  // 2026년 1학기부터 현재 학기까지 전부 선택 가능하게(MyPageTab의 semesterOptions와 동일 규칙)
+  const termOptions = useMemo(() => {
+    const { year: currentYear, semester: currentSemester } = getCurrentTerm();
+    const startYear = 2026;
+    const options: { year: number; semester: number; label: string }[] = [];
+    let tempYear = startYear;
+    let tempSem = 1;
+    while (tempYear < currentYear || (tempYear === currentYear && tempSem <= currentSemester)) {
+      options.push({ year: tempYear, semester: tempSem, label: `${tempYear}학년도 ${tempSem}학기` });
+      tempSem++;
+      if (tempSem > 2) { tempSem = 1; tempYear++; }
+    }
+    return options.reverse();
+  }, []);
 
   // ✨ 학번 포맷팅 함수 (8자리/2자리/이미 포함된 경우 모두 대응)
   const formatStudentId = (id: string) => {
@@ -102,6 +125,7 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         });
 
         setReports(submissionRes.data.reports || []);
+        setProjectLinks(submissionRes.data.projectLinks || []);
 
         // 4. 이번 학기 팀 프로젝트 소속 여부 (기존 팀 프로젝트 기능이 이미 쓰던 엔드포인트 재사용)
         try {
@@ -273,6 +297,30 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
           </AnimatePresence>
         </div>
       </div>
+
+      {/* ✨ [2026-09-07 추가] 이번 학기 관련 링크(깃/노션 등) — 마이페이지에서 등록한 것을 읽기 전용으로 노출 */}
+      {projectLinks.length > 0 && (
+        <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
+          <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
+            <Link2 size={14} />
+            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">관련 링크</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {projectLinks.map((link, idx) => (
+              <a
+                key={idx}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 pl-3 pr-3.5 py-2 bg-slate-50 hover:bg-indigo-50 rounded-full border border-slate-100 hover:border-indigo-200 transition-colors group"
+              >
+                <span className="text-xs md:text-sm font-black text-slate-700 group-hover:text-indigo-600">{link.label}</span>
+                <ExternalLink size={12} className="text-slate-300 group-hover:text-indigo-400" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* ✨ [신규] 이번 학기 팀 프로젝트 소속 정보 — 개인 정보와 별개로 추가 표시 */}
       {teamInfo && (

@@ -5,6 +5,7 @@ import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SavePlanRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
+import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectLinksRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesResponse;
@@ -47,6 +48,13 @@ public class AssemblyController {
     @PostMapping("/project-title")
     public ResponseEntity<StatusResponse> saveProjectTitle(@RequestBody SaveProjectTitleRequest params) {
         assemblyService.saveProjectTitle(params);
+        return ResponseEntity.ok(StatusResponse.success());
+    }
+
+    // ✨ [2026-09-07 추가] 마이페이지 학기별 깃/노션 등 관련 링크 — 프로젝트 명과 별개로 독립 저장
+    @PostMapping("/project-links")
+    public ResponseEntity<StatusResponse> saveProjectLinks(@RequestBody SaveProjectLinksRequest params) {
+        assemblyService.saveProjectLinks(params);
         return ResponseEntity.ok(StatusResponse.success());
     }
 

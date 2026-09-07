@@ -57,8 +57,16 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
     return statusKey(member) === "OTHER";
   };
 
-  // 현재 조회할 기준 학기 설정
-  const currentTerm = { year: 2026, semester: 1 };
+  // 현재 조회할 기준 학기 설정 — 2~7월=1학기, 8월~다음해 1월=2학기 (MyPageTab과 동일 규칙)
+  // 이전엔 { year: 2026, semester: 1 }로 고정되어 있어서 2학기가 되어도 계속 1학기 자료가 보이던 버그가 있었음
+  const currentTerm = useMemo(() => {
+    const now = new Date();
+    const year = now.getFullYear();
+    const month = now.getMonth() + 1;
+    const semester = (month >= 2 && month <= 7) ? 1 : 2;
+    const academicYear = (month === 1) ? year - 1 : year;
+    return { year: academicYear, semester };
+  }, []);
 
   // ✨ 학번 포맷팅 함수 (8자리/2자리/이미 포함된 경우 모두 대응)
   const formatStudentId = (id: string) => {

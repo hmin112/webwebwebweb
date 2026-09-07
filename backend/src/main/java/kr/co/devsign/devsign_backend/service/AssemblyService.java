@@ -13,6 +13,7 @@ import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
 import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
+import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectLinksRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SavePlanRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
 import lombok.RequiredArgsConstructor;
@@ -105,15 +106,20 @@ public class AssemblyService {
             reports = reportRepository.findByLoginIdAndYearAndSemesterOrderByMonthAsc(loginId, year, semester);
         }
 
-        String projectTitle = projectRepository.findByLoginIdAndYearAndSemester(loginId, year, semester)
-                .map(AssemblyProject::getTitle)
-                .orElse("");
+        AssemblyProject project = projectRepository.findByLoginIdAndYearAndSemester(loginId, year, semester)
+                .orElse(null);
+        String projectTitle = project != null ? project.getTitle() : "";
+        List<kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto> projectLinks = project == null
+                ? List.of()
+                : project.getLinks().stream()
+                        .map(l -> new kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto(l.getLabel(), l.getUrl()))
+                        .toList();
 
         List<AssemblyReportResponse> reportResponses = reports.stream()
                 .map(this::toReportResponse)
                 .toList();
 
-        return new MySubmissionsResponse(reportResponses, projectTitle);
+        return new MySubmissionsResponse(reportResponses, projectTitle, projectLinks);
     }
 
     public void saveProjectTitle(SaveProjectTitleRequest params) {
@@ -129,6 +135,30 @@ public class AssemblyService {
         project.setYear(year);
         project.setSemester(semester);
         project.setTitle(title);
+
+        projectRepository.save(project);
+    }
+
+    // ✨ [2026-09-07 추가] 마이페이지 학기별 깃/노션 등 관련 링크 저장 — 프로젝트 명(title)은
+    // 건드리지 않고 links만 독립적으로 갱신한다(계획서에서 관리하는 프로젝트 명과 저장 경로가
+    // 섞이지 않도록 완전히 분리된 메서드/엔드포인트로 둠)
+    public void saveProjectLinks(SaveProjectLinksRequest params) {
+        String loginId = params.loginId();
+        int year = params.year();
+        int semester = params.semester();
+
+        AssemblyProject project = projectRepository.findByLoginIdAndYearAndSemester(loginId, year, semester)
+                .orElse(new AssemblyProject());
+
+        project.setLoginId(loginId);
+        project.setYear(year);
+        project.setSemester(semester);
+        project.setLinks(params.links() == null
+                ? new ArrayList<>()
+                : params.links().stream()
+                        .filter(l -> l != null && StringUtils.hasText(l.label()) && StringUtils.hasText(l.url()))
+                        .map(l -> new PlanLink(l.label(), l.url()))
+                        .collect(java.util.stream.Collectors.toCollection(ArrayList::new)));
 
         projectRepository.save(project);
     }
