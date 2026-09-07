@@ -81,6 +81,14 @@ function AppContent() {
   const handleLogout = async (isForced: boolean = false) => {
     if (!isForced && !window.confirm("로그아웃 하시겠습니까?")) return;
     try {
+      // ✨ 로그아웃 시 서버에서 지금 이 토큰을 실제로 무효화(tokenVersion 증가).
+      // 이후엔 만료 전이라도 이 토큰으로는 어떤 요청도 인증되지 않음 — 로컬스토리지를
+      // 지우기 전에, 아직 토큰이 남아있는 상태에서 호출해야 함
+      await api.post("/members/logout");
+    } catch (e) {
+      console.error("토큰 무효화 실패", e);
+    }
+    try {
       if (currentUser && currentUser.name) {
         await api.post("/members/logout-log", {
           name: currentUser.name,

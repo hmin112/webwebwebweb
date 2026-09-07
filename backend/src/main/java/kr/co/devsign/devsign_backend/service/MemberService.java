@@ -162,7 +162,7 @@ public class MemberService {
                 );
             }
 
-            String token = jwtUtil.generateToken(m.getLoginId(), m.getRole());
+            String token = jwtUtil.generateToken(m.getLoginId(), m.getRole(), m.getTokenVersion());
 
             AccessLog log = new AccessLog();
             log.setName(m.getName());
@@ -212,6 +212,19 @@ public class MemberService {
 
     public StatusResponse logoutLog(LogoutLogRequest requestData, String ip) {
         accessLogService.logRaw(requestData.name(), requestData.studentId(), "LOGOUT", ip);
+        return StatusResponse.success();
+    }
+
+    // 로그아웃 시 실제로 토큰을 무효화한다. tokenVersion을 올려두면 지금 들고 있던 토큰은
+    // (만료 전이라도) JwtAuthenticationFilter의 비교에서 즉시 걸러진다. loginId는 클라이언트가
+    // 보낸 값이 아니라 요청에 실려온 토큰 자체에서 뽑아 쓰므로(컨트롤러 참고) 위조가 불가능하다.
+    public StatusResponse logout(String loginId) {
+        Optional<Member> memberOpt = memberRepository.findByLoginId(loginId);
+        if (memberOpt.isPresent()) {
+            Member member = memberOpt.get();
+            member.setTokenVersion(member.getTokenVersion() + 1);
+            memberRepository.save(member);
+        }
         return StatusResponse.success();
     }
 

@@ -41,4 +41,9 @@ public class Member {
 
     @Column(columnDefinition = "LONGTEXT")
     private String profileImage;
+
+    // 로그인 시 발급되는 JWT에 이 값을 그대로 심어두고, 매 요청마다 이 컬럼과 비교한다.
+    // 로그아웃 시 이 값을 증가시키면 그 이전에 발급된 토큰은(만료 전이라도) 즉시 무효화된다.
+    @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
+    private long tokenVersion = 0L;
 }

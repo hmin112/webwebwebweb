@@ -25,14 +25,16 @@ public class JwtUtil {
         return Keys.hmacShaKeyFor(secret.getBytes());
     }
 
-    // JWT 토큰 생성
-    public String generateToken(String loginId, String role) {
+    // JWT 토큰 생성 — tokenVersion을 클레임에 심어둬서, 로그아웃 시 이 값이 바뀌면
+    // (만료 전이라도) 이 토큰은 더 이상 유효하지 않은 것으로 취급된다(JwtAuthenticationFilter 참고)
+    public String generateToken(String loginId, String role, long tokenVersion) {
         Date now = new Date();
         Date expiryDate = new Date(now.getTime() + expiration);
 
         return Jwts.builder()
                 .subject(loginId)
                 .claim("role", role)
+                .claim("tv", String.valueOf(tokenVersion))
                 .issuedAt(now)
                 .expiration(expiryDate)
                 .signWith(getSigningKey())
@@ -59,6 +61,25 @@ public class JwtUtil {
                 .getPayload();
 
         return claims.get("role", String.class);
+    }
+
+    // 토큰에서 tokenVersion 추출 (없는 옛 토큰이면 -1을 반환해 항상 무효 처리되게 함)
+    public long getTokenVersionFromToken(String token) {
+        Claims claims = Jwts.parser()
+                .verifyWith(getSigningKey())
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
+
+        String tv = claims.get("tv", String.class);
+        if (tv == null) {
+            return -1L;
+        }
+        try {
+            return Long.parseLong(tv);
+        } catch (NumberFormatException e) {
+            return -1L;
+        }
     }
 
     // 토큰 유효성 검증
