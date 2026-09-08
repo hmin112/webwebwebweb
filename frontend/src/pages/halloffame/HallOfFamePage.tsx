@@ -71,7 +71,8 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
                 </div>
                 <div className="p-5 md:p-8">
                   <h3 className="text-base md:text-xl font-bold text-slate-900 mb-1.5 md:mb-2 group-hover:text-indigo-600 transition-colors line-clamp-1">{entry.title}</h3>
-                  <p className="text-slate-400 font-bold text-[11px] md:text-xs mb-4 md:mb-6 line-clamp-1">{entry.competitionName} · {entry.date}</p>
+                  <p className="text-slate-400 font-bold text-[11px] md:text-xs line-clamp-1">{entry.competitionName}</p>
+                  <p className="text-slate-400 font-bold text-[11px] md:text-xs mb-4 md:mb-6">{entry.date}</p>
 
                   {entry.participants && entry.participants.length > 0 && (
                     <div className="flex items-center gap-2 flex-wrap pt-4 md:pt-5 border-t border-slate-50">
