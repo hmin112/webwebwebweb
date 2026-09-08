@@ -192,12 +192,17 @@ export const Navbar = ({
             onClick={() => handleNavigate("home")}
           >
             <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl overflow-hidden shadow-lg border border-slate-100 flex items-center justify-center bg-white group hover:scale-105 transition-transform">
-              <img 
-                src={guildIconUrl} 
-                alt="DEVSIGN" 
+              <img
+                src={guildIconUrl}
+                alt="DEVSIGN"
                 className="w-full h-full object-cover"
                 onError={(e: any) => {
-                  e.target.style.display = 'none'; 
+                  e.target.style.display = 'none';
+                }}
+                onLoad={(e: any) => {
+                  // ✨ 이전에 실패한(예: 만료된 폴백 URL) 요청 때문에 onError가 display:none을 남겨둔
+                  // 상태에서, 이후 진짜 아이콘이 성공적으로 로드돼도 계속 숨겨져 있던 버그 수정
+                  e.target.style.display = '';
                 }}
               />
             </div>

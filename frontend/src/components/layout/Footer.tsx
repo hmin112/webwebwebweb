@@ -113,12 +113,17 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
               onClick={() => onNavigate("home")}
             >
               <div className="w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl overflow-hidden shadow-lg shadow-indigo-500/20 bg-white flex items-center justify-center shrink-0">
-                <img 
+                <img
                   src={guildIconUrl}
-                  alt="DEVSIGN" 
+                  alt="DEVSIGN"
                   className="w-full h-full object-cover"
                   onError={(e: any) => {
                     e.target.style.display = 'none'; // 이미지 로드 실패 시 숨김 처리
+                  }}
+                  onLoad={(e: any) => {
+                    // ✨ 이전 실패(예: 만료된 폴백 URL)로 onError가 display:none을 남긴 상태에서,
+                    // 이후 진짜 아이콘이 성공적으로 로드돼도 계속 숨겨져 있던 버그 수정
+                    e.target.style.display = '';
                   }}
                 />
               </div>
