@@ -10,4 +10,5 @@ import java.util.List;
 public interface TeamSubmissionRepository extends JpaRepository<TeamSubmission, Long> {
     List<TeamSubmission> findByTeam_IdAndYearAndSemesterOrderByMonthAsc(Long teamId, int year, int semester);
     List<TeamSubmission> findByYearAndSemesterAndMonthAndStatus(int year, int semester, int month, String status);
+    void deleteByTeam_Id(Long teamId);
 }

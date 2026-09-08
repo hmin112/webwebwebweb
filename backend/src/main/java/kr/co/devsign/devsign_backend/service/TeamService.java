@@ -14,6 +14,7 @@ import kr.co.devsign.devsign_backend.entity.TeamMember;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
 import kr.co.devsign.devsign_backend.repository.TeamRepository;
+import kr.co.devsign.devsign_backend.repository.TeamSubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,7 @@ public class TeamService {
 
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final TeamSubmissionRepository teamSubmissionRepository;
     private final MemberRepository memberRepository;
     private final AssemblyService assemblyService;
 
@@ -194,6 +196,9 @@ public class TeamService {
         Team team = getTeamOrThrow(teamId);
         requireLeader(team, requesterLoginId);
 
+        // ✨ team_submission이 team_id를 참조하는 FK라서, 팀원 삭제만으로는 부족하고 이 팀이 제출한
+        // 공유 자료(TeamSubmission)까지 먼저 지워야 팀 행 삭제가 FK 제약 위반 없이 성공한다.
+        teamSubmissionRepository.deleteByTeam_Id(teamId);
         teamMemberRepository.deleteByTeam_Id(teamId);
         teamRepository.delete(team);
     }
