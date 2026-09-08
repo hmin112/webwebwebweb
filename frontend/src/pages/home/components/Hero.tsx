@@ -49,13 +49,16 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
     setHofIndex(0);
   }, [hallOfFame.length]);
 
+  // hofIndex를 의존성에 포함시켜서, 화살표/점 클릭으로 수동 전환할 때마다 "다음 자동 전환까지
+  // 남은 4.5초"가 그 시점부터 다시 시작되도록 함 — 예전엔 수동으로 넘긴 직후에도 원래
+  // 타이머가 그대로 살아있어서 곧바로 한 번 더 자동으로 넘어가버리는 문제가 있었음
   useEffect(() => {
     if (isHofPaused || hallOfFame.length < 2) return;
-    const timer = setInterval(() => {
+    const timer = setTimeout(() => {
       setHofIndex((prev) => (prev + 1) % hallOfFame.length);
     }, 4500);
-    return () => clearInterval(timer);
-  }, [hallOfFame.length, isHofPaused]);
+    return () => clearTimeout(timer);
+  }, [hallOfFame.length, isHofPaused, hofIndex]);
 
   const currentHofEntry = hallOfFame[hofIndex];
 
@@ -316,20 +319,21 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
             </AnimatePresence>
 
             {/* 좌우 끝: 이전/다음 수동 이동 화살표 — 슬라이드 전환과 무관하게 항상 고정 표시(사진이 바뀌어도 안 사라짐).
-                점 인디케이터/일시정지와 다르게 원형 배경 없이 화살표 아이콘만 노출 */}
+                점 인디케이터/일시정지와 다르게 원형 배경 없이 화살표 아이콘만 노출.
+                모바일에서는 텍스트 영역과 겹쳐 보이는 문제가 있어 탭 기능은 그대로 두되 아이콘만 투명 처리 */}
             {hallOfFame.length > 1 && (
               <div className="absolute z-10 top-0 left-0 right-0 h-[420px] sm:h-[480px] md:h-[560px] flex items-center justify-between px-2 md:px-4 pointer-events-none">
                 <button
                   onClick={(e) => { e.stopPropagation(); goToPrevHof(); }}
                   aria-label="이전 수상 소식"
-                  className="pointer-events-auto p-2 md:p-3 text-white/80 hover:text-white transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+                  className="pointer-events-auto p-2 md:p-3 opacity-0 md:opacity-100 text-white/80 hover:text-white transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
                 >
                   <ChevronLeft className="w-7 h-7 md:w-9 md:h-9" strokeWidth={2.5} />
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); goToNextHof(); }}
                   aria-label="다음 수상 소식"
-                  className="pointer-events-auto p-2 md:p-3 text-white/80 hover:text-white transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+                  className="pointer-events-auto p-2 md:p-3 opacity-0 md:opacity-100 text-white/80 hover:text-white transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
                 >
                   <ChevronRight className="w-7 h-7 md:w-9 md:h-9" strokeWidth={2.5} />
                 </button>
