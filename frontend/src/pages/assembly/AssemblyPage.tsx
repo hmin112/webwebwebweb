@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserCircle, Users, LayoutDashboard, ChevronRight,
-  Menu as MenuIcon, X, CalendarRange, Layers, CheckSquare, ClipboardCheck
+  Menu as MenuIcon, X, CalendarRange, Layers, CheckSquare, ClipboardCheck, MonitorPlay
 } from "lucide-react";
 
 // 분리된 탭 컴포넌트 임포트
@@ -13,6 +13,7 @@ import { AdminPeriodTab } from "../profile/tabs/AdminPeriodTab";
 import { MemberDetailTab } from "../profile/tabs/MemberDetailTab";
 import { AttendanceMemberTab } from "./tabs/AttendanceMemberTab";
 import { AttendanceAdminTab } from "./tabs/AttendanceAdminTab";
+import { AssemblyBannerAdminTab } from "./tabs/AssemblyBannerAdminTab";
 import { AssemblyPlanPage } from "../profile/tabs/AssemblyPlanPage";
 import { TeamPlanPage } from "../profile/tabs/TeamPlanPage";
 
@@ -56,6 +57,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   const adminMenus = [
     { id: "admin-period", name: "제출 / 자료", icon: <CalendarRange size={18} /> },
     { id: "admin-attendance", name: "출석 설정", icon: <ClipboardCheck size={18} /> },
+    { id: "admin-banner", name: "총회 배너", icon: <MonitorPlay size={18} /> },
   ];
 
   // 모바일 탭 출력을 위한 통합 메뉴
@@ -185,6 +187,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
           {activeTab === "admin-period" && <AdminPeriodTab key="admin-period" />}
 
           {activeTab === "admin-attendance" && <AttendanceAdminTab key="admin-attendance" />}
+
+          {activeTab === "admin-banner" && <AssemblyBannerAdminTab key="admin-banner" />}
         </AnimatePresence>
       </main>
     </div>
