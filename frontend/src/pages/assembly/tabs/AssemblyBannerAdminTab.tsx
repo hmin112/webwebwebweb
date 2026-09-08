@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   MonitorPlay, ChevronLeft, ChevronRight, X, Save, Plus, Trash2,
@@ -276,9 +277,10 @@ export const AssemblyBannerAdminTab = () => {
         )}
       </AnimatePresence>
 
-      {/* 전체화면 뷰어 */}
-      {isFullscreenOpen && editorData && (
-        <div ref={fullscreenRef} className="fixed inset-0 z-[500] bg-[#f5f5f7] overflow-y-auto">
+      {/* 전체화면 뷰어 — document.body에 포털로 렌더링해서, 사이드바를 감싸는 조상 요소(motion.div 등)가
+          만드는 CSS containing block에 fixed 포지션이 갇히지 않고 진짜 뷰포트 전체를 덮도록 함 */}
+      {isFullscreenOpen && editorData && createPortal(
+        <div ref={fullscreenRef} className="fixed inset-0 z-[9999] bg-[#f5f5f7] overflow-y-auto">
           <button
             onClick={closeFullscreen}
             className="fixed top-4 right-4 md:top-6 md:right-6 z-10 p-3 rounded-full bg-white/70 backdrop-blur-md shadow-md text-slate-600 hover:bg-white transition-all"
@@ -286,7 +288,8 @@ export const AssemblyBannerAdminTab = () => {
             <Minimize size={18} />
           </button>
           <AssemblyBannerDisplay data={editorData} />
-        </div>
+        </div>,
+        document.body
       )}
     </motion.div>
   );

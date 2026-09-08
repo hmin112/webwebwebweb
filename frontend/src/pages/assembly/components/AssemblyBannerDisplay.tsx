@@ -101,40 +101,44 @@ export const AssemblyBannerDisplay = ({ data }: { data: AssemblyBannerData }) =>
     dDayText = diffDays > 0 ? `D-${diffDays}` : diffDays === 0 ? "D-Day" : `D+${Math.abs(diffDays)}`;
   }
 
+  // ✨ 배경색을 여기서 칠하지 않는다 — 이 div는 position이 없는 일반 흐름 박스라, 칠하면
+  // z-index:-10인 배경 블롭(아래)보다 페인트 순서상 나중(위)에 그려져서 블롭을 완전히 덮어버림.
+  // 배경색은 이 컴포넌트를 감싸는 전체화면 래퍼(bg-[#f5f5f7])가 이미 칠해주고 있음
   return (
-    <div className="relative min-h-full w-full flex items-center justify-center p-5 overflow-hidden" style={{ background: "#f5f5f7" }}>
+    <div className="relative h-screen w-screen flex items-center justify-center p-6 lg:p-10 overflow-hidden">
       <style>{`
-        @keyframes assembly-blob-move { from { transform: translate(0,0) scale(1); } to { transform: translate(100px,50px) scale(1.1); } }
+        @keyframes assembly-blob-move { from { transform: translate(0,0) scale(1); } to { transform: translate(120px,60px) scale(1.15); } }
         @keyframes assembly-fade-in { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .assembly-blob { animation: assembly-blob-move 20s infinite alternate ease-in-out; }
         .assembly-glass-card { animation: assembly-fade-in 0.6s ease-out forwards; opacity: 0; }
       `}</style>
 
-      {/* 배경 블롭 */}
-      <div className="fixed inset-0 -z-10 pointer-events-none" style={{ filter: "blur(80px)", opacity: 0.6 }}>
-        <div className="assembly-blob absolute rounded-full" style={{ width: 500, height: 500, background: "#ffdde1", top: "-10%", left: "-10%" }} />
-        <div className="assembly-blob absolute rounded-full" style={{ width: 600, height: 600, background: "#ee9ca7", bottom: "-10%", right: "-10%", animationDuration: "25s" }} />
-        <div className="assembly-blob absolute rounded-full" style={{ width: 400, height: 400, background: "#a1c4fd", top: "20%", right: "20%", animationDuration: "15s" }} />
+      {/* 배경 블롭 — 리퀴드 글라스 느낌의 색감 소스. 카드들이 이 위에 반투명하게 얹혀서 서로 구분돼 보임 */}
+      <div className="fixed inset-0 -z-10 pointer-events-none" style={{ filter: "blur(90px)", opacity: 0.85 }}>
+        <div className="assembly-blob absolute rounded-full" style={{ width: "42vw", height: "42vw", background: "#ffb3c0", top: "-14%", left: "-12%" }} />
+        <div className="assembly-blob absolute rounded-full" style={{ width: "46vw", height: "46vw", background: "#e0729a", bottom: "-16%", right: "-12%", animationDuration: "25s" }} />
+        <div className="assembly-blob absolute rounded-full" style={{ width: "34vw", height: "34vw", background: "#7fb2ff", top: "18%", right: "14%", animationDuration: "15s" }} />
+        <div className="assembly-blob absolute rounded-full" style={{ width: "28vw", height: "28vw", background: "#ffe08a", bottom: "10%", left: "18%", animationDuration: "18s" }} />
       </div>
 
-      <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[minmax(140px,auto)] gap-4 md:gap-5 w-full max-w-6xl">
+      <div className="grid grid-cols-2 md:grid-cols-4 auto-rows-[minmax(160px,1fr)] gap-4 lg:gap-6 w-full h-full max-w-[1800px]">
         {/* 날씨 (세로로 김) */}
         <GlassCard delay={0.1} className="row-span-2 flex flex-col items-stretch justify-between text-left">
           <div>
             <CardTitle>광주 동구</CardTitle>
-            <div className="flex items-center gap-2.5 my-2.5">
-              <div className="text-4xl md:text-5xl font-bold">{weather.temp !== null ? `${weather.temp}°` : "--°"}</div>
-              <div className="text-3xl">{weather.icon}</div>
+            <div className="flex items-center gap-3 my-3">
+              <div className="text-5xl lg:text-6xl font-bold">{weather.temp !== null ? `${weather.temp}°` : "--°"}</div>
+              <div className="text-4xl">{weather.icon}</div>
             </div>
-            <span className="block text-base md:text-lg font-medium">{weather.desc}</span>
+            <span className="block text-lg lg:text-xl font-medium">{weather.desc}</span>
           </div>
-          <div className="flex flex-col gap-2.5 border-t border-white/30 pt-3.5">
+          <div className="flex flex-col gap-3 border-t border-white/40 pt-4">
             {weather.hourly.map((h, i) => (
               <div key={i} className="flex justify-between items-center">
-                <div className="text-xs md:text-sm text-slate-500 font-semibold flex items-center gap-2">
+                <div className="text-sm lg:text-base text-slate-500 font-semibold flex items-center gap-2">
                   {h.hour}시 <span>{h.icon}</span>
                 </div>
-                <div className="text-sm md:text-base font-bold">{h.temp}°</div>
+                <div className="text-base lg:text-lg font-bold">{h.temp}°</div>
               </div>
             ))}
           </div>
@@ -143,23 +147,23 @@ export const AssemblyBannerDisplay = ({ data }: { data: AssemblyBannerData }) =>
         {/* 오늘 날짜 */}
         <GlassCard delay={0.2}>
           <CardTitle>오늘 날짜</CardTitle>
-          <div className="text-3xl md:text-4xl font-bold">{dateText}</div>
-          <span className="text-sm md:text-base font-medium">{dayText}</span>
+          <div className="text-4xl lg:text-5xl font-bold">{dateText}</div>
+          <span className="text-lg lg:text-xl font-medium">{dayText}</span>
         </GlassCard>
 
         {/* 메인 타이틀 (2x2) */}
-        <GlassCard delay={0} className="col-span-2 row-span-2 p-8 md:p-12">
-          <p className="text-indigo-600 font-bold text-xs md:text-sm uppercase tracking-[0.2em] mb-2">DEVSIGN</p>
-          <h1 className="text-4xl md:text-6xl font-extrabold tracking-tight text-slate-900">{title}</h1>
+        <GlassCard delay={0} className="col-span-2 row-span-2 p-10 lg:p-14">
+          <p className="text-indigo-600 font-bold text-sm lg:text-base uppercase tracking-[0.2em] mb-3">DEVSIGN</p>
+          <h1 className="text-5xl lg:text-7xl xl:text-8xl font-extrabold tracking-tight text-slate-900">{title}</h1>
         </GlassCard>
 
         {/* 공지사항 */}
         <GlassCard delay={0.35} className="items-start">
           <CardTitle>공지사항</CardTitle>
           {data.notices.length === 0 ? (
-            <span className="text-xs md:text-sm text-slate-400 font-medium">등록된 공지가 없습니다</span>
+            <span className="text-sm lg:text-base text-slate-400 font-medium">등록된 공지가 없습니다</span>
           ) : (
-            <div className="text-xs md:text-sm font-medium text-left w-full space-y-1">
+            <div className="text-sm lg:text-base font-medium text-left w-full space-y-1.5">
               {data.notices.map((n, i) => <div key={i}>• {n}</div>)}
             </div>
           )}
@@ -169,12 +173,12 @@ export const AssemblyBannerDisplay = ({ data }: { data: AssemblyBannerData }) =>
         <GlassCard delay={0.4} className="col-span-2 items-start">
           <CardTitle>오늘의 안건</CardTitle>
           {data.agenda.length === 0 ? (
-            <span className="text-xs md:text-sm text-slate-400 font-medium">등록된 안건이 없습니다</span>
+            <span className="text-sm lg:text-base text-slate-400 font-medium">등록된 안건이 없습니다</span>
           ) : (
-            <ul className="w-full space-y-2">
+            <ul className="w-full space-y-2.5">
               {data.agenda.map((a, i) => (
-                <li key={i} className="flex items-center gap-3 font-medium text-sm md:text-base">
-                  <span className="w-2 h-2 rounded-full bg-indigo-600 shrink-0" /> {a}
+                <li key={i} className="flex items-center gap-3 font-medium text-base lg:text-lg">
+                  <span className="w-2.5 h-2.5 rounded-full bg-indigo-600 shrink-0" /> {a}
                 </li>
               ))}
             </ul>
@@ -184,14 +188,14 @@ export const AssemblyBannerDisplay = ({ data }: { data: AssemblyBannerData }) =>
         {/* 참석 인원 */}
         <GlassCard delay={0.5}>
           <CardTitle>참석 인원</CardTitle>
-          <div className="text-3xl md:text-4xl font-bold">{data.attendanceCount ?? "-"}</div>
-          <span className="text-sm md:text-base font-medium">DEVSIGN Crew</span>
+          <div className="text-4xl lg:text-5xl font-bold">{data.attendanceCount ?? "-"}</div>
+          <span className="text-lg lg:text-xl font-medium">DEVSIGN Crew</span>
         </GlassCard>
 
         {/* 오늘의 한마디 */}
         <GlassCard delay={0.6}>
           <CardTitle>오늘의 한마디</CardTitle>
-          <p className="text-sm md:text-base font-medium text-center normal-case tracking-normal text-indigo-500">
+          <p className="text-base lg:text-lg font-medium text-center normal-case tracking-normal text-indigo-500">
             {data.quote?.trim() ? `"${data.quote}"` : "-"}
           </p>
         </GlassCard>
@@ -199,9 +203,9 @@ export const AssemblyBannerDisplay = ({ data }: { data: AssemblyBannerData }) =>
         {/* 다음 일정 */}
         <GlassCard delay={0.7}>
           <CardTitle>다음 일정</CardTitle>
-          <div className="text-lg md:text-2xl font-bold">{data.nextAssemblyLabel?.trim() || "미정"}</div>
+          <div className="text-2xl lg:text-3xl font-bold">{data.nextAssemblyLabel?.trim() || "미정"}</div>
           {data.nextAssemblyDate && (
-            <span className="text-sm md:text-base font-medium">
+            <span className="text-base lg:text-lg font-medium">
               {data.nextAssemblyDate.replace(/-/g, ".")}{dDayText ? ` (${dDayText})` : ""}
             </span>
           )}
@@ -210,14 +214,14 @@ export const AssemblyBannerDisplay = ({ data }: { data: AssemblyBannerData }) =>
         {/* 카운트다운 */}
         <GlassCard delay={0.8}>
           <CardTitle>종료까지 남은 시간</CardTitle>
-          <div className="text-lg md:text-2xl font-extrabold tabular-nums">{countdownText}</div>
-          <span className="text-sm md:text-base font-medium">목표: {String(targetH).padStart(2, "0")}시 {String(targetM).padStart(2, "0")}분</span>
+          <div className="text-2xl lg:text-3xl font-extrabold tabular-nums">{countdownText}</div>
+          <span className="text-base lg:text-lg font-medium">목표: {String(targetH).padStart(2, "0")}시 {String(targetM).padStart(2, "0")}분</span>
         </GlassCard>
 
         {/* 현재 시간 (2x1) */}
         <GlassCard delay={0.9} className="col-span-2">
           <CardTitle className="self-center">현재 시간</CardTitle>
-          <div className="text-4xl md:text-6xl font-extrabold tracking-tight tabular-nums">{clockText}</div>
+          <div className="text-5xl lg:text-7xl font-extrabold tracking-tight tabular-nums">{clockText}</div>
         </GlassCard>
       </div>
     </div>
@@ -226,11 +230,13 @@ export const AssemblyBannerDisplay = ({ data }: { data: AssemblyBannerData }) =>
 
 const GlassCard = ({ children, delay, className = "" }: { children: React.ReactNode; delay: number; className?: string }) => (
   <div
-    className={`assembly-glass-card rounded-3xl p-6 md:p-8 flex flex-col justify-center items-center text-center border border-white/50 shadow-sm ${className}`}
+    className={`assembly-glass-card rounded-3xl p-7 lg:p-9 flex flex-col justify-center items-center text-center border ${className}`}
     style={{
-      background: "rgba(255,255,255,0.4)",
-      backdropFilter: "blur(20px)",
-      WebkitBackdropFilter: "blur(20px)",
+      background: "rgba(255,255,255,0.55)",
+      backdropFilter: "blur(24px) saturate(180%)",
+      WebkitBackdropFilter: "blur(24px) saturate(180%)",
+      borderColor: "rgba(255,255,255,0.8)",
+      boxShadow: "0 20px 40px -12px rgba(0,0,0,0.12), inset 0 1px 0 rgba(255,255,255,0.6)",
       animationDelay: `${delay}s`,
       color: "#1d1d1f",
     }}
@@ -240,7 +246,7 @@ const GlassCard = ({ children, delay, className = "" }: { children: React.ReactN
 );
 
 const CardTitle = ({ children, className = "" }: { children: React.ReactNode; className?: string }) => (
-  <span className={`text-[10px] md:text-xs font-semibold uppercase tracking-wider text-slate-500 mb-2 self-start ${className}`}>
+  <span className={`text-xs lg:text-sm font-bold uppercase tracking-wider text-slate-500 mb-2.5 self-start ${className}`}>
     {children}
   </span>
 );
