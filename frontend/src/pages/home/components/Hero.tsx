@@ -5,7 +5,7 @@ import {
   ArrowRight, Code2, Sparkles, Users2, Pencil, Check, Link as LinkIcon, Type,
   Cpu, Database, Globe, Terminal, Boxes,
   Layers, Monitor, Smartphone, Zap, Braces,
-  Trophy, CalendarDays, Pause, Play
+  Trophy, CalendarDays, Pause, Play, ChevronLeft, ChevronRight
 } from "lucide-react";
 
 const formatStudentId = (id?: string) => {
@@ -58,6 +58,10 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
   }, [hallOfFame.length, isHofPaused]);
 
   const currentHofEntry = hallOfFame[hofIndex];
+
+  // 좌우 화살표로 수동 이동 — 자동 전환 인터벌은 건드리지 않고 인덱스만 바꿔줌(점 클릭과 동일)
+  const goToPrevHof = () => setHofIndex((prev) => (prev - 1 + hallOfFame.length) % hallOfFame.length);
+  const goToNextHof = () => setHofIndex((prev) => (prev + 1) % hallOfFame.length);
 
   // ✨ 1. 초기 데이터 로드 (백엔드 연동)
   useEffect(() => {
@@ -277,6 +281,26 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                         </div>
                       </div>
                     </div>
+
+                    {/* 좌우 끝: 이전/다음 수동 이동 화살표 */}
+                    {hallOfFame.length > 1 && (
+                      <>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); goToPrevHof(); }}
+                          aria-label="이전 수상 소식"
+                          className="absolute z-10 top-1/2 -translate-y-1/2 left-3 md:left-6 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+                        >
+                          <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
+                        </button>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); goToNextHof(); }}
+                          aria-label="다음 수상 소식"
+                          className="absolute z-10 top-1/2 -translate-y-1/2 right-3 md:right-6 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+                        >
+                          <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
+                        </button>
+                      </>
+                    )}
 
                     {/* 하단 중앙: 점 인디케이터 + 일시정지 버튼 (조선대 메인 배너 참고) */}
                     {hallOfFame.length > 1 && (
