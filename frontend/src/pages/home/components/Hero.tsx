@@ -282,26 +282,6 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                       </div>
                     </div>
 
-                    {/* 좌우 끝: 이전/다음 수동 이동 화살표 */}
-                    {hallOfFame.length > 1 && (
-                      <>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); goToPrevHof(); }}
-                          aria-label="이전 수상 소식"
-                          className="absolute z-10 top-1/2 -translate-y-1/2 left-3 md:left-6 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
-                        >
-                          <ChevronLeft className="w-4 h-4 md:w-5 md:h-5" />
-                        </button>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); goToNextHof(); }}
-                          aria-label="다음 수상 소식"
-                          className="absolute z-10 top-1/2 -translate-y-1/2 right-3 md:right-6 w-8 h-8 md:w-10 md:h-10 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
-                        >
-                          <ChevronRight className="w-4 h-4 md:w-5 md:h-5" />
-                        </button>
-                      </>
-                    )}
-
                     {/* 하단 중앙: 점 인디케이터 + 일시정지 버튼 (조선대 메인 배너 참고) */}
                     {hallOfFame.length > 1 && (
                       <div
@@ -334,6 +314,27 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                 </div>
               </motion.div>
             </AnimatePresence>
+
+            {/* 좌우 끝: 이전/다음 수동 이동 화살표 — 슬라이드 전환과 무관하게 항상 고정 표시(사진이 바뀌어도 안 사라짐).
+                점 인디케이터/일시정지와 다르게 원형 배경 없이 화살표 아이콘만 노출 */}
+            {hallOfFame.length > 1 && (
+              <div className="absolute z-10 top-0 left-0 right-0 h-[420px] sm:h-[480px] md:h-[560px] flex items-center justify-between px-2 md:px-4 pointer-events-none">
+                <button
+                  onClick={(e) => { e.stopPropagation(); goToPrevHof(); }}
+                  aria-label="이전 수상 소식"
+                  className="pointer-events-auto p-2 md:p-3 text-white/80 hover:text-white transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+                >
+                  <ChevronLeft className="w-7 h-7 md:w-9 md:h-9" strokeWidth={2.5} />
+                </button>
+                <button
+                  onClick={(e) => { e.stopPropagation(); goToNextHof(); }}
+                  aria-label="다음 수상 소식"
+                  className="pointer-events-auto p-2 md:p-3 text-white/80 hover:text-white transition-colors drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]"
+                >
+                  <ChevronRight className="w-7 h-7 md:w-9 md:h-9" strokeWidth={2.5} />
+                </button>
+              </div>
+            )}
 
             {/* 모집 문구(중앙) / 지원 링크(우) — 슬라이드 전환과 무관하게 항상 고정 표시(깜빡이지 않음), 배너 사진의 흐린 배경 위에 그대로 얹힘 */}
             <div className="absolute z-10 bottom-0 left-0 right-0 h-[76px] md:h-16">
@@ -390,16 +391,11 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
             </div>
           </div>
         ) : (
-          <div className="max-w-7xl mx-auto px-6 text-center">
-            <motion.h1
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-3xl sm:text-4xl md:text-[72px] font-[900] tracking-wide text-slate-900 leading-[1.3] md:leading-[1.15]"
-            >
-              <span className="text-indigo-600 font-[900]">누구나 시작</span>하고,<br />
-              <span className="text-pink-500 font-[900]">모두가 성장</span>하는 동아리
-            </motion.h1>
-          </div>
+          // 명예의 전당 데이터를 아직 못 불러온 아주 짧은 순간(또는 등록된 게시물이 하나도
+          // 없는 경우)에만 보이는 자리 — 예전에 여기 있던 고정 문구 대신, 실제 배너와 같은
+          // 크기의 어두운 스켈레톤만 살짝 깜빡여서 "예전 문구가 잠깐 보였다 사라지는" 것처럼
+          // 보이지 않게 함
+          <div className="relative left-1/2 -translate-x-1/2 w-screen h-[496px] sm:h-[556px] md:h-[624px] bg-slate-900 animate-pulse" />
         )}
       </div>
 
