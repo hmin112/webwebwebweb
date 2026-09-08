@@ -8,7 +8,7 @@ import {
   Trash2, ShieldAlert, Lock, History, RotateCcw, BookOpen, ShieldBan, LogIn,
   FileText, Heart, PlusCircle, UserPlus, Globe, Calendar, Clock, AlertTriangle,
   Phone, Hash, BadgeCheck, Info, Search, Edit, FilePlus, FileX, MessageSquare, LogOut, Activity,
-  UserX, CheckCircle2, Loader2, Check
+  UserX, CheckCircle2, Loader2, Check, Upload, FileSpreadsheet, ArrowLeftRight
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
@@ -61,13 +61,24 @@ interface DiscordCheckItem {
   departed: boolean; // 2026-09-08 추가 — "나간 인원"으로 표시됨(계정 삭제 아님, 커뮤니티 노출만 제외)
 }
 
+// ✨ [2026-09-08 신규] "명단 대조" — 엑셀 부원 명부와 실제 디스코드 서버를 대조한 결과
+interface RosterCheckResult {
+  discordNotInFile: Record<string, { nickname: string; discordTag: string }[]>;
+  fileNotInDiscord: Record<string, { name: string; studentId: string; expectedNickname: string }[]>;
+  idChanged: { name: string; studentId: string; fileId: string; currentDiscordId: string; nickname: string }[];
+  statusMismatch: { name: string; studentId: string; fileStatus: string; expectedStatus: string; currentDiscordStatus: string }[];
+  unmatchedRows: { name: string; studentId: string; reason: string }[];
+  totalDiscordMembers: number;
+  totalFileRows: number;
+}
+
 export const AdminPage = () => {
   // --- 2. 상태 관리 ---
   const [members, setMembers] = useState<Member[]>([]);
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [deletedMembers, setDeletedMembers] = useState<Member[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster">("members");
   const [sortBy, setSortBy] = useState<SortCriteria>("ID_DESC");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -75,6 +86,12 @@ export const AdminPage = () => {
   const [discordCheckItems, setDiscordCheckItems] = useState<DiscordCheckItem[] | null>(null);
   const [isDiscordCheckLoading, setIsDiscordCheckLoading] = useState(false);
   const [discordCheckError, setDiscordCheckError] = useState<string | null>(null);
+
+  // ✨ [2026-09-08 신규] "명단 대조" 탭 상태
+  const [rosterFile, setRosterFile] = useState<File | null>(null);
+  const [rosterCheckResult, setRosterCheckResult] = useState<RosterCheckResult | null>(null);
+  const [isRosterChecking, setIsRosterChecking] = useState(false);
+  const [rosterCheckError, setRosterCheckError] = useState<string | null>(null);
 
   const [selectedDate, setSelectedDate] = useState<string>("ALL");
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>("ALL");
@@ -132,6 +149,26 @@ export const AdminPage = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab]);
+
+  // ✨ [2026-09-08 신규] 업로드된 엑셀 명부를 서버로 보내 디스코드 서버와 대조
+  const handleRosterCheck = async () => {
+    if (!rosterFile) {
+      alert("엑셀 파일을 먼저 선택해주세요.");
+      return;
+    }
+    setIsRosterChecking(true);
+    setRosterCheckError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", rosterFile);
+      const res = await api.post("/admin/roster-check", formData);
+      setRosterCheckResult(res.data);
+    } catch (e: any) {
+      setRosterCheckError(e.response?.data?.message || "명단 대조 중 오류가 발생했습니다.");
+    } finally {
+      setIsRosterChecking(false);
+    }
+  };
 
   // --- 4. 비즈니스 로직 ---
 
@@ -533,6 +570,7 @@ export const AdminPage = () => {
           <button onClick={() => { setActiveTab("access"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "access" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>통합 로그</button>
           <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>삭제 기록</button>
           <button onClick={() => { setActiveTab("discord"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "discord" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>디스코드 확인</button>
+          <button onClick={() => { setActiveTab("roster"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "roster" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>명단 대조</button>
         </div>
 
         {activeTab === "members" && (
@@ -885,6 +923,170 @@ export const AdminPage = () => {
                   );
                 })()}
               </>
+            )}
+          </motion.div>
+        )}
+
+        {/* ✨ [2026-09-08 신규] 명단 대조 탭 — 엑셀 부원 명부를 업로드해서 실제 디스코드 서버와 대조 */}
+        {activeTab === "roster" && (
+          <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
+            <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 bg-white p-4 md:p-6 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm mb-8 md:mb-10">
+              <label className="flex-1 flex items-center gap-3 px-4 md:px-5 py-3 md:py-4 bg-slate-50 rounded-xl md:rounded-2xl border border-dashed border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+                <FileSpreadsheet size={18} className="text-indigo-500 shrink-0" />
+                <span className="text-xs md:text-sm font-bold text-slate-500 truncate">
+                  {rosterFile ? rosterFile.name : "부원 명부 엑셀(.xlsx) 파일 선택 — 이름/아이디/학번/상태 컬럼 필요"}
+                </span>
+                <input
+                  type="file"
+                  accept=".xlsx"
+                  className="hidden"
+                  onChange={(e) => setRosterFile(e.target.files?.[0] || null)}
+                />
+              </label>
+              <button
+                onClick={handleRosterCheck}
+                disabled={isRosterChecking || !rosterFile}
+                className="flex items-center justify-center gap-1.5 md:gap-2 px-5 md:px-6 py-3 md:py-4 bg-indigo-600 text-white font-black rounded-xl md:rounded-2xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 text-xs md:text-sm disabled:opacity-50 shrink-0"
+              >
+                {isRosterChecking ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} />}
+                {isRosterChecking ? "대조 중..." : "대조 시작"}
+              </button>
+            </div>
+
+            {rosterCheckError && (
+              <div className="text-center py-10 mb-8 bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-red-200">
+                <AlertTriangle className="mx-auto text-red-400 mb-3" size={28} />
+                <p className="text-red-500 font-bold text-sm">{rosterCheckError}</p>
+              </div>
+            )}
+
+            {rosterCheckResult && (
+              <div className="space-y-8 md:space-y-12">
+                <div className="flex flex-wrap gap-3">
+                  <div className="flex items-center gap-2 px-4 py-2.5 bg-white rounded-xl border border-slate-100 shadow-sm">
+                    <ArrowLeftRight size={14} className="text-indigo-500" />
+                    <span className="text-[11px] md:text-sm font-black text-slate-600">
+                      디스코드 {rosterCheckResult.totalDiscordMembers}명 ↔ 파일 {rosterCheckResult.totalFileRows}행
+                    </span>
+                  </div>
+                </div>
+
+                {/* 1. 파일에 추가해야 할 사람 */}
+                <div>
+                  <h3 className="text-sm md:text-lg font-black text-red-500 tracking-tight uppercase mb-3 md:mb-4 px-1 md:px-2">
+                    파일에 추가해야 할 사람 ({Object.values(rosterCheckResult.discordNotInFile).reduce((sum, arr) => sum + arr.length, 0)})
+                  </h3>
+                  {Object.keys(rosterCheckResult.discordNotInFile).length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-300 font-bold text-sm">해당 없음</p></div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Object.entries(rosterCheckResult.discordNotInFile).map(([status, entries]) => (
+                        <div key={status} className="bg-white rounded-xl md:rounded-[2rem] border border-red-100 shadow-sm overflow-hidden">
+                          <div className="px-4 md:px-6 py-3 bg-red-50/50 border-b border-red-100 text-[11px] md:text-sm font-black text-red-500">{status} ({entries.length})</div>
+                          <div className="divide-y divide-slate-50">
+                            {entries.map((e, i) => (
+                              <div key={i} className="px-4 md:px-6 py-3 flex items-center justify-between text-xs md:text-sm">
+                                <span className="font-bold text-slate-700">{e.nickname}</span>
+                                <span className="text-slate-400 font-bold">@{e.discordTag}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 2. 파일에서 확인이 필요한 사람 */}
+                <div>
+                  <h3 className="text-sm md:text-lg font-black text-amber-500 tracking-tight uppercase mb-3 md:mb-4 px-1 md:px-2">
+                    파일에서 확인이 필요한 사람 ({Object.values(rosterCheckResult.fileNotInDiscord).reduce((sum, arr) => sum + arr.length, 0)})
+                  </h3>
+                  {Object.keys(rosterCheckResult.fileNotInDiscord).length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-300 font-bold text-sm">해당 없음</p></div>
+                  ) : (
+                    <div className="space-y-4">
+                      {Object.entries(rosterCheckResult.fileNotInDiscord).map(([status, entries]) => (
+                        <div key={status} className="bg-white rounded-xl md:rounded-[2rem] border border-amber-100 shadow-sm overflow-hidden">
+                          <div className="px-4 md:px-6 py-3 bg-amber-50/50 border-b border-amber-100 text-[11px] md:text-sm font-black text-amber-500">{status} ({entries.length})</div>
+                          <div className="divide-y divide-slate-50">
+                            {entries.map((e, i) => (
+                              <div key={i} className="px-4 md:px-6 py-3 flex items-center justify-between text-xs md:text-sm">
+                                <span className="font-bold text-slate-700">{e.name} <span className="text-slate-400 font-normal">({e.studentId})</span></span>
+                                <span className="text-slate-400 font-bold">예상 닉네임: {e.expectedNickname}</span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 3. 디스코드 아이디가 바뀐 사람 */}
+                <div>
+                  <h3 className="text-sm md:text-lg font-black text-indigo-500 tracking-tight uppercase mb-3 md:mb-4 px-1 md:px-2">
+                    디스코드 아이디가 바뀐 사람 ({rosterCheckResult.idChanged.length})
+                  </h3>
+                  {rosterCheckResult.idChanged.length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-300 font-bold text-sm">해당 없음</p></div>
+                  ) : (
+                    <div className="bg-white rounded-xl md:rounded-[2rem] border border-indigo-100 shadow-sm overflow-hidden divide-y divide-slate-50">
+                      {rosterCheckResult.idChanged.map((e, i) => (
+                        <div key={i} className="px-4 md:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs md:text-sm">
+                          <span className="font-bold text-slate-700">{e.nickname} <span className="text-slate-400 font-normal">({e.studentId})</span></span>
+                          <span className="text-slate-500 font-bold">파일: @{e.fileId || "(없음)"} → 현재: @{e.currentDiscordId}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 4. 파일 상태와 디스코드 역할이 다른 사람 */}
+                <div>
+                  <h3 className="text-sm md:text-lg font-black text-cyan-600 tracking-tight uppercase mb-3 md:mb-4 px-1 md:px-2">
+                    파일 상태와 디스코드 역할이 다른 사람 ({rosterCheckResult.statusMismatch.length})
+                  </h3>
+                  {rosterCheckResult.statusMismatch.length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-300 font-bold text-sm">해당 없음</p></div>
+                  ) : (
+                    <div className="bg-white rounded-xl md:rounded-[2rem] border border-cyan-100 shadow-sm overflow-hidden divide-y divide-slate-50">
+                      {rosterCheckResult.statusMismatch.map((e, i) => (
+                        <div key={i} className="px-4 md:px-6 py-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1 text-xs md:text-sm">
+                          <span className="font-bold text-slate-700">{e.name} <span className="text-slate-400 font-normal">({e.studentId})</span></span>
+                          <span className="text-slate-500 font-bold">파일 상태: {e.fileStatus} (기대: {e.expectedStatus}) → 현재 디스코드: {e.currentDiscordStatus}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                {/* 5. 형식을 해석할 수 없는 행 */}
+                <div>
+                  <h3 className="text-sm md:text-lg font-black text-slate-400 tracking-tight uppercase mb-3 md:mb-4 px-1 md:px-2">
+                    형식을 해석할 수 없는 행 ({rosterCheckResult.unmatchedRows.length})
+                  </h3>
+                  {rosterCheckResult.unmatchedRows.length === 0 ? (
+                    <div className="text-center py-8 bg-white rounded-2xl border border-dashed border-slate-200"><p className="text-slate-300 font-bold text-sm">해당 없음</p></div>
+                  ) : (
+                    <div className="bg-white rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden divide-y divide-slate-50">
+                      {rosterCheckResult.unmatchedRows.map((e, i) => (
+                        <div key={i} className="px-4 md:px-6 py-3 flex items-center justify-between text-xs md:text-sm">
+                          <span className="font-bold text-slate-700">{e.name || "(이름 없음)"} <span className="text-slate-400 font-normal">({e.studentId || "학번 없음"})</span></span>
+                          <span className="text-slate-400 font-bold">{e.reason}</span>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {!rosterCheckResult && !rosterCheckError && !isRosterChecking && (
+              <div className="text-center py-16 md:py-24 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200">
+                <FileSpreadsheet className="mx-auto text-slate-200 mb-3" size={36} />
+                <p className="text-slate-300 font-black uppercase tracking-widest text-xs md:text-sm">엑셀 파일을 업로드하면 대조 결과가 여기에 표시됩니다.</p>
+              </div>
             )}
           </motion.div>
         )}

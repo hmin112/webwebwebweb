@@ -19,9 +19,12 @@ import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.service.AdminService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.multipart.MultipartFile;
 
+import java.io.IOException;
 import java.util.List;
 
 @RestController
@@ -102,6 +105,18 @@ public class AdminController {
             return ResponseEntity.ok(adminService.checkDiscordMembership());
         } catch (RuntimeException e) {
             return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
+    // ✨ [2026-09-08 신규] "명단 대조" — 업로드된 엑셀 부원 명부를 실제 디스코드 서버 멤버와 대조
+    @PostMapping(value = "/roster-check", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> checkRoster(@RequestParam("file") MultipartFile file) {
+        try {
+            return ResponseEntity.ok(adminService.checkRoster(file));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        } catch (IOException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail("엑셀 파일을 읽을 수 없습니다: " + e.getMessage()));
         }
     }
 

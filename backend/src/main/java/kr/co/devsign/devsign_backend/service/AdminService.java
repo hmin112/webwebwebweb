@@ -17,6 +17,7 @@ import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersRequest;
 import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersResponse;
 import kr.co.devsign.devsign_backend.dto.admin.NotifyResultItem;
 import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
+import kr.co.devsign.devsign_backend.dto.admin.RosterCheckResponse;
 import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
 import kr.co.devsign.devsign_backend.entity.AssemblyPeriod;
@@ -33,6 +34,12 @@ import kr.co.devsign.devsign_backend.repository.MemberRepository;
 import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
 import kr.co.devsign.devsign_backend.repository.TeamSubmissionRepository;
 import lombok.RequiredArgsConstructor;
+import org.apache.poi.ss.usermodel.Cell;
+import org.apache.poi.ss.usermodel.DataFormatter;
+import org.apache.poi.ss.usermodel.Row;
+import org.apache.poi.ss.usermodel.Sheet;
+import org.apache.poi.ss.usermodel.Workbook;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
@@ -41,6 +48,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.multipart.MultipartFile;
 
 import java.io.*;
 import java.nio.file.Path;
@@ -562,6 +570,187 @@ public class AdminService {
                         m.isDeparted()
                 ))
                 .toList();
+    }
+
+    // ✨ [2026-09-08 신규] "명단 대조" — 엑셀로 올린 부원 명부와 실제 디스코드 서버 멤버를 대조해서
+    // 서로 다른 부분을 찾아준다. 원래는 bot/member_check/ 아래에 있던 로컬 전용 도구(자체 디스코드
+    // 봇 토큰으로 직접 접속)였는데, 이미 떠 있는 동아리 웹봇(discord-bot 서비스)의 sync-all-members를
+    // 그대로 재사용해서 웹 관리자 화면 기능으로 옮긴 것 — 새로 봇을 띄우거나 토큰을 따로 관리할 필요가 없다.
+    //
+    // 매칭 방식: 디스코드 닉네임이 "22 김형민"처럼 "학번앞2자리 이름" 형식인 걸 이용해서, 엑셀 행의
+    // 학번+이름으로 같은 키를 만들어 대조한다(로컬 도구와 동일한 방식). 다만 로컬 도구는 디스코드
+    // 역할을 통째로 받아와 판단했던 반면, 웹봇의 sync-all-members는 역할들을 우선순위 하나로 압축한
+    // userStatus만 주므로(LAB>재학생>휴학생>졸업생>신입생>일반), 신입생 역할을 겸한 재학생이 "재학생"이
+    // 아닌 "신입생" 그룹으로만 잡히는 정도의 차이가 있을 수 있음(요청자 확인 후 감안하고 진행하기로 함).
+    @SuppressWarnings("unchecked")
+    public RosterCheckResponse checkRoster(MultipartFile file) throws IOException {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("업로드된 파일이 없습니다.");
+        }
+
+        Map<String, Object> botRes = discordBotClient.syncAllMembers();
+        if (botRes == null || !"success".equals(botRes.get("status"))) {
+            throw new IllegalStateException("디스코드 봇 서버와 통신할 수 없습니다.");
+        }
+        List<Map<String, String>> guildMembers = (List<Map<String, String>>) botRes.getOrDefault("members", List.of());
+
+        // 매칭 키: "학번식별자 정규화된이름" (예: "22 김형민")
+        Map<String, Map<String, String>> guildByKey = new LinkedHashMap<>();
+        for (Map<String, String> m : guildMembers) {
+            String key = m.get("studentId") + " " + normalizeRosterName(m.get("name"));
+            guildByKey.put(key, m);
+        }
+
+        List<Map<String, String>> rows = readRosterRows(file);
+
+        Map<String, List<RosterCheckResponse.FileOnlyEntry>> fileNotInDiscord = new LinkedHashMap<>();
+        List<RosterCheckResponse.IdChangedEntry> idChanged = new ArrayList<>();
+        List<RosterCheckResponse.StatusMismatchEntry> statusMismatch = new ArrayList<>();
+        List<RosterCheckResponse.UnmatchedRowEntry> unmatchedRows = new ArrayList<>();
+        Set<String> matchedGuildKeys = new HashSet<>();
+
+        for (Map<String, String> row : rows) {
+            String name = row.getOrDefault("이름", "").trim();
+            String rawStatus = row.getOrDefault("상태", "").trim();
+            String status = StringUtils.hasText(rawStatus) ? rawStatus : "미상";
+            String studentIdRaw = row.getOrDefault("학번", "");
+            String fileId = row.getOrDefault("아이디", "").trim();
+
+            String year2 = deriveRosterAdmissionYear2(studentIdRaw);
+            if (year2 == null || !StringUtils.hasText(name)) {
+                unmatchedRows.add(new RosterCheckResponse.UnmatchedRowEntry(name, studentIdRaw, "학번/이름 형식을 해석할 수 없음"));
+                continue;
+            }
+
+            String expectedNickname = year2 + " " + name;
+            String key = year2 + " " + normalizeRosterName(name);
+            Map<String, String> member = guildByKey.get(key);
+
+            if (member == null) {
+                fileNotInDiscord.computeIfAbsent(status, k -> new ArrayList<>())
+                        .add(new RosterCheckResponse.FileOnlyEntry(name, studentIdRaw, expectedNickname));
+                continue;
+            }
+
+            matchedGuildKeys.add(key);
+            String discordUsername = member.getOrDefault("discordTag", "");
+            if (!fileId.equals(discordUsername.trim())) {
+                idChanged.add(new RosterCheckResponse.IdChangedEntry(
+                        name, studentIdRaw, fileId, discordUsername,
+                        member.get("studentId") + " " + member.get("name")
+                ));
+            }
+
+            Set<String> expectedGuildStatuses = ROSTER_STATUS_TO_GUILD_STATUS.get(status);
+            if (expectedGuildStatuses != null && !expectedGuildStatuses.contains(member.get("userStatus"))) {
+                statusMismatch.add(new RosterCheckResponse.StatusMismatchEntry(
+                        name, studentIdRaw, status,
+                        String.join(" 또는 ", expectedGuildStatuses),
+                        member.get("userStatus")
+                ));
+            }
+        }
+
+        // 디스코드에 재학생/휴학생/LAB 상태로 있는데 파일에서는 매칭되지 않은 사람 (파일에 추가해야 할 대상)
+        Map<String, List<RosterCheckResponse.DiscordOnlyEntry>> discordNotInFile = new LinkedHashMap<>();
+        for (Map.Entry<String, Map<String, String>> entry : guildByKey.entrySet()) {
+            if (matchedGuildKeys.contains(entry.getKey())) {
+                continue;
+            }
+            Map<String, String> member = entry.getValue();
+            String status = member.get("userStatus");
+            if (TARGET_GUILD_STATUSES.contains(status)) {
+                discordNotInFile.computeIfAbsent(status, k -> new ArrayList<>())
+                        .add(new RosterCheckResponse.DiscordOnlyEntry(
+                                member.get("studentId") + " " + member.get("name"),
+                                member.get("discordTag")
+                        ));
+            }
+        }
+
+        return new RosterCheckResponse(
+                discordNotInFile, fileNotInDiscord, idChanged, statusMismatch, unmatchedRows,
+                guildMembers.size(), rows.size()
+        );
+    }
+
+    private static final Set<String> REQUIRED_ROSTER_COLUMNS = Set.of("이름", "아이디", "학번", "상태");
+    // 디스코드에 있는데 파일에 없는 사람을 뽑을 때 대상으로 삼는 userStatus (졸업생/일반은 제외 — 로컬
+    // 도구가 재학생/휴학생/대학원생만 대상으로 삼던 것과 동일한 의도. 이 웹봇은 "대학원생" 대신 "LAB"을 씀)
+    private static final List<String> TARGET_GUILD_STATUSES = List.of("재학생", "휴학생", "LAB");
+    // 엑셀 "상태" 값 -> 대응하는 디스코드 userStatus(들). 매핑에 없는 값은 상태 불일치 검사에서 건너뜀
+    private static final Map<String, Set<String>> ROSTER_STATUS_TO_GUILD_STATUS = Map.of(
+            "재학", Set.of("재학생", "신입생"),
+            "휴학", Set.of("휴학생"),
+            "대학원", Set.of("LAB"),
+            "졸업", Set.of("졸업생")
+    );
+
+    // 닉네임 끝의 "(회장)" 같은 괄호 표기와 공백을 제거해서 비교용으로 정규화
+    private String normalizeRosterName(String name) {
+        if (name == null) return "";
+        return name.replaceAll("\\(.*?\\)\\s*$", "").trim();
+    }
+
+    // 엑셀 "학번" 컬럼(보통 8자리 등록번호)에서 닉네임에 쓰이는 "학번앞2자리"를 추출.
+    // 원본 로컬 도구의 int(학번)[2:4]와 동일하게, 정수로 해석 가능하고 자릿수가 4 이상이면 시도한다.
+    private String deriveRosterAdmissionYear2(String raw) {
+        if (!StringUtils.hasText(raw)) return null;
+        try {
+            long parsed = Long.parseLong(raw.trim());
+            String str = String.valueOf(parsed);
+            return str.length() >= 4 ? str.substring(2, 4) : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    // 업로드된 xlsx를 읽어 "이름/아이디/학번/상태" 컬럼만 골라 행 단위 Map으로 변환.
+    // 완전히 빈 행은 건너뛴다. DataFormatter를 써서 숫자 셀(예: 학번)도 항상 문자열로 안전하게 읽는다.
+    private List<Map<String, String>> readRosterRows(MultipartFile file) throws IOException {
+        try (InputStream in = file.getInputStream(); Workbook workbook = new XSSFWorkbook(in)) {
+            Sheet sheet = workbook.getSheetAt(0);
+            DataFormatter formatter = new DataFormatter();
+
+            Row headerRow = sheet.getRow(sheet.getFirstRowNum());
+            if (headerRow == null) {
+                throw new IllegalArgumentException("엑셀 파일에 헤더 행이 없습니다.");
+            }
+            Map<String, Integer> columnIndex = new HashMap<>();
+            for (Cell cell : headerRow) {
+                String header = formatter.formatCellValue(cell).trim();
+                if (StringUtils.hasText(header)) {
+                    columnIndex.put(header, cell.getColumnIndex());
+                }
+            }
+
+            Set<String> missing = new LinkedHashSet<>(REQUIRED_ROSTER_COLUMNS);
+            missing.removeAll(columnIndex.keySet());
+            if (!missing.isEmpty()) {
+                throw new IllegalArgumentException("엑셀에 다음 컬럼이 없습니다: " + String.join(", ", missing));
+            }
+
+            List<Map<String, String>> rows = new ArrayList<>();
+            for (int r = headerRow.getRowNum() + 1; r <= sheet.getLastRowNum(); r++) {
+                Row row = sheet.getRow(r);
+                if (row == null) continue;
+
+                Map<String, String> values = new HashMap<>();
+                boolean allBlank = true;
+                for (Map.Entry<String, Integer> entry : columnIndex.entrySet()) {
+                    Cell cell = row.getCell(entry.getValue());
+                    String value = cell == null ? "" : formatter.formatCellValue(cell).trim();
+                    values.put(entry.getKey(), value);
+                    if (StringUtils.hasText(value)) {
+                        allBlank = false;
+                    }
+                }
+                if (!allBlank) {
+                    rows.add(values);
+                }
+            }
+            return rows;
+        }
     }
 
     // ✨ [2026-09-08 추가] "디스코드에서 나간 것으로 추정" 목록에서 계정을 삭제하는 대신, 나간
