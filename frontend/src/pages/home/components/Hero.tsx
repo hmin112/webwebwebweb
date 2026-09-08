@@ -187,7 +187,9 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
 
       {/* 🏆 명예의 전당 쇼케이스: 조선대 홈페이지 메인 배너 참고 — 화면 전체 폭 사진 위에 정보를 바로 얹고, 하단 중앙에 점 인디케이터 + 일시정지 버튼. 상단 여백 없이 navbar 바로 아래에 배치.
           모집 문구/지원 링크 줄도 같은 슬라이드 안에 넣어 흐린 사진 배경이 그 밑까지 자연스럽게 이어지도록 함 */}
-      <div className="relative z-10 mb-6">
+      {/* ✨ [2026-09-08 수정] 기존 mb-6이 배너 아래에 24px짜리 흰 여백을 추가로 남겨서,
+          아래쪽 패딩을 없앤 뒤에도 흰 띠가 조금 남아있었음 — 이 마진도 제거 */}
+      <div className="relative z-10">
         {currentHofEntry ? (
           <div className="relative left-1/2 -translate-x-1/2 w-screen overflow-hidden bg-slate-900">
             {/* 슬라이드 전환: 바깥 박스가 항상 어두운 배경(bg-slate-900)을 유지하고 있어서, 교체 중 하얗게 비치치 않고 자연스럽게 넘어감 */}
