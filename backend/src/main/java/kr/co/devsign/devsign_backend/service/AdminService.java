@@ -16,6 +16,7 @@ import kr.co.devsign.devsign_backend.dto.admin.HeroSettingsResponse;
 import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersRequest;
 import kr.co.devsign.devsign_backend.dto.admin.NotifyMembersResponse;
 import kr.co.devsign.devsign_backend.dto.admin.NotifyResultItem;
+import kr.co.devsign.devsign_backend.dto.admin.DiscordCheckResponse;
 import kr.co.devsign.devsign_backend.dto.admin.RestoreMemberRequest;
 import kr.co.devsign.devsign_backend.dto.admin.RosterCheckResponse;
 import kr.co.devsign.devsign_backend.dto.admin.SyncDiscordResponse;
@@ -539,10 +540,15 @@ public class AdminService {
         return new NotifyMembersResponse(successCount, failCount, results);
     }
 
+    // 디스코드에는 있지만 웹사이트에는 아직 가입하지 않은 사람을 뽑을 때 대상으로 삼는 userStatus.
+    // 순서 그대로 응답에 반영되어 "재학생 먼저" 표시된다.
+    private static final List<String> UNREGISTERED_TARGET_STATUSES = List.of("재학생", "휴학생");
+
     // ✨ [신규] 웹사이트에 등록된 회원들이 실제로 동아리 디스코드 서버에 남아있는지 확인
-    // (탈퇴자 파악 → 관리자가 수동으로 계정 삭제할 때 참고용)
+    // (탈퇴자 파악 → 관리자가 수동으로 계정 삭제할 때 참고용) + [2026-09-08 추가] 반대로 디스코드에는
+    // 있지만(재학생/휴학생만 대상) 웹사이트에는 아직 가입하지 않은 사람도 함께 내려줌(가입 독려용)
     @SuppressWarnings("unchecked")
-    public List<AdminDiscordCheckResponse> checkDiscordMembership() {
+    public DiscordCheckResponse checkDiscordMembership() {
         Map<String, Object> botRes = discordBotClient.syncAllMembers();
         if (botRes == null || !"success".equals(botRes.get("status"))) {
             throw new IllegalStateException("디스코드 봇 서버와 통신할 수 없습니다.");
@@ -557,7 +563,15 @@ public class AdminService {
             }
         }
 
-        return memberRepository.findByDeletedFalseOrderByStudentIdDesc().stream()
+        List<Member> dbMembers = memberRepository.findByDeletedFalseOrderByStudentIdDesc();
+        Set<String> dbTags = new HashSet<>();
+        for (Member m : dbMembers) {
+            if (StringUtils.hasText(m.getDiscordTag())) {
+                dbTags.add(m.getDiscordTag());
+            }
+        }
+
+        List<AdminDiscordCheckResponse> members = dbMembers.stream()
                 .map(m -> new AdminDiscordCheckResponse(
                         m.getId(),
                         m.getLoginId(),
@@ -570,6 +584,22 @@ public class AdminService {
                         m.isDeparted()
                 ))
                 .toList();
+
+        Map<String, List<DiscordCheckResponse.UnregisteredGuildMemberResponse>> unregistered = new LinkedHashMap<>();
+        for (String status : UNREGISTERED_TARGET_STATUSES) {
+            unregistered.put(status, new ArrayList<>());
+        }
+        for (Map<String, String> d : guildMembers) {
+            String status = d.get("userStatus");
+            String tag = d.get("discordTag");
+            if (!UNREGISTERED_TARGET_STATUSES.contains(status)) continue;
+            if (StringUtils.hasText(tag) && dbTags.contains(tag)) continue;
+            unregistered.get(status).add(new DiscordCheckResponse.UnregisteredGuildMemberResponse(
+                    d.get("studentId") + " " + d.get("name"), tag
+            ));
+        }
+
+        return new DiscordCheckResponse(members, unregistered);
     }
 
     // ✨ [2026-09-08 신규] "명단 대조" — 엑셀로 올린 부원 명부와 실제 디스코드 서버 멤버를 대조해서

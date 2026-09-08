@@ -61,6 +61,12 @@ interface DiscordCheckItem {
   departed: boolean; // 2026-09-08 추가 — "나간 인원"으로 표시됨(계정 삭제 아님, 커뮤니티 노출만 제외)
 }
 
+// ✨ [2026-09-08 신규] 디스코드에는 있지만(재학생/휴학생만 대상) 웹사이트에는 아직 가입하지 않은 사람
+interface UnregisteredGuildMember {
+  nickname: string;
+  discordTag: string;
+}
+
 // ✨ [2026-09-08 신규] "명단 대조" — 엑셀 부원 명부와 실제 디스코드 서버를 대조한 결과
 interface RosterCheckResult {
   discordNotInFile: Record<string, { nickname: string; discordTag: string }[]>;
@@ -86,6 +92,8 @@ export const AdminPage = () => {
   const [discordCheckItems, setDiscordCheckItems] = useState<DiscordCheckItem[] | null>(null);
   const [isDiscordCheckLoading, setIsDiscordCheckLoading] = useState(false);
   const [discordCheckError, setDiscordCheckError] = useState<string | null>(null);
+  // ✨ [2026-09-08 신규] 디스코드엔 있지만 웹사이트엔 아직 가입 안 한 사람 (재학생 -> 휴학생 순서)
+  const [unregisteredGuildMembers, setUnregisteredGuildMembers] = useState<Record<string, UnregisteredGuildMember[]> | null>(null);
 
   // ✨ [2026-09-08 신규] "명단 대조" 탭 상태
   const [rosterFile, setRosterFile] = useState<File | null>(null);
@@ -135,7 +143,8 @@ export const AdminPage = () => {
     setDiscordCheckError(null);
     try {
       const res = await api.get("/admin/discord-check");
-      setDiscordCheckItems(res.data);
+      setDiscordCheckItems(res.data.members);
+      setUnregisteredGuildMembers(res.data.unregistered);
     } catch (e: any) {
       setDiscordCheckError(e.response?.data?.message || "디스코드 봇 서버와 통신하는 중 오류가 발생했습니다.");
     } finally {
@@ -917,6 +926,41 @@ export const AdminPage = () => {
                               </table>
                             </div>
                           </div>
+                        </div>
+                      )}
+
+                      {/* ✨ [2026-09-08 신규] 디스코드에는 있지만(재학생/휴학생만 대상) 웹사이트에는
+                          아직 가입하지 않은 사람 — 재학생 그룹이 먼저 뜨도록 백엔드에서 순서 보장 */}
+                      {unregisteredGuildMembers && (
+                        <div className="mt-8 md:mt-12">
+                          <div className="flex items-center gap-2 mb-3 md:mb-4 px-1 md:px-2">
+                            <UserPlus className="text-cyan-500 w-4 h-4 md:w-5 md:h-5" />
+                            <h3 className="text-sm md:text-lg font-black text-cyan-600 tracking-tight uppercase">
+                              디스코드엔 있지만 웹 미가입 (
+                              {Object.values(unregisteredGuildMembers).reduce((sum, arr) => sum + arr.length, 0)})
+                            </h3>
+                          </div>
+                          {Object.values(unregisteredGuildMembers).every(arr => arr.length === 0) ? (
+                            <div className="text-center py-10 bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200">
+                              <p className="text-slate-300 font-bold text-sm">웹사이트 미가입 인원이 없습니다.</p>
+                            </div>
+                          ) : (
+                            <div className="space-y-4">
+                              {Object.entries(unregisteredGuildMembers).filter(([, entries]) => entries.length > 0).map(([status, entries]) => (
+                                <div key={status} className="bg-white rounded-xl md:rounded-[2rem] border border-cyan-100 shadow-sm overflow-hidden">
+                                  <div className="px-4 md:px-6 py-3 bg-cyan-50/50 border-b border-cyan-100 text-[11px] md:text-sm font-black text-cyan-600">{status} ({entries.length})</div>
+                                  <div className="divide-y divide-slate-50">
+                                    {entries.map((e, i) => (
+                                      <div key={i} className="px-4 md:px-6 py-3 flex items-center justify-between text-xs md:text-sm">
+                                        <span className="font-bold text-slate-700">{e.nickname}</span>
+                                        <span className="text-slate-400 font-bold">@{e.discordTag}</span>
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       )}
                     </>
