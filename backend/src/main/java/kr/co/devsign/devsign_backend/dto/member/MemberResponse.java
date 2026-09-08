@@ -11,6 +11,7 @@ public record MemberResponse(
         String userStatus,
         String role,
         boolean suspended,
-        String profileImage
+        String profileImage,
+        boolean departed // 2026-09-08 추가 — 커뮤니티에서 이 값이 true인 회원은 목록에서 숨김(프론트 필터)
 ) {
 }

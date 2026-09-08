@@ -558,9 +558,31 @@ public class AdminService {
                         m.getDiscordTag(),
                         m.getUserStatus(),
                         m.getRole(),
-                        StringUtils.hasText(m.getDiscordTag()) && guildTags.contains(m.getDiscordTag())
+                        StringUtils.hasText(m.getDiscordTag()) && guildTags.contains(m.getDiscordTag()),
+                        m.isDeparted()
                 ))
                 .toList();
+    }
+
+    // ✨ [2026-09-08 추가] "디스코드에서 나간 것으로 추정" 목록에서 계정을 삭제하는 대신, 나간
+    // 인원으로만 표시해두는 가역적인 액션. suspended(로그인 차단)와 달리 로그인은 그대로 가능하고,
+    // deleted(소프트 삭제)와 달리 관리자 화면 등 다른 곳에는 전혀 영향 없음 — 오직 커뮤니티 목록
+    // 노출 여부에만 관여(프론트 필터, MemberResponse.departed 참고). 다시 누르면 해제됨.
+    public StatusResponse toggleDeparted(Long id, String ip) {
+        return memberRepository.findById(id)
+                .map(m -> {
+                    m.setDeparted(!m.isDeparted());
+                    m.setDepartedAt(m.isDeparted() ? java.time.LocalDateTime.now() : null);
+                    memberRepository.save(m);
+
+                    accessLogService.logByMember(
+                            m,
+                            m.isDeparted() ? "MEMBER_DEPARTED" : "MEMBER_DEPARTED_UNDO",
+                            ip
+                    );
+                    return StatusResponse.success();
+                })
+                .orElseGet(() -> StatusResponse.fail("member not found"));
     }
 
     // ✨ [신규] 관리자가 직접 회원의 디스코드 태그를 수정 (본인 인증 절차 없이 관리자가 즉시 수정)

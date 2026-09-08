@@ -524,7 +524,8 @@ public class MemberService {
                 member.getUserStatus(),
                 member.getRole(),
                 member.isSuspended(),
-                member.getProfileImage()
+                member.getProfileImage(),
+                member.isDeparted()
         );
     }
 

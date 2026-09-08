@@ -46,4 +46,12 @@ public class Member {
     // 로그아웃 시 이 값을 증가시키면 그 이전에 발급된 토큰은(만료 전이라도) 즉시 무효화된다.
     @Column(nullable = false, columnDefinition = "BIGINT DEFAULT 0")
     private long tokenVersion = 0L;
+
+    // ✨ [2026-09-08 추가] 디스코드에서 나간 것으로 확인된 회원을 표시하는 용도. suspended/deleted와는
+    // 완전히 별개 — DB 데이터는 그대로 두고(계정 삭제 아님), 로그인도 막지 않지만(정지 아님) 커뮤니티
+    // 목록에서만 제외된다. 관리자가 언제든 다시 해제할 수 있는 가역적인 상태.
+    @Column(nullable = false, columnDefinition = "TINYINT(1) DEFAULT 0")
+    private boolean departed = false;
+
+    private LocalDateTime departedAt;
 }

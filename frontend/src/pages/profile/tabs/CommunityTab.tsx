@@ -93,9 +93,10 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
       setIsLoading(true);
       setIsError(false);
       try {
-        // 1. 전체 부원 목록 가져오기
+        // 1. 전체 부원 목록 가져오기 — "나간 인원"으로 표시된 회원은 커뮤니티에서 제외
+        // (관리 탭 "디스코드 확인"에서 관리자가 지정. 계정 삭제/정지와는 별개, DB 데이터는 그대로 유지됨)
         const memberRes = await api.get("/members/all");
-        const memberList = memberRes.data;
+        const memberList = memberRes.data.filter((m: any) => !m.departed);
 
         // 2. 각 부원별 이번 학기 프로젝트 제목 가져오기
         const updatedMembers = await Promise.all(

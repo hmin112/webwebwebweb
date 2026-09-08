@@ -58,6 +58,7 @@ interface DiscordCheckItem {
   userStatus: string;
   role: string;
   inGuild: boolean;
+  departed: boolean; // 2026-09-08 추가 — "나간 인원"으로 표시됨(계정 삭제 아님, 커뮤니티 노출만 제외)
 }
 
 export const AdminPage = () => {
@@ -364,6 +365,22 @@ export const AdminPage = () => {
       initiateDelete(fullMember, false);
     } else {
       alert("부원 명단에서 해당 회원 정보를 찾을 수 없습니다. '부원 명단' 탭에서 새로고침 후 다시 시도해주세요.");
+    }
+  };
+
+  // ✨ [2026-09-08 추가] 디스코드에서 나간 것으로 추정되는 회원을 "나간 인원"으로 표시/해제.
+  // 계정 삭제와 달리 DB는 그대로 두고, 커뮤니티 목록에서만 제외됨(가역적).
+  const handleToggleDeparted = async (item: DiscordCheckItem) => {
+    const confirmMessage = item.departed
+      ? `${item.name}님을 "나간 인원" 표시에서 해제할까요?\n다시 커뮤니티에 노출됩니다.`
+      : `${item.name}님을 "나간 인원"으로 표시할까요?\n계정은 삭제되지 않고, 커뮤니티 목록에서만 제외됩니다.`;
+    if (!window.confirm(confirmMessage)) return;
+    try {
+      await api.put(`/admin/members/${item.id}/departed`);
+      setDiscordCheckItems(prev => prev ? prev.map(m => m.id === item.id ? { ...m, departed: !m.departed } : m) : prev);
+    } catch (e) {
+      console.error("나간 인원 처리 실패", e);
+      alert("처리 중 오류가 발생했습니다.");
     }
   };
 
@@ -676,13 +693,23 @@ export const AdminPage = () => {
         {activeTab === "discord" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 md:mb-8">
-              <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-white rounded-xl md:rounded-2xl border border-slate-100 w-fit shadow-sm">
-                <UserX size={16} className="text-red-500" />
-                <span className="text-[11px] md:text-sm font-black text-slate-600 tracking-tight uppercase">
-                  디스코드에 없음: <span className="text-red-500">
-                    {discordCheckItems ? discordCheckItems.filter(m => !m.inGuild).length : "-"}
-                  </span> 명
-                </span>
+              <div className="flex items-center gap-2 flex-wrap">
+                <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-white rounded-xl md:rounded-2xl border border-slate-100 w-fit shadow-sm">
+                  <UserX size={16} className="text-red-500" />
+                  <span className="text-[11px] md:text-sm font-black text-slate-600 tracking-tight uppercase">
+                    디스코드에 없음: <span className="text-red-500">
+                      {discordCheckItems ? discordCheckItems.filter(m => !m.inGuild && !m.departed).length : "-"}
+                    </span> 명
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 px-3 md:px-4 py-2 md:py-3 bg-white rounded-xl md:rounded-2xl border border-slate-100 w-fit shadow-sm">
+                  <UserMinus size={16} className="text-slate-400" />
+                  <span className="text-[11px] md:text-sm font-black text-slate-600 tracking-tight uppercase">
+                    나간 인원 표시: <span className="text-slate-500">
+                      {discordCheckItems ? discordCheckItems.filter(m => m.departed).length : "-"}
+                    </span> 명
+                  </span>
+                </div>
               </div>
               <div className="flex items-center gap-2 md:gap-3 w-full md:w-auto">
                 <div className="relative flex-1 md:w-72">
@@ -720,8 +747,11 @@ export const AdminPage = () => {
               <>
                 {(() => {
                   const filtered = getFilteredDiscordItems(discordCheckItems);
-                  const left = filtered.filter(m => !m.inGuild);
-                  const inGuild = filtered.filter(m => m.inGuild);
+                  // "나간 인원"으로 이미 표시된 회원은 아래 두 목록(나간 것으로 추정/정상)에서 빼서
+                  // 세 번째 섹션에 따로 모아 보여준다 — inGuild 여부와 무관하게 한 곳에 모임
+                  const left = filtered.filter(m => !m.inGuild && !m.departed);
+                  const inGuild = filtered.filter(m => m.inGuild && !m.departed);
+                  const departedList = filtered.filter(m => m.departed);
                   return (
                     <>
                       <div className="mb-8 md:mb-12">
@@ -754,9 +784,14 @@ export const AdminPage = () => {
                                       <td className="px-4 md:px-8 py-4 md:py-6 text-slate-500 font-bold tracking-wider text-[11px] md:text-sm">{m.studentId}</td>
                                       <td className="px-4 md:px-8 py-4 md:py-6 text-red-500 font-bold text-[11px] md:text-sm truncate">@{m.discordTag || "미연동"}</td>
                                       <td className="px-4 md:px-8 py-4 md:py-6 text-center">
-                                        <button onClick={() => handleDeleteFromDiscordCheck(m)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm font-black text-[10px] md:text-xs">
-                                          <Trash2 size={13} /> 계정 삭제
-                                        </button>
+                                        <div className="flex items-center justify-center gap-1.5 md:gap-2">
+                                          <button onClick={() => handleToggleDeparted(m)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-slate-50 text-slate-500 border border-slate-100 hover:bg-slate-600 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm font-black text-[10px] md:text-xs">
+                                            <UserMinus size={13} /> 나간 인원으로 표시
+                                          </button>
+                                          <button onClick={() => handleDeleteFromDiscordCheck(m)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-red-50 text-red-600 border border-red-100 hover:bg-red-600 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm font-black text-[10px] md:text-xs">
+                                            <Trash2 size={13} /> 계정 삭제
+                                          </button>
+                                        </div>
                                       </td>
                                     </tr>
                                   ))}
@@ -799,6 +834,53 @@ export const AdminPage = () => {
                           </div>
                         </div>
                       </div>
+
+                      {/* ✨ [2026-09-08 추가] 나간 인원으로 표시된 회원 — 계정은 그대로, 커뮤니티 목록에서만 제외됨.
+                          여기서 다시 눌러 언제든 해제(원복) 가능 */}
+                      {departedList.length > 0 && (
+                        <div className="mt-8 md:mt-12">
+                          <div className="flex items-center gap-2 mb-3 md:mb-4 px-1 md:px-2">
+                            <UserMinus className="text-slate-400 w-4 h-4 md:w-5 md:h-5" />
+                            <h3 className="text-sm md:text-lg font-black text-slate-500 tracking-tight uppercase">나간 인원으로 표시됨 ({departedList.length})</h3>
+                          </div>
+                          <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
+                            <div className="overflow-x-auto no-scrollbar">
+                              <table className="w-full text-left border-collapse min-w-[500px]">
+                                <thead>
+                                  <tr className="bg-slate-50/50 border-b border-slate-100 text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                                    <th className="px-4 md:px-8 py-4 md:py-5 w-[35%]">부원 정보</th>
+                                    <th className="px-4 md:px-8 py-4 md:py-5 w-[20%]">학번</th>
+                                    <th className="px-4 md:px-8 py-4 md:py-5 w-[25%]">디스코드</th>
+                                    <th className="px-4 md:px-8 py-4 md:py-5 text-center w-[20%]">관리</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
+                                  {departedList.map((m) => (
+                                    <tr key={m.id} className="hover:bg-slate-50/50 transition-colors">
+                                      <td className="px-4 md:px-8 py-4 md:py-6">
+                                        <div className="flex items-center gap-2">
+                                          <span className="font-bold text-slate-500 truncate">{m.name}</span>
+                                          <span className={`px-1.5 py-0.5 text-[7px] md:text-[9px] font-black rounded uppercase shrink-0 ${m.inGuild ? "bg-green-50 text-green-500" : "bg-red-50 text-red-500"}`}>
+                                            {m.inGuild ? "디스코드 있음" : "디스코드 없음"}
+                                          </span>
+                                        </div>
+                                        <span className="text-[9px] md:text-[11px] text-slate-400 font-bold">{m.userStatus}</span>
+                                      </td>
+                                      <td className="px-4 md:px-8 py-4 md:py-6 text-slate-400 font-bold tracking-wider text-[11px] md:text-sm">{m.studentId}</td>
+                                      <td className="px-4 md:px-8 py-4 md:py-6 text-slate-400 font-bold text-[11px] md:text-sm truncate">@{m.discordTag || "미연동"}</td>
+                                      <td className="px-4 md:px-8 py-4 md:py-6 text-center">
+                                        <button onClick={() => handleToggleDeparted(m)} className="inline-flex items-center gap-1.5 px-3 py-2 bg-indigo-50 text-indigo-600 border border-indigo-100 hover:bg-indigo-600 hover:text-white rounded-lg md:rounded-xl transition-all shadow-sm font-black text-[10px] md:text-xs">
+                                          <UserCheck size={13} /> 표시 해제
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </>
                   );
                 })()}

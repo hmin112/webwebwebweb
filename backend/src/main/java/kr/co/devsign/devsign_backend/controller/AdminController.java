@@ -110,6 +110,12 @@ public class AdminController {
         return adminService.toggleSuspension(id, request.getRemoteAddr());
     }
 
+    // ✨ [2026-09-08 추가] 디스코드에서 나간 것으로 확인된 회원을 "나간 인원"으로 표시/해제(토글)
+    @PutMapping("/members/{id}/departed")
+    public StatusResponse toggleDeparted(@PathVariable Long id, HttpServletRequest request) {
+        return adminService.toggleDeparted(id, request.getRemoteAddr());
+    }
+
     // ✨ [신규] 관리자가 직접 회원의 디스코드 태그를 수정
     @PutMapping("/members/{id}/discord-tag")
     public StatusResponse updateDiscordTag(

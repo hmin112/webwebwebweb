@@ -8,6 +8,7 @@ public record AdminDiscordCheckResponse(
         String discordTag,
         String userStatus,
         String role,
-        boolean inGuild
+        boolean inGuild,
+        boolean departed // 2026-09-08 추가
 ) {
 }
