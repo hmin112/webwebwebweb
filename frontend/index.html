@@ -6,15 +6,38 @@
   <link rel="icon" href="/favicon.ico" sizes="any" />
   <link rel="icon" type="image/png" href="/favicon.png" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>devsign</title>
-  <meta name="description" content="DEVSIGN은 2010년 창단된 조선대학교 IT융합대학 대표 코딩 학술 동아리입니다. 100여 명의 부원이 매달 프로젝트 발표회와 스터디를 이어가며 함께 성장하고 있습니다." />
+  <!-- ✨ [2026-09-08 수정] 구글 검색 결과 개선.
+       - 제목이 "devsign"(소문자 한 단어)이라 검색 결과에도 그대로 노출되던 것을 정식 명칭으로 변경
+       - 설명에 한글 표기 "데브자인"을 넣음: 구글은 검색어와 더 잘 맞는 문장을 본문에서 골라
+         스니펫으로 쓰는데, 기존 설명에는 "DEVSIGN"만 있고 "데브자인"이 없어서 "데브자인" 검색 시
+         본문(게시판 글)의 문장이 대신 노출되고 있었다 -->
+  <title>DEVSIGN - 조선대학교 IT융합대학 코딩 동아리</title>
+  <meta name="description" content="데브자인(DEVSIGN)은 2010년 창단된 조선대학교 IT융합대학 대표 코딩 학술 동아리입니다. 100여 명의 부원이 매달 프로젝트 발표회와 스터디를 이어가며 함께 성장하고 있습니다." />
+  <link rel="canonical" href="https://devsign.co.kr/" />
   <meta property="og:type" content="website" />
   <meta property="og:site_name" content="DEVSIGN" />
-  <meta property="og:title" content="DEVSIGN | 조선대학교 IT융합대학 코딩 동아리" />
-  <meta property="og:description" content="DEVSIGN은 2010년 창단된 조선대학교 IT융합대학 대표 코딩 학술 동아리입니다. 100여 명의 부원이 매달 프로젝트 발표회와 스터디를 이어가며 함께 성장하고 있습니다." />
+  <meta property="og:title" content="DEVSIGN - 조선대학교 IT융합대학 코딩 동아리" />
+  <meta property="og:description" content="데브자인(DEVSIGN)은 2010년 창단된 조선대학교 IT융합대학 대표 코딩 학술 동아리입니다. 100여 명의 부원이 매달 프로젝트 발표회와 스터디를 이어가며 함께 성장하고 있습니다." />
   <meta property="og:url" content="https://devsign.co.kr" />
   <meta property="og:image" content="https://devsign.co.kr/favicon.png" />
   <meta name="twitter:card" content="summary" />
+  <!-- 구글이 "데브자인"과 "DEVSIGN"을 같은 동아리로 인식하도록 구조화 데이터로 명시 -->
+  <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@type": "Organization",
+      "name": "DEVSIGN",
+      "alternateName": ["데브자인", "데브사인"],
+      "url": "https://devsign.co.kr/",
+      "logo": "https://devsign.co.kr/favicon.png",
+      "foundingDate": "2010",
+      "description": "데브자인(DEVSIGN)은 2010년 창단된 조선대학교 IT융합대학 대표 코딩 학술 동아리입니다.",
+      "parentOrganization": {
+        "@type": "CollegeOrUniversity",
+        "name": "조선대학교 IT융합대학"
+      }
+    }
+  </script>
   <!-- ✨ [2026-09-08 추가] tailwind.config.js가 "Pretendard"를 기본 글꼴로 지정해두고 있었지만
        실제로 로드하는 곳이 없어서, 항상 다음 순위인 -apple-system(맥/iOS 전용)로 넘어가 버림 —
        맥에서만 예쁘게 보이고 윈도우에서는 시스템 기본 글꼴로 떨어지던 원인. Pretendard는 애플

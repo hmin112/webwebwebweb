@@ -61,18 +61,11 @@ export const Navbar = ({
     fetchGuildIcon();
   }, []);
 
-  // ✨ [신규] 브라우저 탭 아이콘(favicon)이 사이트 내부 로고(위 서버 아이콘)와 어긋나 있던 문제 수정.
-  // index.html에 정적으로 박혀있던 옛 로고 대신, 네비바가 실시간으로 받아온 값을 그대로 탭 아이콘에도
-  // 반영해 "사이트 내부 로고가 기준"이 되도록 한다.
-  useEffect(() => {
-    let link = document.querySelector<HTMLLinkElement>("link[rel~='icon']");
-    if (!link) {
-      link = document.createElement("link");
-      link.rel = "icon";
-      document.head.appendChild(link);
-    }
-    link.href = guildIconUrl;
-  }, [guildIconUrl]);
+  // ✨ [2026-09-08 수정] 예전에는 여기서 탭 아이콘(favicon)을 디스코드 CDN 주소로 덮어썼는데,
+  // 그 주소는 (1) 서버 아이콘을 바꾸면 해시가 달라져 예전 주소가 404가 되고 (2) 조회 전 초기값이
+  // 만료된 폴백 주소여서, 구글이 페이지를 렌더링해 파비콘을 가져갈 때 깨진 주소를 보고 검색 결과에
+  // 로고를 못 띄우는 원인이 됐다. 탭/검색 로고는 index.html의 고정 파일(/favicon.ico)로 고정하고,
+  // 화면에 보이는 네비바 로고만 실시간 서버 아이콘을 쓴다.
 
   // ✨ 컴포넌트 마운트 시 및 로그인 상태 변경 시 사용자 정보 로드
   useEffect(() => {
