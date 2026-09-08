@@ -152,8 +152,11 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
     saveSettings(recruitmentText, applyLink, applyButtonText);
   };
 
+  // ✨ [2026-09-08 수정] 기존 pb-4/md:pb-8이 배너 아래에 흰 배경만 있는 여백을 만들어서,
+  // 바로 아래 지원 프로그램 신청 섹션(회색 배경)과 사이에 흰 띠가 끼어 있는 것처럼 보였음.
+  // 아래쪽 패딩을 없애서 배너가 다음 섹션과 바로 붙도록 수정
   return (
-    <section id="home" className="relative pt-16 lg:pt-20 pb-4 md:pb-8 overflow-hidden bg-gradient-to-b from-[#f8faff] to-white">
+    <section id="home" className="relative pt-16 lg:pt-20 overflow-hidden bg-gradient-to-b from-[#f8faff] to-white">
       
       {/* 배경 플로팅 아이콘 레이어 (원본 보존) */}
       <div className="absolute inset-0 overflow-hidden pointer-events-none">
