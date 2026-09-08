@@ -29,6 +29,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
+import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -447,7 +448,7 @@ public class BoardService {
                 post.getAuthor(),
                 post.getLoginId(),
                 post.getStudentId(),
-                post.getProfileImage(),
+                resolveLiveProfileImage(post.getLoginId(), post.getProfileImage()),
                 post.getViews(),
                 post.getLikes(),
                 post.isLikedByMe(),
@@ -473,7 +474,7 @@ public class BoardService {
                 comment.getAuthor(),
                 comment.getLoginId(),
                 comment.getStudentId(),
-                comment.getProfileImage(),
+                resolveLiveProfileImage(comment.getLoginId(), comment.getProfileImage()),
                 comment.getDate(),
                 comment.getCreatedAt(),
                 comment.getLikes(),
@@ -481,5 +482,19 @@ public class BoardService {
                 comment.isReply(),
                 replies
         );
+    }
+
+    // ✨ [2026-09-08 추가] 게시글/댓글 작성 시점의 프로필 사진을 스냅샷으로 저장해두다 보니, 이후 작성자가
+    // 디스코드 프로필 사진을 바꾸면 예전 사진 URL(디스코드 CDN)이 만료돼 게시판에서 깨진 이미지로
+    // 보이던 문제. 작성자가 지금도 존재하면 최신 프로필 사진을 우선 쓰고, 탈퇴 등으로 못 찾으면
+    // (또는 최신 값이 비어있으면) 기존 스냅샷을 그대로 사용한다.
+    private String resolveLiveProfileImage(String loginId, String snapshot) {
+        if (!StringUtils.hasText(loginId)) {
+            return snapshot;
+        }
+        return memberRepository.findByLoginId(loginId)
+                .map(Member::getProfileImage)
+                .filter(StringUtils::hasText)
+                .orElse(snapshot);
     }
 }
