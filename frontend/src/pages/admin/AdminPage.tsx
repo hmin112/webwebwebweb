@@ -12,6 +12,7 @@ import {
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
+import { FeeTab } from "./tabs/FeeTab";
 
 // --- 1. 타입 정의 ---
 type SortCriteria = "ID_DESC" | "ID_ASC" | "NAME_ASC";
@@ -84,7 +85,7 @@ export const AdminPage = () => {
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [deletedMembers, setDeletedMembers] = useState<Member[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster" | "fee">("members");
   const [sortBy, setSortBy] = useState<SortCriteria>("ID_DESC");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -580,6 +581,7 @@ export const AdminPage = () => {
           <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>삭제 기록</button>
           <button onClick={() => { setActiveTab("discord"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "discord" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>디스코드 확인</button>
           <button onClick={() => { setActiveTab("roster"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "roster" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>명단 대조</button>
+          <button onClick={() => { setActiveTab("fee"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "fee" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>회비</button>
         </div>
 
         {activeTab === "members" && (
@@ -1134,6 +1136,9 @@ export const AdminPage = () => {
             )}
           </motion.div>
         )}
+
+        {/* ✨ [2026-09-09 신규] 회비 탭 */}
+        {activeTab === "fee" && <FeeTab key="fee" />}
       </div>
 
       <AnimatePresence>
