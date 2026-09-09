@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Wallet, ChevronLeft, ChevronRight, Save, Loader2, Search, X,
-  CheckCircle2, Circle, Send, Users, Coins, MessageSquare,
+  CheckCircle2, Circle, Send, Users, Coins, MessageSquare, UserPlus, Trash2, ClipboardList,
 } from "lucide-react";
 import { api } from "../../../api/axios";
 
@@ -10,13 +10,14 @@ import { api } from "../../../api/axios";
 const ACTIVE_MONTHS = [3, 4, 5, 6, 9, 10, 11, 12];
 
 interface FeeMember {
-  id: number;
   loginId: string;
   name: string;
   studentId: string;
   userStatus: string;
   discordTag: string | null;
   paid: boolean;
+  // 지금은 회비 대상이 아닌 사람(탈퇴/휴학 등) — 그 달 기록은 그대로 남겨두고 표시만 구분
+  former: boolean;
 }
 
 interface FeeMonthData {
@@ -24,6 +25,7 @@ interface FeeMonthData {
   month: number;
   freshmanAmount: number;
   attendingAmount: number;
+  rosterReady: boolean;
   totalCount: number;
   paidCount: number;
   collectedAmount: number;
@@ -51,6 +53,7 @@ export const FeeTab = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   // 디스코드 발송 모달
   const [isNotifyOpen, setIsNotifyOpen] = useState(false);
@@ -115,6 +118,33 @@ export const FeeTab = () => {
     }
   };
 
+  const handleSyncRoster = async () => {
+    const label = data?.rosterReady ? "새로 들어온 부원을 이 달 명단에 추가할까요?" :
+      `${currentYear}년 ${currentMonth}월 명단을 현재 재학생/신입생 기준으로 만들까요?`;
+    if (!confirm(label)) return;
+    setIsSyncing(true);
+    try {
+      const res = await api.post(`/admin/fees/${currentYear}/${currentMonth}/roster`);
+      applyData(res.data);
+    } catch (e) {
+      alert("명단 처리 중 오류가 발생했습니다.");
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
+  const handleRemoveFromRoster = async (member: FeeMember) => {
+    if (!confirm(`${member.name}님을 ${currentMonth}월 회비 명단에서 뺄까요?\n납부 기록도 함께 삭제됩니다.`)) return;
+    try {
+      const res = await api.delete(`/admin/fees/${currentYear}/${currentMonth}/roster`, {
+        params: { loginId: member.loginId },
+      });
+      applyData(res.data);
+    } catch (e) {
+      alert("명단에서 제외하는 중 오류가 발생했습니다.");
+    }
+  };
+
   const filteredMembers = useMemo(() => {
     if (!data) return [];
     const q = searchQuery.trim().toLowerCase();
@@ -174,6 +204,67 @@ export const FeeTab = () => {
     } finally {
       setIsSending(false);
     }
+  };
+
+  const unpaidVisible = useMemo(() => filteredMembers.filter((m) => !m.paid), [filteredMembers]);
+  const paidVisible = useMemo(() => filteredMembers.filter((m) => m.paid), [filteredMembers]);
+
+  const renderRow = (m: FeeMember) => {
+    const isSelected = selectedIds.includes(m.loginId);
+    const isFreshman = m.userStatus === "신입생";
+    return (
+                      <tr key={m.loginId} className={`transition-colors ${isSelected ? "bg-indigo-50/40" : m.former ? "bg-slate-50/40" : "hover:bg-slate-50/60"}`}>
+                        <td className="px-4 md:px-6 py-4 md:py-5">
+                          <button onClick={() => toggleSelect(m.loginId)} className={isSelected ? "text-indigo-600" : "text-slate-300 hover:text-slate-400"}>
+                            {isSelected ? <CheckCircle2 size={18} /> : <Circle size={18} />}
+                          </button>
+                        </td>
+                        <td className="px-3 md:px-6 py-4 md:py-5">
+                          <div className="flex items-center gap-2">
+                            <span className="font-black text-slate-900 truncate">{m.name}</span>
+                            <span className={`px-1.5 py-0.5 text-[7px] md:text-[9px] font-black rounded uppercase shrink-0 ${isFreshman ? "bg-cyan-50 text-cyan-600" : "bg-green-50 text-green-600"}`}>
+                              {m.userStatus}
+                            </span>
+                            {m.former && (
+                              <span className="px-1.5 py-0.5 text-[7px] md:text-[9px] font-black rounded uppercase shrink-0 bg-slate-200 text-slate-500" title="지금은 회비 대상이 아니지만 이 달 기록은 그대로 보관됩니다">
+                                현재 미대상
+                              </span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="px-3 md:px-6 py-4 md:py-5 text-slate-500 font-bold tracking-wider text-[11px] md:text-sm">{m.studentId}</td>
+                        <td className="px-3 md:px-6 py-4 md:py-5 text-indigo-500 font-bold text-[11px] md:text-sm truncate">@{m.discordTag || "미연동"}</td>
+                        <td className="px-3 md:px-6 py-4 md:py-5 text-center">
+                          <button
+                            onClick={() => handleTogglePaid(m)}
+                            disabled={togglingId === m.loginId}
+                            className={`inline-flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg md:rounded-xl font-black text-[10px] md:text-xs shadow-sm transition-all disabled:opacity-50 ${
+                              m.paid
+                                ? "bg-green-600 text-white hover:bg-green-700"
+                                : "bg-white text-slate-400 border border-slate-200 hover:bg-slate-50"
+                            }`}
+                          >
+                            {togglingId === m.loginId ? (
+                              <Loader2 size={13} className="animate-spin" />
+                            ) : m.paid ? (
+                              <CheckCircle2 size={13} />
+                            ) : (
+                              <Circle size={13} />
+                            )}
+                            {m.paid ? "납부 완료" : "미납"}
+                          </button>
+                        </td>
+                        <td className="px-3 md:px-6 py-4 md:py-5 text-center">
+                          <button
+                            onClick={() => handleRemoveFromRoster(m)}
+                            title="이 달 명단에서 제외"
+                            className="p-2 text-slate-300 hover:text-red-500 transition-colors"
+                          >
+                            <Trash2 size={13} />
+                          </button>
+                        </td>
+                      </tr>
+    );
   };
 
   return (
@@ -302,6 +393,13 @@ export const FeeTab = () => {
                 선택 해제
               </button>
               <button
+                onClick={handleSyncRoster}
+                disabled={isSyncing}
+                className="px-3 md:px-4 py-2 bg-white text-indigo-600 border border-indigo-100 rounded-lg md:rounded-xl font-black text-[10px] md:text-xs hover:bg-indigo-50 transition-all disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isSyncing ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} 명단 동기화
+              </button>
+              <button
                 onClick={() => setIsNotifyOpen(true)}
                 disabled={selectedIds.length === 0}
                 className="px-3 md:px-5 py-2 bg-indigo-600 text-white rounded-lg md:rounded-xl font-black text-[10px] md:text-xs shadow-sm hover:bg-indigo-700 transition-all disabled:opacity-40 flex items-center gap-1.5"
@@ -331,61 +429,52 @@ export const FeeTab = () => {
                     <th className="px-3 md:px-6 py-4 md:py-5 w-[30%]">부원 정보</th>
                     <th className="px-3 md:px-6 py-4 md:py-5 w-[15%]">학번</th>
                     <th className="px-3 md:px-6 py-4 md:py-5 w-[25%]">디스코드</th>
-                    <th className="px-3 md:px-6 py-4 md:py-5 text-center w-[24%]">회비 납부</th>
+                    <th className="px-3 md:px-6 py-4 md:py-5 text-center w-[18%]">회비 납부</th>
+                    <th className="px-3 md:px-6 py-4 md:py-5 text-center w-[6%]"></th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50 text-xs md:text-sm">
-                  {filteredMembers.map((m) => {
-                    const isSelected = selectedIds.includes(m.loginId);
-                    const isFreshman = m.userStatus === "신입생";
-                    return (
-                      <tr key={m.id} className={`transition-colors ${isSelected ? "bg-indigo-50/40" : "hover:bg-slate-50/60"}`}>
-                        <td className="px-4 md:px-6 py-4 md:py-5">
-                          <button onClick={() => toggleSelect(m.loginId)} className={isSelected ? "text-indigo-600" : "text-slate-300 hover:text-slate-400"}>
-                            {isSelected ? <CheckCircle2 size={18} /> : <Circle size={18} />}
-                          </button>
-                        </td>
-                        <td className="px-3 md:px-6 py-4 md:py-5">
-                          <div className="flex items-center gap-2">
-                            <span className="font-black text-slate-900 truncate">{m.name}</span>
-                            <span className={`px-1.5 py-0.5 text-[7px] md:text-[9px] font-black rounded uppercase shrink-0 ${isFreshman ? "bg-cyan-50 text-cyan-600" : "bg-green-50 text-green-600"}`}>
-                              {m.userStatus}
-                            </span>
-                          </div>
-                        </td>
-                        <td className="px-3 md:px-6 py-4 md:py-5 text-slate-500 font-bold tracking-wider text-[11px] md:text-sm">{m.studentId}</td>
-                        <td className="px-3 md:px-6 py-4 md:py-5 text-indigo-500 font-bold text-[11px] md:text-sm truncate">@{m.discordTag || "미연동"}</td>
-                        <td className="px-3 md:px-6 py-4 md:py-5 text-center">
-                          <button
-                            onClick={() => handleTogglePaid(m)}
-                            disabled={togglingId === m.loginId}
-                            className={`inline-flex items-center gap-1.5 px-3 md:px-4 py-2 rounded-lg md:rounded-xl font-black text-[10px] md:text-xs shadow-sm transition-all disabled:opacity-50 ${
-                              m.paid
-                                ? "bg-green-600 text-white hover:bg-green-700"
-                                : "bg-white text-slate-400 border border-slate-200 hover:bg-slate-50"
-                            }`}
-                          >
-                            {togglingId === m.loginId ? (
-                              <Loader2 size={13} className="animate-spin" />
-                            ) : m.paid ? (
-                              <CheckCircle2 size={13} />
-                            ) : (
-                              <Circle size={13} />
-                            )}
-                            {m.paid ? "납부 완료" : "미납"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {/* 미납자를 위에, 납부 완료 인원은 구분선 아래로 따로 모아서 보여준다 */}
+                  {unpaidVisible.map(renderRow)}
+                  {paidVisible.length > 0 && (
+                    <tr className="bg-green-50/60 border-y border-green-100">
+                      <td colSpan={6} className="px-4 md:px-6 py-2.5 md:py-3">
+                        <span className="text-[9px] md:text-[11px] font-black text-green-600 uppercase tracking-widest">
+                          회비 낸 인원 ({paidVisible.length}명)
+                        </span>
+                      </td>
+                    </tr>
+                  )}
+                  {paidVisible.map(renderRow)}
                 </tbody>
               </table>
             </div>
             {filteredMembers.length === 0 && (
-              <div className="text-center py-16">
-                <p className="text-slate-300 font-black uppercase tracking-widest text-xs">
-                  {searchQuery ? "검색 결과가 없습니다." : "재학생 / 신입생 부원이 없습니다."}
-                </p>
+              <div className="text-center py-14 md:py-20 px-6">
+                {!data.rosterReady && !searchQuery ? (
+                  <>
+                    <ClipboardList className="mx-auto text-slate-200 mb-3" size={32} />
+                    <p className="text-slate-500 font-black text-sm mb-1.5">
+                      {currentYear}년 {currentMonth}월 명단이 아직 없습니다
+                    </p>
+                    <p className="text-slate-400 font-bold text-[11px] md:text-xs mb-5 leading-relaxed">
+                      지난 달은 그 달의 부원 명단을 알 수 없어 자동으로 만들지 않습니다.
+                      <br className="hidden md:block" />
+                      아래 버튼을 누르면 <span className="text-slate-500">현재</span> 재학생/신입생 기준으로 명단을 만듭니다.
+                    </p>
+                    <button
+                      onClick={handleSyncRoster}
+                      disabled={isSyncing}
+                      className="inline-flex items-center gap-2 px-5 py-3 bg-indigo-600 text-white rounded-xl font-black text-xs md:text-sm shadow-sm hover:bg-indigo-700 disabled:opacity-50"
+                    >
+                      {isSyncing ? <Loader2 size={14} className="animate-spin" /> : <UserPlus size={14} />} 명단 만들기
+                    </button>
+                  </>
+                ) : (
+                  <p className="text-slate-300 font-black uppercase tracking-widest text-xs">
+                    {searchQuery ? "검색 결과가 없습니다." : "명단에 등록된 부원이 없습니다."}
+                  </p>
+                )}
               </div>
             )}
           </div>

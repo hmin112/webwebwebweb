@@ -28,14 +28,29 @@ public class FeeController {
         return feeService.saveSetting(year, month, request);
     }
 
+    // 지난 달 명단 만들기 / 새로 들어온 부원 추가 (기존 기록은 건드리지 않음)
+    @PostMapping("/{year}/{month}/roster")
+    public FeeMonthResponse syncRoster(@PathVariable int year, @PathVariable int month) {
+        return feeService.syncRoster(year, month);
+    }
+
     // loginId는 한글/특수문자가 들어간 계정이 실제로 있어서(경로 변수로 두면 인코딩 문제가 생김)
     // 쿼리 파라미터로 받는다.
     @PutMapping("/{year}/{month}/payments")
-    public FeeMonthResponse togglePayment(
+    public FeeMonthResponse togglePaid(
             @PathVariable int year,
             @PathVariable int month,
             @RequestParam String loginId
     ) {
-        return feeService.togglePayment(year, month, loginId);
+        return feeService.togglePaid(year, month, loginId);
+    }
+
+    @DeleteMapping("/{year}/{month}/roster")
+    public FeeMonthResponse removeFromRoster(
+            @PathVariable int year,
+            @PathVariable int month,
+            @RequestParam String loginId
+    ) {
+        return feeService.removeFromRoster(year, month, loginId);
     }
 }
