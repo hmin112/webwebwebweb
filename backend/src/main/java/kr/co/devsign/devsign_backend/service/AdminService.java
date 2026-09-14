@@ -541,8 +541,9 @@ public class AdminService {
     }
 
     // 디스코드에는 있지만 웹사이트에는 아직 가입하지 않은 사람을 뽑을 때 대상으로 삼는 userStatus.
-    // 순서 그대로 응답에 반영되어 "재학생 먼저" 표시된다.
-    private static final List<String> UNREGISTERED_TARGET_STATUSES = List.of("재학생", "휴학생");
+    // 순서 그대로 응답에 반영되어 재학생 -> 신입생 -> 휴학생 순으로 표시된다.
+    // ✨ [2026-09-14 수정] 신입생이 빠져 있어서 새로 들어온 신입생 미가입자가 안 보이던 문제 수정.
+    private static final List<String> UNREGISTERED_TARGET_STATUSES = List.of("재학생", "신입생", "휴학생");
 
     // ✨ [신규] 웹사이트에 등록된 회원들이 실제로 동아리 디스코드 서버에 남아있는지 확인
     // (탈퇴자 파악 → 관리자가 수동으로 계정 삭제할 때 참고용) + [2026-09-08 추가] 반대로 디스코드에는
