@@ -671,7 +671,7 @@ public class AdminService {
                 ));
             }
 
-            Set<String> expectedGuildStatuses = ROSTER_STATUS_TO_GUILD_STATUS.get(status);
+            Set<String> expectedGuildStatuses = ROSTER_STATUS_TO_GUILD_STATUS.get(normalizeRosterStatus(status));
             if (expectedGuildStatuses != null && !expectedGuildStatuses.contains(member.get("userStatus"))) {
                 statusMismatch.add(new RosterCheckResponse.StatusMismatchEntry(
                         name, studentIdRaw, status,
@@ -705,16 +705,31 @@ public class AdminService {
     }
 
     private static final Set<String> REQUIRED_ROSTER_COLUMNS = Set.of("이름", "아이디", "학번", "상태");
-    // 디스코드에 있는데 파일에 없는 사람을 뽑을 때 대상으로 삼는 userStatus (졸업생/일반은 제외 — 로컬
-    // 도구가 재학생/휴학생/대학원생만 대상으로 삼던 것과 동일한 의도. 이 웹봇은 "대학원생" 대신 "LAB"을 씀)
-    private static final List<String> TARGET_GUILD_STATUSES = List.of("재학생", "휴학생", "LAB");
-    // 엑셀 "상태" 값 -> 대응하는 디스코드 userStatus(들). 매핑에 없는 값은 상태 불일치 검사에서 건너뜀
+    // 디스코드에 있는데 파일에 없는 사람을 뽑을 때 대상으로 삼는 userStatus (졸업생/일반은 제외).
+    // ✨ [2026-09-14 수정] 신입생이 빠져 있어서, 디스코드에 새로 들어온 신입생이 파일에 없어도
+    // 아예 보고되지 않는 문제가 있었다(웹봇은 역할을 하나로 압축하므로 신입생이 "재학생"으로
+    // 잡히지 않는다). 신입생을 대상에 추가.
+    private static final List<String> TARGET_GUILD_STATUSES = List.of("재학생", "신입생", "휴학생", "LAB");
+    // 엑셀 "상태" 값 -> 대응하는 디스코드 userStatus(들). 매핑에 없는 값은 상태 불일치 검사에서 건너뜀.
+    // 키는 "생"을 뗀 형태로 두고, 파일에 "재학생"처럼 적혀 있어도 인식되게 normalizeRosterStatus()에서 처리.
     private static final Map<String, Set<String>> ROSTER_STATUS_TO_GUILD_STATUS = Map.of(
             "재학", Set.of("재학생", "신입생"),
+            "신입", Set.of("신입생", "재학생"),
             "휴학", Set.of("휴학생"),
             "대학원", Set.of("LAB"),
+            "LAB", Set.of("LAB"),
             "졸업", Set.of("졸업생")
     );
+
+    // ✨ [2026-09-14 추가] 파일의 상태값이 "재학생"처럼 "생"까지 붙어 있어도 매핑되도록 정규화.
+    // 예전에는 "재학"/"휴학"만 인식해서, "재학생"이라고 적힌 파일은 상태 불일치 검사가 통째로 건너뛰어졌다.
+    private String normalizeRosterStatus(String status) {
+        String s = status == null ? "" : status.trim();
+        if (s.length() > 1 && s.endsWith("생")) {
+            s = s.substring(0, s.length() - 1);
+        }
+        return s;
+    }
 
     // 닉네임 끝의 "(회장)" 같은 괄호 표기와 공백을 제거해서 비교용으로 정규화
     private String normalizeRosterName(String name) {
@@ -722,16 +737,21 @@ public class AdminService {
         return name.replaceAll("\\(.*?\\)\\s*$", "").trim();
     }
 
-    // 엑셀 "학번" 컬럼(보통 8자리 등록번호)에서 닉네임에 쓰이는 "학번앞2자리"를 추출.
-    // 원본 로컬 도구의 int(학번)[2:4]와 동일하게, 정수로 해석 가능하고 자릿수가 4 이상이면 시도한다.
+    // 엑셀 "학번" 컬럼에서 닉네임에 쓰이는 학번 토큰을 뽑는다.
+    // ✨ [2026-09-14 보완] 예전에는 8자리 같은 "4자리 이상 숫자"만 처리해서,
+    //  - 파일에 학번이 "24"처럼 2자리로만 적혀 있거나
+    //  - 대학원/졸업생처럼 닉네임 토큰이 "LAB"/"g20"인 경우
+    // 전부 "형식을 해석할 수 없음"으로 빠졌다. 두 경우 모두 인식하도록 보완.
     private String deriveRosterAdmissionYear2(String raw) {
         if (!StringUtils.hasText(raw)) return null;
+        String trimmed = raw.trim();
         try {
-            long parsed = Long.parseLong(raw.trim());
-            String str = String.valueOf(parsed);
-            return str.length() >= 4 ? str.substring(2, 4) : null;
+            String digits = String.valueOf(Long.parseLong(trimmed));
+            if (digits.length() == 2) return digits;                 // 이미 2자리 (예: 24)
+            return digits.length() >= 4 ? digits.substring(2, 4) : null;  // 8자리 등 (예: 20243106 -> 24)
         } catch (NumberFormatException e) {
-            return null;
+            // 숫자가 아니면 닉네임 토큰을 그대로 쓴 것으로 본다 (예: LAB 김어진, g20 남의진)
+            return trimmed.length() <= 4 && !trimmed.contains(" ") ? trimmed : null;
         }
     }
 
