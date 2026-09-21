@@ -108,7 +108,19 @@ public class AssemblyService {
 
         AssemblyProject project = projectRepository.findByLoginIdAndYearAndSemester(loginId, year, semester)
                 .orElse(null);
-        String projectTitle = project != null ? project.getTitle() : "";
+
+        // ✨ [2026-09-21 수정] 예전에는 AssemblyProject.title을 썼는데, 이 값을 채우는 곳이
+        // "팀 프로젝트 제목 동기화"뿐이어서 팀에 속하는 순간 개인 프로젝트가 팀 제목으로 덮이고,
+        // 팀이 없으면 아예 비어 있었다(개인 프로젝트를 따로 노출할 방법이 없었음).
+        // 마이페이지가 이미 쓰고 있는 것과 같은 출처 — 본인 계획서(3월/9월)의 "프로젝트 명"(memo) —
+        // 를 그대로 쓰도록 바꿔서, 커뮤니티/마이페이지가 같은 값을 보고 팀과도 독립되게 한다.
+        int planMonth = (semester == 1) ? 3 : 9;
+        String projectTitle = reports.stream()
+                .filter(r -> r.getMonth() == planMonth)
+                .map(AssemblyReport::getMemo)
+                .filter(m -> m != null && !m.isBlank())
+                .findFirst()
+                .orElse("");
         List<kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto> projectLinks = project == null
                 ? List.of()
                 : project.getLinks().stream()

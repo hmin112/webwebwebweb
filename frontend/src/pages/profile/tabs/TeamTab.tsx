@@ -55,7 +55,11 @@ export const TeamTab = ({
 
   const [selectedTerm, setSelectedTerm] = useState(semesterOptions[0]);
 
-  const [team, setTeam] = useState<any>(null);
+  // ✨ [2026-09-21] 한 학기에 여러 팀 소속 가능 — 목록으로 받고, 화면은 "선택된 팀" 하나를 본다.
+  // 아래 team은 선택된 팀에서 파생되므로 기존 렌더/핸들러 코드는 그대로 team을 쓰면 된다.
+  const [teams, setTeams] = useState<any[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  const [isCreatingNewTeam, setIsCreatingNewTeam] = useState(false);
   const [invitations, setInvitations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newTeamName, setNewTeamName] = useState("");
@@ -87,6 +91,10 @@ export const TeamTab = ({
     other: useRef<HTMLInputElement>(null),
   };
 
+  const team = useMemo(
+    () => teams.find((t) => t.teamId === selectedTeamId) ?? teams[0] ?? null,
+    [teams, selectedTeamId]
+  );
   const isLeader = Boolean(team && team.leaderLoginId === loginId);
 
   const fetchStatus = async () => {
@@ -97,7 +105,12 @@ export const TeamTab = ({
         api.get("/teams/my", { params: { loginId, year: selectedTerm.year, semester: selectedTerm.semester } }),
         api.get("/teams", { params: { year: selectedTerm.year, semester: selectedTerm.semester } })
       ]);
-      setTeam(myRes.data.team);
+      const myTeams = myRes.data.teams || [];
+      setTeams(myTeams);
+      // 보고 있던 팀이 사라졌으면(해체/탈퇴) 첫 번째 팀으로 되돌린다
+      setSelectedTeamId((prev) =>
+        prev && myTeams.some((t: any) => t.teamId === prev) ? prev : (myTeams[0]?.teamId ?? null)
+      );
       setInvitations(myRes.data.pendingInvitations || []);
       setAllTeams(allRes.data || []);
     } catch (e) {
@@ -286,7 +299,7 @@ export const TeamTab = ({
       return;
     }
     try {
-      await api.post("/teams", {
+      const created = await api.post("/teams", {
         loginId,
         year: selectedTerm.year,
         semester: selectedTerm.semester,
@@ -296,7 +309,10 @@ export const TeamTab = ({
       setNewTeamName("");
       setNewProjectTitle("");
       setIsCreating(false);
+      setIsCreatingNewTeam(false);
       await fetchStatus();
+      // 방금 만든 팀을 바로 보여준다
+      if (created.data?.teamId) setSelectedTeamId(created.data.teamId);
     } catch (e: any) {
       alert(e.response?.data?.message || "팀 생성에 실패했습니다.");
     }
@@ -478,11 +494,39 @@ export const TeamTab = ({
             </div>
           )}
 
-          {!team ? (
+          {/* ✨ [2026-09-21] 내가 속한 팀 목록 — 여러 팀에 동시에 속할 수 있어 선택해서 본다 */}
+          {teams.length > 0 && !isCreatingNewTeam && (
+            <div className="flex items-center gap-2 mb-4 md:mb-6 overflow-x-auto no-scrollbar">
+              {teams.map((t: any) => (
+                <button
+                  key={t.teamId}
+                  onClick={() => setSelectedTeamId(t.teamId)}
+                  className={`px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap transition-all border ${
+                    team?.teamId === t.teamId
+                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
+                      : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+                  }`}
+                >
+                  {t.teamName}
+                  {t.leaderLoginId === loginId && <Crown size={11} className="inline ml-1.5 -mt-0.5" />}
+                </button>
+              ))}
+              <button
+                onClick={() => { setIsCreatingNewTeam(true); setIsCreating(true); }}
+                className="px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 transition-all shrink-0"
+              >
+                <PlusCircle size={13} className="inline mr-1 -mt-0.5" /> 새 팀
+              </button>
+            </div>
+          )}
+
+          {(!team || isCreatingNewTeam) ? (
             <div className="bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200 p-8 md:p-16 text-center">
               <Layers size={40} className="mx-auto text-slate-200 mb-4" />
               <p className="text-slate-500 font-bold mb-6 text-sm md:text-base leading-relaxed">
-                아직 소속된 팀이 없습니다.<br />팀을 만들어 팀원들과 총회자료를 함께 제출해보세요.
+                {teams.length > 0
+                  ? <>새로운 팀을 하나 더 만들 수 있어요.<br />여러 팀에 동시에 참여할 수 있습니다.</>
+                  : <>아직 소속된 팀이 없습니다.<br />팀을 만들어 팀원들과 총회자료를 함께 제출해보세요.</>}
               </p>
               {!isCreating ? (
                 <button onClick={() => setIsCreating(true)} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 text-sm transition-all active:scale-95">
@@ -505,7 +549,15 @@ export const TeamTab = ({
                     className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
                   />
                   <button onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-md transition-all active:scale-95">팀 생성</button>
+                  {teams.length > 0 && (
+                    <button onClick={() => { setIsCreatingNewTeam(false); setIsCreating(false); }} className="w-full px-5 py-3 rounded-2xl bg-slate-50 text-slate-400 font-black text-sm">취소</button>
+                  )}
                 </div>
+              )}
+              {teams.length > 0 && !isCreating && (
+                <button onClick={() => setIsCreatingNewTeam(false)} className="block mx-auto mt-3 text-slate-400 font-bold text-xs hover:text-slate-600">
+                  내 팀으로 돌아가기
+                </button>
               )}
             </div>
           ) : (

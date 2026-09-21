@@ -1,6 +1,5 @@
 package kr.co.devsign.devsign_backend.service;
 
-import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
 import kr.co.devsign.devsign_backend.dto.team.CreateTeamRequest;
 import kr.co.devsign.devsign_backend.dto.team.InviteMemberRequest;
 import kr.co.devsign.devsign_backend.dto.team.MyTeamStatusResponse;
@@ -34,7 +33,6 @@ public class TeamService {
     private final TeamMemberRepository teamMemberRepository;
     private final TeamSubmissionRepository teamSubmissionRepository;
     private final MemberRepository memberRepository;
-    private final AssemblyService assemblyService;
 
     @Transactional
     public TeamResponse createTeam(CreateTeamRequest req) {
@@ -48,8 +46,6 @@ public class TeamService {
         if (req.projectTitle() == null || req.projectTitle().isBlank()) {
             throw new IllegalArgumentException("프로젝트 명을 입력해주세요.");
         }
-
-        ensureNotAlreadyInTeam(loginId, year, semester);
 
         Team team = new Team();
         team.setTeamName(req.teamName());
@@ -66,8 +62,6 @@ public class TeamService {
         leaderMembership.setRespondedAt(LocalDateTime.now());
         teamMemberRepository.save(leaderMembership);
 
-        syncProjectTitle(loginId, year, semester, team.getProjectTitle());
-
         return toTeamResponse(team);
     }
 
@@ -81,11 +75,12 @@ public class TeamService {
     public MyTeamStatusResponse getMyTeamStatus(String loginId, int year, int semester) {
         List<TeamMember> memberships = teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(loginId, year, semester);
 
-        Team acceptedTeam = memberships.stream()
+        List<TeamResponse> acceptedTeams = memberships.stream()
                 .filter(m -> STATUS_ACCEPTED.equals(m.getStatus()))
                 .map(TeamMember::getTeam)
-                .findFirst()
-                .orElse(null);
+                .sorted(java.util.Comparator.comparing(Team::getId))
+                .map(this::toTeamResponse)
+                .toList();
 
         List<TeamInvitationResponse> invitations = memberships.stream()
                 .filter(m -> STATUS_PENDING.equals(m.getStatus()))
@@ -98,7 +93,7 @@ public class TeamService {
                 })
                 .toList();
 
-        return new MyTeamStatusResponse(acceptedTeam != null ? toTeamResponse(acceptedTeam) : null, invitations);
+        return new MyTeamStatusResponse(acceptedTeams, invitations);
     }
 
     @Transactional
@@ -119,10 +114,6 @@ public class TeamService {
 
         if (teamMemberRepository.findByTeam_IdAndLoginId(teamId, targetLoginId).isPresent()) {
             throw new IllegalStateException(targetMember.getName() + " 님은 이미 초대되었거나 팀에 속해 있습니다.");
-        }
-
-        if (!teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(targetLoginId, team.getYear(), team.getSemester()).isEmpty()) {
-            throw new IllegalStateException(targetMember.getName() + " 님은 이미 이번 학기 다른 팀에 속해 있거나 초대받은 상태입니다.");
         }
 
         TeamMember invitation = new TeamMember();
@@ -151,8 +142,6 @@ public class TeamService {
         membership.setStatus(STATUS_ACCEPTED);
         membership.setRespondedAt(LocalDateTime.now());
         teamMemberRepository.save(membership);
-
-        syncProjectTitle(loginId, team.getYear(), team.getSemester(), team.getProjectTitle());
 
         return toTeamResponse(team);
     }
@@ -224,21 +213,7 @@ public class TeamService {
         }
         teamRepository.save(team);
 
-        // ✨ 프로젝트 명이 바뀐 경우에만 개인 마이페이지 프로젝트 제목을 재동기화 (팀 이름은 동기화 대상 아님)
-        if (hasProjectTitle) {
-            List<TeamMember> accepted = teamMemberRepository.findByTeam_IdAndStatus(teamId, STATUS_ACCEPTED);
-            for (TeamMember m : accepted) {
-                syncProjectTitle(m.getLoginId(), team.getYear(), team.getSemester(), team.getProjectTitle());
-            }
-        }
-
         return toTeamResponse(team);
-    }
-
-    private void ensureNotAlreadyInTeam(String loginId, int year, int semester) {
-        if (!teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(loginId, year, semester).isEmpty()) {
-            throw new IllegalStateException("이미 이번 학기 팀에 속해 있거나 초대받은 상태입니다.");
-        }
     }
 
     private Team getTeamOrThrow(Long teamId) {
@@ -250,10 +225,6 @@ public class TeamService {
         if (!team.getLeaderLoginId().equals(requesterLoginId)) {
             throw new IllegalStateException("팀장만 수행할 수 있는 작업입니다.");
         }
-    }
-
-    private void syncProjectTitle(String loginId, int year, int semester, String projectTitle) {
-        assemblyService.saveProjectTitle(new SaveProjectTitleRequest(loginId, year, semester, projectTitle));
     }
 
     private TeamResponse toTeamResponse(Team team) {

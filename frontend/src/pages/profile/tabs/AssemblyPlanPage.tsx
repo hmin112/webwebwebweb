@@ -72,7 +72,8 @@ export const AssemblyPlanPage = ({
     if (!loginId) return;
     api.get("/teams/my", { params: { loginId, year: report.year, semester: report.semester } })
       .then((res) => {
-        const team = res.data?.team;
+        // ✨ [2026-09-21] 여러 팀 소속 가능 — 역할 자동 채우기는 첫 번째 팀 기준(이후 직접 수정 가능)
+        const team = res.data?.teams?.[0];
         const accepted = team?.members?.filter((m: any) => m.status === "ACCEPTED") ?? [];
         setTeamMembers(accepted);
       })

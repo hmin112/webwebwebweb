@@ -371,10 +371,12 @@ public class AdminService {
     }
 
     // ✨ loginId가 해당 연도/학기에 속한 ACCEPTED 팀 멤버십을 찾는다 (팀 없으면 empty)
-    private Optional<TeamMember> findAcceptedTeamMembership(String loginId, int year, int semester) {
+    // ✨ [2026-09-21 수정] 한 명이 한 학기에 여러 팀에 속할 수 있게 되면서, 첫 번째 팀만 찾던 것을
+    // 속한 팀 전부를 돌려주도록 변경 (ZIP에 그 사람이 속한 모든 팀의 공유 자료가 담기도록)
+    private List<TeamMember> findAcceptedTeamMemberships(String loginId, int year, int semester) {
         return teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(loginId, year, semester).stream()
                 .filter(m -> "ACCEPTED".equals(m.getStatus()))
-                .findFirst();
+                .toList();
     }
 
     // ✨ [2026-09-04 재구성] 개인 제출과 팀 공유 자료가 분리된 이후의 ZIP 다운로드.
@@ -399,8 +401,9 @@ public class AdminService {
 
         Set<Long> teamIdsToInclude = new LinkedHashSet<>();
         for (String loginId : request.userIds()) {
-            findAcceptedTeamMembership(loginId, request.year(), semester)
-                    .ifPresent(m -> teamIdsToInclude.add(m.getTeam().getId()));
+            for (TeamMember m : findAcceptedTeamMemberships(loginId, request.year(), semester)) {
+                teamIdsToInclude.add(m.getTeam().getId());
+            }
         }
         List<TeamSubmission> teamSubs = new ArrayList<>();
         for (Long teamId : teamIdsToInclude) {

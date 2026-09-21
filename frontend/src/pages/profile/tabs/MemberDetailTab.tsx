@@ -38,8 +38,10 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   const [memberInfo, setMemberInfo] = useState<any>(null);
   const [reports, setReports] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  // ✨ [신규] 이번 학기 팀 프로젝트 소속 여부 — 개인 정보와는 별개로 추가 노출
-  const [teamInfo, setTeamInfo] = useState<any>(null);
+  // ✨ [2026-09-21] 한 학기에 여러 팀에 속할 수 있어 목록으로 받고, 아래에서 골라서 본다.
+  // 개인 프로젝트(프로젝트 타임라인/링크)와는 완전히 별개로 표시된다.
+  const [teamList, setTeamList] = useState<any[]>([]);
+  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
 
   // 학기 선택 상태 — 예전엔 { year: 2026, semester: 1 }로 고정되어 있어서, 실제로 2학기가
   // 되어도 커뮤니티에서 다른 부원을 보면 계속 1학기 자료가 뜨던 버그가 있었음. MyPageTab과
@@ -49,6 +51,11 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   const termMenuRef = useRef<HTMLDivElement>(null);
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [projectLinks, setProjectLinks] = useState<{ label: string; url: string }[]>([]);
+
+  const selectedTeam = useMemo(
+    () => teamList.find((t: any) => t.teamId === selectedTeamId) ?? teamList[0] ?? null,
+    [teamList, selectedTeamId]
+  );
 
   const isSubmittedStatus = (status?: string) =>
     status === "SUBMITTED" || status === "제출완료";
@@ -132,9 +139,12 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
           const teamRes = await api.get("/teams/my", {
             params: { loginId: targetMember.loginId, year: selectedTerm.year, semester: selectedTerm.semester },
           });
-          setTeamInfo(teamRes.data?.team || null);
+          const fetched = teamRes.data?.teams || [];
+          setTeamList(fetched);
+          setSelectedTeamId(fetched[0]?.teamId ?? null);
         } catch {
-          setTeamInfo(null);
+          setTeamList([]);
+          setSelectedTeamId(null);
         }
 
       } catch (e) {
@@ -322,17 +332,36 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         </div>
       )}
 
-      {/* ✨ [신규] 이번 학기 팀 프로젝트 소속 정보 — 개인 정보와 별개로 추가 표시 */}
-      {teamInfo && (
+      {/* ✨ [2026-09-21] 이번 학기 팀 프로젝트 — 여러 팀에 속해 있으면 골라서 볼 수 있다 */}
+      {selectedTeam && (
         <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
           <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
             <Layers size={14} />
-            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">팀 프로젝트</p>
+            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
+              팀 프로젝트{teamList.length > 1 ? ` (${teamList.length})` : ""}
+            </p>
           </div>
-          <h4 className="font-black text-slate-900 text-base md:text-xl mb-1">{teamInfo.teamName}</h4>
-          <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-5">{teamInfo.projectTitle}</p>
+          {teamList.length > 1 && (
+            <div className="flex items-center gap-1.5 mb-4 overflow-x-auto no-scrollbar">
+              {teamList.map((t: any) => (
+                <button
+                  key={t.teamId}
+                  onClick={() => setSelectedTeamId(t.teamId)}
+                  className={`px-3 py-1.5 rounded-lg font-black text-[11px] md:text-xs whitespace-nowrap transition-all border ${
+                    selectedTeam.teamId === t.teamId
+                      ? "bg-indigo-600 text-white border-indigo-600"
+                      : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+                  }`}
+                >
+                  {t.teamName}
+                </button>
+              ))}
+            </div>
+          )}
+          <h4 className="font-black text-slate-900 text-base md:text-xl mb-1">{selectedTeam.teamName}</h4>
+          <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-5">{selectedTeam.projectTitle}</p>
           <div className="flex flex-wrap gap-2">
-            {(teamInfo.members || []).map((m: any) => (
+            {(selectedTeam.members || []).map((m: any) => (
               <div key={m.teamMemberId} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-slate-50 rounded-full border border-slate-100">
                 <img
                   src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
