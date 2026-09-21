@@ -48,12 +48,15 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-10">
-            {entries.map((entry: any) => (
+            {entries.map((entry: any) => {
+              const awardGroups = entry.awards?.length ? entry.awards : [{ awardName: entry.awardName, participants: entry.participants || [] }];
+              const hasMultipleAwards = awardGroups.length > 1;
+              return (
               <motion.div
                 key={entry.id}
                 whileHover={{ y: -10 }}
                 onClick={() => onNavigate("halloffame-detail", entry.id)}
-                className="group cursor-pointer bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-amber-100/30 transition-all duration-500 overflow-hidden"
+                className={`group cursor-pointer bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm hover:shadow-2xl hover:shadow-amber-100/30 transition-all duration-500 overflow-hidden ${hasMultipleAwards ? "md:col-span-2" : ""}`}
               >
                 <div className="relative h-40 md:h-56 overflow-hidden">
                   {entry.image ? (
@@ -63,10 +66,9 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
                       <Trophy className="w-10 h-10 text-amber-200" />
                     </div>
                   )}
-                  <div className="absolute top-4 left-4 md:top-6 md:left-6">
-                    <span className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(entry.awardName)}`}>
-                      {entry.awardName}
-                    </span>
+                  <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-wrap gap-1.5">
+                    {awardGroups.slice(0, 2).map((award: any) => <span key={award.awardName} className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
+                    {awardGroups.length > 2 && <span className="px-3 py-1.5 rounded-full bg-slate-900/75 text-white text-[10px] font-black">+{awardGroups.length - 2}</span>}
                   </div>
                 </div>
                 <div className="p-5 md:p-8">
@@ -74,10 +76,13 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
                   <p className="text-slate-400 font-bold text-[11px] md:text-xs line-clamp-1">{entry.competitionName}</p>
                   <p className="text-slate-400 font-bold text-[11px] md:text-xs mb-4 md:mb-6">{entry.date}</p>
 
-                  {entry.participants && entry.participants.length > 0 && (
-                    <div className="flex items-center gap-2 flex-wrap pt-4 md:pt-5 border-t border-slate-50">
-                      {entry.participants.map((p: any) => (
-                        <div key={p.loginId} className="flex items-center gap-1.5 bg-slate-50 rounded-full pl-1 pr-2.5 py-1">
+                  {awardGroups.some((award: any) => award.participants?.length) && (
+                    <div className={`pt-4 md:pt-5 border-t border-slate-50 ${hasMultipleAwards ? "grid sm:grid-cols-2 gap-3" : "flex items-center gap-2 flex-wrap"}`}>
+                      {awardGroups.map((award: any) => (
+                        <div key={award.awardName} className="flex flex-wrap items-center gap-2">
+                          {hasMultipleAwards && <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>}
+                          {(award.participants || []).map((p: any) => (
+                            <div key={p.loginId} className="flex items-center gap-1.5 bg-slate-50 rounded-full pl-1 pr-2.5 py-1">
                           <div className="w-5 h-5 rounded-full overflow-hidden bg-indigo-100 shrink-0">
                             {p.profileImage ? (
                               <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
@@ -87,12 +92,15 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
                           </div>
                           <span className="text-[10px] md:text-[11px] font-bold text-slate-600">{formatStudentId(p.studentId)} {p.name}</span>
                         </div>
+                          ))}
+                        </div>
                       ))}
                     </div>
                   )}
                 </div>
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

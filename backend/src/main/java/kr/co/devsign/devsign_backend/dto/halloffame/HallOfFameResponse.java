@@ -12,6 +12,7 @@ public record HallOfFameResponse(
         String date,
         String image,
         List<HallOfFameParticipantResponse> participants,
+        List<HallOfFameAwardResponse> awards,
         LocalDateTime createdAt
 ) {
 }

@@ -46,14 +46,17 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-            {entries.map((entry, index) => (
+            {entries.map((entry, index) => {
+              const awardGroups = entry.awards?.length ? entry.awards : [{ awardName: entry.awardName, participants: entry.participants || [] }];
+              const hasMultipleAwards = awardGroups.length > 1;
+              return (
               <motion.div
                 key={entry.id}
                 initial={{ opacity: 0, y: 30 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 transition={{ delay: index * 0.08 }}
                 onClick={() => onNavigate("halloffame-detail", entry.id)}
-                className="group cursor-pointer"
+                className={`group cursor-pointer ${hasMultipleAwards ? "col-span-2 md:col-span-2" : ""}`}
               >
                 <div className="relative w-full aspect-square rounded-2xl md:rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 mb-3 md:mb-4">
                   {entry.image ? (
@@ -67,15 +70,13 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                       <Trophy className="w-8 h-8 text-amber-200" />
                     </div>
                   )}
-                  <div className="absolute top-2 left-2 md:top-4 md:left-4">
-                    <span className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-full text-[10px] md:text-xs font-black line-clamp-1 ${getAwardBadgeStyle(entry.awardName)}`}>
-                      {entry.awardName}
-                    </span>
+                  <div className="absolute top-2 left-2 md:top-4 md:left-4 flex flex-wrap gap-1.5">
+                    {awardGroups.slice(0, 2).map((award: any) => <span key={award.awardName} className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-full text-[10px] md:text-xs font-black line-clamp-1 ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
                   </div>
 
-                  {entry.participants && entry.participants.length > 0 && (
+                  {awardGroups.some((award: any) => award.participants?.length) && (
                     <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 flex flex-col items-end gap-1">
-                      {entry.participants.slice(0, 3).map((p: any) => (
+                      {awardGroups.flatMap((award: any) => award.participants || []).slice(0, 3).map((p: any) => (
                         <div
                           key={p.loginId}
                           className="flex items-center gap-1 md:gap-1.5 bg-white/60 backdrop-blur-md shadow-md rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-white/40"
@@ -94,9 +95,9 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                           </span>
                         </div>
                       ))}
-                      {entry.participants.length > 3 && (
+                      {awardGroups.flatMap((award: any) => award.participants || []).length > 3 && (
                         <span className="text-[10px] md:text-[11px] font-bold text-white bg-slate-900/70 backdrop-blur-sm rounded-full px-2 py-0.5">
-                          +{entry.participants.length - 3}명
+                          +{awardGroups.flatMap((award: any) => award.participants || []).length - 3}명
                         </span>
                       )}
                     </div>
@@ -115,7 +116,8 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                   </div>
                 )}
               </motion.div>
-            ))}
+              );
+            })}
           </div>
         )}
       </div>

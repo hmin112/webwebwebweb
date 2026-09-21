@@ -21,6 +21,7 @@ const getAwardBadgeStyle = (awardName?: string) => {
 
 export const HallOfFameDetail = ({ onNavigate, isAdmin, isLoggedIn, entry, onDelete }: any) => {
   if (!entry) return <div className="pt-40 text-center font-bold text-slate-400">명예의 전당 게시물을 찾을 수 없습니다.</div>;
+  const awardGroups = entry.awards?.length ? entry.awards : [{ awardName: entry.awardName, participants: entry.participants || [] }];
 
   return (
     <div className="min-h-screen bg-white pb-20 pt-32">
@@ -54,8 +55,8 @@ export const HallOfFameDetail = ({ onNavigate, isAdmin, isLoggedIn, entry, onDel
         </div>
 
         <header className="mb-12">
-          <div className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-black uppercase mb-6 ${getAwardBadgeStyle(entry.awardName)}`}>
-            <Trophy size={13} /> {entry.awardName}
+          <div className="flex flex-wrap gap-2 mb-6">
+            {awardGroups.map((award: any) => <div key={award.awardName} className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-[11px] font-black uppercase ${getAwardBadgeStyle(award.awardName)}`}><Trophy size={13} /> {award.awardName}</div>)}
           </div>
           <h1 className="text-4xl font-black text-slate-900 mb-10 tracking-tight leading-tight">
             {entry.title}
@@ -90,11 +91,14 @@ export const HallOfFameDetail = ({ onNavigate, isAdmin, isLoggedIn, entry, onDel
           </article>
         )}
 
-        {entry.participants && entry.participants.length > 0 && (
+        {awardGroups.some((award: any) => award.participants?.length) && (
           <div className="pt-10 border-t border-slate-100">
             <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest mb-5">수상자</p>
-            <div className="flex flex-wrap gap-3">
-              {entry.participants.map((p: any) => (
+            <div className="grid gap-5 md:grid-cols-2">
+              {awardGroups.map((award: any) => <div key={award.awardName} className="rounded-3xl bg-slate-50 p-5">
+                <p className={`inline-flex px-3 py-1 rounded-full text-[10px] font-black mb-4 ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</p>
+                <div className="flex flex-wrap gap-3">
+              {(award.participants || []).map((p: any) => (
                 <div key={p.loginId} className="flex items-center gap-3 bg-slate-50 rounded-2xl pl-2 pr-5 py-2">
                   <div className="w-10 h-10 rounded-xl overflow-hidden bg-indigo-100 shrink-0">
                     {p.profileImage ? (
@@ -105,7 +109,7 @@ export const HallOfFameDetail = ({ onNavigate, isAdmin, isLoggedIn, entry, onDel
                   </div>
                   <span className="font-bold text-slate-800 text-sm">{formatStudentId(p.studentId)} {p.name}</span>
                 </div>
-              ))}
+              ))}</div></div>)}
             </div>
           </div>
         )}

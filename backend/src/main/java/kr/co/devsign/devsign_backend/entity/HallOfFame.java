@@ -34,5 +34,11 @@ public class HallOfFame {
     @Column(name = "login_id")
     private List<String> participantLoginIds = new ArrayList<>();
 
+    // 한 대회에서 여러 상을 받은 경우, 상별 수상자를 각각 보관한다.
+    // 기존 awardName/participantLoginIds는 이미 등록된 게시글과의 호환 및 대표 수상 표시용으로 유지한다.
+    @OneToMany(mappedBy = "hallOfFame", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("displayOrder ASC")
+    private List<HallOfFameAward> awards = new ArrayList<>();
+
     private LocalDateTime createdAt = LocalDateTime.now();
 }

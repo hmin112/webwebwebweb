@@ -1,7 +1,7 @@
 import { api } from "../../api/axios";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { ArrowLeft, Link as LinkIcon, X, Upload, Search, UserPlus } from "lucide-react";
+import { ArrowLeft, Link as LinkIcon, X, Upload, Search, UserPlus, Trophy, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
 const formatStudentId = (id?: string) => {
@@ -12,6 +12,8 @@ const formatStudentId = (id?: string) => {
   if (strId.length === 2) return strId;
   return strId;
 };
+
+type AwardDraft = { awardName: string; participants: any[] };
 
 export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -26,7 +28,8 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
   });
 
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [selectedParticipants, setSelectedParticipants] = useState<any[]>([]);
+  const [awards, setAwards] = useState<AwardDraft[]>([{ awardName: "", participants: [] }]);
+  const [activeAwardIndex, setActiveAwardIndex] = useState(0);
 
   const [allMembers, setAllMembers] = useState<any[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
@@ -44,7 +47,9 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
         content: entry.content || "",
         image: entry.image || ""
       });
-      setSelectedParticipants(entry.participants || []);
+      const savedAwards = entry.awards?.length ? entry.awards : [{ awardName: entry.awardName || "", participants: entry.participants || [] }];
+      setAwards(savedAwards.map((award: any) => ({ awardName: award.awardName || "", participants: award.participants || [] })));
+      setActiveAwardIndex(0);
     }
   }, [entry]);
 
@@ -60,7 +65,8 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
     loadMembers();
   }, []);
 
-  const selectedLoginIds = useMemo(() => new Set(selectedParticipants.map((p) => p.loginId)), [selectedParticipants]);
+  const activeAward = awards[activeAwardIndex] || awards[0];
+  const selectedLoginIds = useMemo(() => new Set((activeAward?.participants || []).map((p) => p.loginId)), [activeAward]);
 
   const filteredMembers = useMemo(() => {
     return allMembers
@@ -73,12 +79,27 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
   }, [allMembers, memberSearch, selectedLoginIds]);
 
   const addParticipant = (member: any) => {
-    setSelectedParticipants((prev) => [...prev, member]);
+    setAwards((prev) => prev.map((award, index) => index === activeAwardIndex ? { ...award, participants: [...award.participants, member] } : award));
     setMemberSearch("");
   };
 
   const removeParticipant = (loginId: string) => {
-    setSelectedParticipants((prev) => prev.filter((p) => p.loginId !== loginId));
+    setAwards((prev) => prev.map((award, index) => index === activeAwardIndex ? { ...award, participants: award.participants.filter((p) => p.loginId !== loginId) } : award));
+  };
+
+  const addAward = () => {
+    setAwards((prev) => [...prev, { awardName: "", participants: [] }]);
+    setActiveAwardIndex(awards.length);
+  };
+
+  const removeAward = (index: number) => {
+    if (awards.length === 1) return;
+    setAwards((prev) => prev.filter((_, itemIndex) => itemIndex !== index));
+    setActiveAwardIndex((prev) => Math.max(0, Math.min(prev, awards.length - 2)));
+  };
+
+  const updateAwardName = (index: number, awardName: string) => {
+    setAwards((prev) => prev.map((award, itemIndex) => itemIndex === index ? { ...award, awardName } : award));
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -95,8 +116,8 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
 
   const handlePublish = async () => {
     if (submitLockRef.current) return;
-    if (!formData.competitionName || !formData.awardName || !formData.title || !formData.date) {
-      return alert("대회명, 수상내역, 제목, 날짜는 필수입니다. ⚠️");
+    if (!formData.competitionName || !formData.title || !formData.date || awards.some((award) => !award.awardName.trim())) {
+      return alert("대회명, 게시물 제목, 날짜와 모든 수상 내역을 입력해주세요. ⚠️");
     }
 
     submitLockRef.current = true;
@@ -104,7 +125,8 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
     try {
       const submitData = new FormData();
       submitData.append("competitionName", formData.competitionName);
-      submitData.append("awardName", formData.awardName);
+      // 첫 번째 상을 대표 수상으로 둔다. 목록 정렬과 기존 게시글 호환에도 그대로 쓰인다.
+      submitData.append("awardName", awards[0].awardName.trim());
       submitData.append("title", formData.title);
       submitData.append("date", formData.date);
       submitData.append("content", formData.content);
@@ -115,7 +137,10 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
         submitData.append("image", formData.image);
       }
 
-      selectedParticipants.forEach((p) => submitData.append("participantLoginIds", p.loginId));
+      submitData.append("awardsJson", JSON.stringify(awards.map((award) => ({
+        awardName: award.awardName.trim(),
+        participantLoginIds: award.participants.map((p) => p.loginId),
+      }))));
 
       let response;
       if (entry && entry.id) {
@@ -162,7 +187,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
         </div>
 
         <div className="space-y-8">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Competition</label>
               <input
@@ -170,16 +195,6 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
                 placeholder="예: ICPC 대학생 프로그래밍 경시대회"
                 value={formData.competitionName}
                 onChange={(e) => setFormData({ ...formData, competitionName: e.target.value })}
-                className="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
-            </div>
-            <div className="space-y-2">
-              <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Award</label>
-              <input
-                type="text"
-                placeholder="예: 대상, 금상"
-                value={formData.awardName}
-                onChange={(e) => setFormData({ ...formData, awardName: e.target.value })}
                 className="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500 transition-all"
               />
             </div>
@@ -204,13 +219,32 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
             />
           </div>
 
-          {/* 수상자(회원) 선택 */}
-          <div className="space-y-4">
-            <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">수상자</label>
+          {/* 수상 항목은 위에 있을수록 높은 상이며, 상마다 수상자를 따로 지정한다. */}
+          <div className="space-y-4 rounded-[2rem] bg-amber-50/50 border border-amber-100 p-5 md:p-7">
+            <div className="flex items-center justify-between gap-3">
+              <div>
+                <p className="text-[10px] font-black text-amber-600 uppercase tracking-widest">수상 내역 · 수상자</p>
+                <p className="mt-1 text-xs font-bold text-slate-500">위에 있는 상부터 높은 상으로 표시됩니다.</p>
+              </div>
+              <button type="button" onClick={addAward} className="shrink-0 inline-flex items-center gap-1.5 px-3 py-2 bg-amber-500 text-white rounded-xl text-xs font-black shadow-sm"><Plus size={14} /> 상 추가</button>
+            </div>
 
-            {selectedParticipants.length > 0 && (
+            <div className="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+              {awards.map((award, index) => (
+                <button type="button" key={index} onClick={() => setActiveAwardIndex(index)} className={`shrink-0 flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-black transition-colors ${activeAwardIndex === index ? "bg-slate-900 text-white" : "bg-white text-slate-500 border border-amber-100"}`}>
+                  <Trophy size={13} /> {award.awardName || `${index + 1}번째 상`}
+                  {awards.length > 1 && <span onClick={(event) => { event.stopPropagation(); removeAward(index); }} className="text-current/60 hover:text-red-300"><X size={13} /></span>}
+                </button>
+              ))}
+            </div>
+
+            <div className="space-y-3 bg-white rounded-2xl p-4 md:p-5 border border-amber-100">
+              <label className="block text-[10px] font-black text-slate-400 uppercase tracking-widest">{activeAwardIndex + 1}번째 수상 내역</label>
+              <input type="text" placeholder="예: 대상, 금상, 우수상" value={activeAward?.awardName || ""} onChange={(e) => updateAwardName(activeAwardIndex, e.target.value)} className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none font-bold focus:ring-2 focus:ring-amber-400" />
+
+            {(activeAward?.participants || []).length > 0 && (
               <div className="flex flex-wrap gap-2">
-                {selectedParticipants.map((p) => (
+                {activeAward.participants.map((p) => (
                   <div key={p.loginId} className="flex items-center gap-2 bg-indigo-50 rounded-full pl-1 pr-2 py-1">
                     <div className="w-6 h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
                       {p.profileImage ? (
@@ -268,7 +302,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
                   </motion.div>
                 )}
               </AnimatePresence>
-            </div>
+            </div></div>
           </div>
 
           {/* 대표 사진 */}

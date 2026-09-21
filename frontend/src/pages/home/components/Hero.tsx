@@ -61,6 +61,9 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
   }, [hallOfFame.length, isHofPaused, hofIndex]);
 
   const currentHofEntry = hallOfFame[hofIndex];
+  const currentHofAwards = currentHofEntry?.awards?.length
+    ? currentHofEntry.awards
+    : currentHofEntry ? [{ awardName: currentHofEntry.awardName, participants: currentHofEntry.participants || [] }] : [];
 
   // 좌우 화살표로 수동 이동 — 자동 전환 인터벌은 건드리지 않고 인덱스만 바꿔줌(점 클릭과 동일)
   const goToPrevHof = () => setHofIndex((prev) => (prev - 1 + hallOfFame.length) % hallOfFame.length);
@@ -243,10 +246,9 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                     <div className="absolute inset-0 flex items-center">
                       <div className="w-full max-w-7xl mx-auto px-6 md:px-10">
                         <div className="max-w-xl text-left text-white">
-                          <div className="mb-3 md:mb-4">
-                            <span className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-black ${getAwardBadgeStyle(currentHofEntry.awardName)}`}>
-                              {currentHofEntry.awardName}
-                            </span>
+                          <div className="mb-3 md:mb-4 flex flex-wrap gap-2">
+                            {currentHofAwards.slice(0, 2).map((award: any) => <span key={award.awardName} className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-xs md:text-sm font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
+                            {currentHofAwards.length > 2 && <span className="px-3 py-1.5 rounded-full bg-white/20 text-xs font-black">+{currentHofAwards.length - 2}</span>}
                           </div>
                           <div className="inline-flex items-center gap-1.5 text-amber-300 font-black text-xs md:text-sm mb-2 md:mb-3">
                             <Trophy className="w-4 h-4 md:w-5 md:h-5" /> Hall of Fame
@@ -263,9 +265,9 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                             </div>
                           )}
 
-                          {currentHofEntry.participants && currentHofEntry.participants.length > 0 && (
+                          {currentHofAwards.flatMap((award: any) => award.participants || []).length > 0 && (
                             <div className="flex items-center gap-2 flex-wrap">
-                              {currentHofEntry.participants.slice(0, 6).map((p: any) => (
+                              {currentHofAwards.flatMap((award: any) => award.participants || []).slice(0, 6).map((p: any) => (
                                 <div key={p.loginId} className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 border border-white/20">
                                   <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
                                     {p.profileImage ? (
@@ -281,8 +283,8 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                                   </span>
                                 </div>
                               ))}
-                              {currentHofEntry.participants.length > 6 && (
-                                <span className="text-[11px] md:text-xs font-bold text-white/70">+{currentHofEntry.participants.length - 6}명</span>
+                              {currentHofAwards.flatMap((award: any) => award.participants || []).length > 6 && (
+                                <span className="text-[11px] md:text-xs font-bold text-white/70">+{currentHofAwards.flatMap((award: any) => award.participants || []).length - 6}명</span>
                               )}
                             </div>
                           )}
