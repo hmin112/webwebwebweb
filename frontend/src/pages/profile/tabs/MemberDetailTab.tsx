@@ -5,7 +5,7 @@ import {
   ArrowLeft, FileText, Check, Clock, X,
   Download, Presentation, CalendarDays, MessageCircle,
   FileArchive, ExternalLink, Loader2, ChevronDown, Eye,
-  Layers, Crown, Link2,
+  Layers, Crown, Link2, User,
 } from "lucide-react";
 
 // MyPageTab/TeamTab과 동일한 규칙: 2~7월=1학기, 8월~다음해 1월=2학기
@@ -41,7 +41,9 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   // ✨ [2026-09-21] 한 학기에 여러 팀에 속할 수 있어 목록으로 받고, 아래에서 골라서 본다.
   // 개인 프로젝트(프로젝트 타임라인/링크)와는 완전히 별개로 표시된다.
   const [teamList, setTeamList] = useState<any[]>([]);
-  const [selectedTeamId, setSelectedTeamId] = useState<number | null>(null);
+  // "personal" 또는 teamId — 무엇을 보고 있는지. 카드와 아래 타임라인이 함께 바뀐다.
+  const [selectedProjectKey, setSelectedProjectKey] = useState<"personal" | number>("personal");
+  const [teamSubmissionsByTeam, setTeamSubmissionsByTeam] = useState<Record<number, any[]>>({});
 
   // 학기 선택 상태 — 예전엔 { year: 2026, semester: 1 }로 고정되어 있어서, 실제로 2학기가
   // 되어도 커뮤니티에서 다른 부원을 보면 계속 1학기 자료가 뜨던 버그가 있었음. MyPageTab과
@@ -52,9 +54,27 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   const [previewPdfUrl, setPreviewPdfUrl] = useState<string | null>(null);
   const [projectLinks, setProjectLinks] = useState<{ label: string; url: string }[]>([]);
 
+  const isPersonalView = selectedProjectKey === "personal";
   const selectedTeam = useMemo(
-    () => teamList.find((t: any) => t.teamId === selectedTeamId) ?? teamList[0] ?? null,
-    [teamList, selectedTeamId]
+    () => (isPersonalView ? null : teamList.find((t: any) => t.teamId === selectedProjectKey) ?? null),
+    [teamList, selectedProjectKey, isPersonalView]
+  );
+
+  // 선택한 팀의 제출 자료를 그때그때 불러와 캐시 (개인은 위에서 받은 reports를 그대로 씀)
+  useEffect(() => {
+    if (isPersonalView || typeof selectedProjectKey !== "number") return;
+    if (teamSubmissionsByTeam[selectedProjectKey]) return;
+    api.get("/team-submissions/my", {
+      params: { teamId: selectedProjectKey, year: selectedTerm.year, semester: selectedTerm.semester },
+    })
+      .then((res) => setTeamSubmissionsByTeam((prev) => ({ ...prev, [selectedProjectKey]: res.data || [] })))
+      .catch(() => setTeamSubmissionsByTeam((prev) => ({ ...prev, [selectedProjectKey]: [] })));
+  }, [selectedProjectKey, isPersonalView, selectedTerm, teamSubmissionsByTeam]);
+
+  // 화면에 보여줄 타임라인 — 개인 프로젝트면 개인 제출, 팀이면 그 팀의 공유 자료
+  const timelineItems = useMemo(
+    () => (isPersonalView ? reports : teamSubmissionsByTeam[selectedProjectKey as number] ?? []),
+    [isPersonalView, reports, teamSubmissionsByTeam, selectedProjectKey]
   );
 
   const isSubmittedStatus = (status?: string) =>
@@ -139,13 +159,12 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
           const teamRes = await api.get("/teams/my", {
             params: { loginId: targetMember.loginId, year: selectedTerm.year, semester: selectedTerm.semester },
           });
-          const fetched = teamRes.data?.teams || [];
-          setTeamList(fetched);
-          setSelectedTeamId(fetched[0]?.teamId ?? null);
+          setTeamList(teamRes.data?.teams || []);
         } catch {
           setTeamList([]);
-          setSelectedTeamId(null);
         }
+        setSelectedProjectKey("personal");
+        setTeamSubmissionsByTeam({});
 
       } catch (e) {
         console.error("데이터 로딩 중 에러 발생:", e);
@@ -280,7 +299,10 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
               </span>
             </div>
             <p className="text-slate-400 font-bold flex items-center gap-1.5 md:gap-2 text-[11px] md:text-sm truncate">
-              <ExternalLink className="text-indigo-400 w-3 h-3 md:w-3.5 md:h-3.5" /> {memberInfo.projectTitle || "프로젝트 제목 미등록"}
+              <ExternalLink className="text-indigo-400 w-3 h-3 md:w-3.5 md:h-3.5" />
+              {isPersonalView
+                ? (memberInfo.projectTitle || "개인 프로젝트 미등록")
+                : (selectedTeam?.projectTitle || "프로젝트 제목 미등록")}
             </p>
           </div>
         </div>
@@ -309,7 +331,7 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       </div>
 
       {/* ✨ [2026-09-07 추가] 이번 학기 관련 링크(깃/노션 등) — 마이페이지에서 등록한 것을 읽기 전용으로 노출 */}
-      {projectLinks.length > 0 && (
+      {isPersonalView && projectLinks.length > 0 && (
         <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
           <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
             <Link2 size={14} />
@@ -332,58 +354,105 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         </div>
       )}
 
-      {/* ✨ [2026-09-21] 이번 학기 팀 프로젝트 — 여러 팀에 속해 있으면 골라서 볼 수 있다 */}
-      {selectedTeam && (
-        <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
-            <Layers size={14} />
-            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
-              팀 프로젝트{teamList.length > 1 ? ` (${teamList.length})` : ""}
+      {/* ✨ [2026-09-21] 개인 / 팀 프로젝트 선택 — 고른 프로젝트에 맞춰 아래 타임라인도 함께 바뀐다 */}
+      <div className="mb-6 md:mb-8">
+        <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
+          <button
+            onClick={() => setSelectedProjectKey("personal")}
+            className={`px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap transition-all border ${
+              isPersonalView ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+            }`}
+          >
+            <User size={12} className="inline mr-1.5 -mt-0.5" /> 개인 프로젝트
+          </button>
+          {teamList.map((t: any) => (
+            <button
+              key={t.teamId}
+              onClick={() => setSelectedProjectKey(t.teamId)}
+              className={`px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap transition-all border ${
+                selectedProjectKey === t.teamId ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+              }`}
+            >
+              <Layers size={12} className="inline mr-1.5 -mt-0.5" /> {t.teamName}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 선택된 프로젝트 정보 카드 */}
+      <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
+          {isPersonalView ? <User size={14} /> : <Layers size={14} />}
+          <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
+            {isPersonalView ? "개인 프로젝트" : "팀 프로젝트"}
+          </p>
+        </div>
+
+        {isPersonalView ? (
+          <>
+            <h4 className="font-black text-slate-900 text-base md:text-xl mb-1">
+              {memberInfo.projectTitle || "등록된 개인 프로젝트가 없습니다"}
+            </h4>
+            <p className="text-slate-400 font-bold text-xs md:text-sm">
+              {memberInfo.name} 님이 개인으로 진행한 프로젝트입니다.
             </p>
-          </div>
-          {teamList.length > 1 && (
-            <div className="flex items-center gap-1.5 mb-4 overflow-x-auto no-scrollbar">
-              {teamList.map((t: any) => (
-                <button
-                  key={t.teamId}
-                  onClick={() => setSelectedTeamId(t.teamId)}
-                  className={`px-3 py-1.5 rounded-lg font-black text-[11px] md:text-xs whitespace-nowrap transition-all border ${
-                    selectedTeam.teamId === t.teamId
-                      ? "bg-indigo-600 text-white border-indigo-600"
-                      : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+          </>
+        ) : selectedTeam ? (
+          <>
+            {/* 팀명 + 프로젝트 명 */}
+            <div className="flex items-center gap-2 mb-1 flex-wrap">
+              <h4 className="font-black text-slate-900 text-base md:text-xl">{selectedTeam.teamName}</h4>
+              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[9px] md:text-[10px] font-black uppercase">
+                팀원 {(selectedTeam.members || []).length}명
+              </span>
+            </div>
+            <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-5">
+              {selectedTeam.projectTitle || "프로젝트 명 미등록"}
+            </p>
+
+            {/* 팀원 — 프로필 사진 + 팀장 표시 */}
+            <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">팀원</p>
+            <div className="flex flex-wrap gap-2">
+              {(selectedTeam.members || []).map((m: any) => (
+                <div
+                  key={m.teamMemberId}
+                  className={`flex items-center gap-2 pl-1 pr-3 py-1.5 rounded-full border ${
+                    m.isLeader ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-100"
                   }`}
                 >
-                  {t.teamName}
-                </button>
+                  <img
+                    src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                    onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
+                    className="w-7 h-7 md:w-8 md:h-8 rounded-full object-cover shrink-0"
+                    alt={m.name}
+                  />
+                  <div className="flex flex-col leading-tight">
+                    <span className="text-[11px] md:text-xs font-black text-slate-700 flex items-center gap-1">
+                      {formatShortStudentId(m.studentId)} {m.name}
+                      {m.isLeader && <Crown size={11} className="text-amber-500 shrink-0" />}
+                    </span>
+                    <span className={`text-[9px] font-bold ${m.isLeader ? "text-amber-600" : "text-slate-400"}`}>
+                      {m.isLeader ? "팀장" : "팀원"}
+                    </span>
+                  </div>
+                </div>
               ))}
             </div>
-          )}
-          <h4 className="font-black text-slate-900 text-base md:text-xl mb-1">{selectedTeam.teamName}</h4>
-          <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-5">{selectedTeam.projectTitle}</p>
-          <div className="flex flex-wrap gap-2">
-            {(selectedTeam.members || []).map((m: any) => (
-              <div key={m.teamMemberId} className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-slate-50 rounded-full border border-slate-100">
-                <img
-                  src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
-                  onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
-                  className="w-5 h-5 rounded-full object-cover shrink-0"
-                  alt={m.name}
-                />
-                <span className="text-[11px] font-bold text-slate-600">{formatShortStudentId(m.studentId)} {m.name}</span>
-                {m.isLeader && <Crown size={11} className="text-amber-500 shrink-0" />}
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+          </>
+        ) : null}
+      </div>
 
       {/* 📋 리포트 타임라인 목록 */}
       <div className="space-y-4 md:space-y-6">
-        <h3 className="text-sm md:text-xl font-black text-slate-900 uppercase tracking-wider px-1 md:px-2 mb-4 md:mb-8">프로젝트 타임라인</h3>
-        {reports.length === 0 ? (
-          <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200 text-slate-400 font-bold text-xs md:text-base">해당 학기에 생성된 리포트가 없습니다.</div>
+        <h3 className="text-sm md:text-xl font-black text-slate-900 uppercase tracking-wider px-1 md:px-2 mb-4 md:mb-8">
+          {isPersonalView ? "개인 프로젝트 타임라인" : `${selectedTeam?.teamName ?? "팀"} 타임라인`}
+        </h3>
+        {timelineItems.length === 0 ? (
+          <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200 text-slate-400 font-bold text-xs md:text-base">
+            {isPersonalView ? "해당 학기에 생성된 리포트가 없습니다." : "이 팀이 제출한 자료가 없습니다."}
+          </div>
         ) : (
-          reports.map((report) => (
+          timelineItems.map((report: any) => (
             <motion.div
               key={report.id}
               whileHover={isSubmittedStatus(report.status) ? { scale: 1.01, y: -2 } : {}}
