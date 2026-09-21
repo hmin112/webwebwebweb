@@ -31,6 +31,8 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
   const [allMembers, setAllMembers] = useState<any[]>([]);
   const [memberSearch, setMemberSearch] = useState("");
   const [isSearchOpen, setIsSearchOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     if (entry) {
@@ -92,10 +94,13 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
   };
 
   const handlePublish = async () => {
+    if (submitLockRef.current) return;
     if (!formData.competitionName || !formData.awardName || !formData.title || !formData.date) {
       return alert("대회명, 수상내역, 제목, 날짜는 필수입니다. ⚠️");
     }
 
+    submitLockRef.current = true;
+    setIsSubmitting(true);
     try {
       const submitData = new FormData();
       submitData.append("competitionName", formData.competitionName);
@@ -131,6 +136,9 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
       } else {
         alert("서버 통신 중 오류가 발생했습니다.");
       }
+    } finally {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -146,9 +154,10 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
           </button>
           <Button
             onClick={handlePublish}
+            disabled={isSubmitting}
             className="bg-indigo-600 text-white font-bold px-8 py-6 rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
           >
-            {entry ? "수정 완료" : "등록 완료"}
+            {isSubmitting ? "처리 중..." : (entry ? "수정 완료" : "등록 완료")}
           </Button>
         </div>
 

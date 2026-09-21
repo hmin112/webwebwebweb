@@ -15,6 +15,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [submissionMemo, setSubmissionMemo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const submitLockRef = useRef(false);
   const [reports, setReports] = useState<any[]>([]);
   const [submissionPeriods, setSubmissionPeriods] = useState<any[]>([]);
   // ✨ [2026-09-07 추가] 학기별 관련 링크(깃/노션 등) — 커뮤니티 부원 상세에도 그대로 노출됨
@@ -237,6 +238,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   };
 
   const handleSubmit = async () => {
+    if (submitLockRef.current) return;
     if (!loginId || loginId === "undefined") {
       alert("로그인 정보가 올바르지 않습니다. 다시 로그인해주세요.");
       return;
@@ -249,6 +251,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
       alert("발표자료, PDF, 기타자료 중 하나 이상 업로드해 주세요.");
       return;
     }
+    submitLockRef.current = true;
     setIsLoading(true);
     try {
       const formData = new FormData();
@@ -271,6 +274,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
       alert(`제출 실패: ${serverMessage || e.message}`);
     } finally {
       setIsLoading(false);
+      submitLockRef.current = false;
     }
   };
 

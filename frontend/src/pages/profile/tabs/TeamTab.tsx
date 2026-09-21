@@ -65,6 +65,7 @@ export const TeamTab = ({
   const [newTeamName, setNewTeamName] = useState("");
   const [newProjectTitle, setNewProjectTitle] = useState("");
   const [isCreating, setIsCreating] = useState(false);
+  const createTeamLockRef = useRef(false);
 
   const [isInviteOpen, setIsInviteOpen] = useState(false);
   const [allMembers, setAllMembers] = useState<any[]>([]);
@@ -85,6 +86,7 @@ export const TeamTab = ({
   const [submissionMemo, setSubmissionMemo] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<{ presentation: File | null; pdf: File | null; other: File | null }>({ presentation: null, pdf: null, other: null });
   const [isSubmittingFile, setIsSubmittingFile] = useState(false);
+  const submitFileLockRef = useRef(false);
   const fileRefs = {
     presentation: useRef<HTMLInputElement>(null),
     pdf: useRef<HTMLInputElement>(null),
@@ -244,12 +246,14 @@ export const TeamTab = ({
   };
 
   const handleSubmitTeamFiles = async () => {
+    if (submitFileLockRef.current) return;
     const hasNewFile = Boolean(uploadedFiles.presentation || uploadedFiles.pdf || uploadedFiles.other);
     const hasExistingFile = Boolean(selectedSubmission?.presentationPath || selectedSubmission?.pdfPath || selectedSubmission?.otherPath);
     if (!hasNewFile && !hasExistingFile) {
       alert("발표자료, PDF, 기타자료 중 하나 이상 업로드해 주세요.");
       return;
     }
+    submitFileLockRef.current = true;
     setIsSubmittingFile(true);
     try {
       const formData = new FormData();
@@ -272,6 +276,7 @@ export const TeamTab = ({
       alert(`제출 실패: ${e.response?.data?.message || e.message}`);
     } finally {
       setIsSubmittingFile(false);
+      submitFileLockRef.current = false;
     }
   };
 
@@ -290,6 +295,7 @@ export const TeamTab = ({
   }, [allTeams, team, teamSearch]);
 
   const handleCreateTeam = async () => {
+    if (createTeamLockRef.current) return;
     if (!newTeamName.trim()) {
       alert("팀 이름을 입력해주세요.");
       return;
@@ -298,6 +304,8 @@ export const TeamTab = ({
       alert("프로젝트 명을 입력해주세요.");
       return;
     }
+    createTeamLockRef.current = true;
+    setIsCreating(true);
     try {
       const created = await api.post("/teams", {
         loginId,
@@ -315,6 +323,9 @@ export const TeamTab = ({
       if (created.data?.teamId) setSelectedTeamId(created.data.teamId);
     } catch (e: any) {
       alert(e.response?.data?.message || "팀 생성에 실패했습니다.");
+    } finally {
+      setIsCreating(false);
+      createTeamLockRef.current = false;
     }
   };
 
@@ -548,7 +559,7 @@ export const TeamTab = ({
                     placeholder="프로젝트 명"
                     className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
                   />
-                  <button onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-md transition-all active:scale-95">팀 생성</button>
+                  <button disabled={isCreating} onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-md transition-all active:scale-95 disabled:opacity-60">{isCreating ? "생성 중..." : "팀 생성"}</button>
                   {teams.length > 0 && (
                     <button onClick={() => { setIsCreatingNewTeam(false); setIsCreating(false); }} className="w-full px-5 py-3 rounded-2xl bg-slate-50 text-slate-400 font-black text-sm">취소</button>
                   )}

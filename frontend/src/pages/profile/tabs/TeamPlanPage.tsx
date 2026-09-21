@@ -68,6 +68,7 @@ export const TeamPlanPage = ({
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -128,6 +129,8 @@ export const TeamPlanPage = ({
   };
 
   const handleSubmit = async () => {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       await api.post("/team-submissions/plan/submit", buildPayload(stateRef.current));
@@ -138,6 +141,7 @@ export const TeamPlanPage = ({
       alert(`제출 실패: ${e.response?.data?.message || e.message}`);
     } finally {
       setSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 

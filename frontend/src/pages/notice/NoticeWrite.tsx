@@ -22,6 +22,8 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
   const [attachments, setAttachments] = useState<AttachmentItem[]>([]);
   const [attachmentFiles, setAttachmentFiles] = useState<File[]>([]);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     if (notice) {
@@ -87,11 +89,14 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
 
   const handlePublish = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLockRef.current) return;
     if (!title.trim() || !content.trim()) {
       alert("제목과 내용을 모두 입력해주세요. ⚠️");
       return;
     }
 
+    submitLockRef.current = true;
+    setIsSubmitting(true);
     try {
       // ✨ JSON 객체 대신 FormData 사용 (파일 전송을 위함)
       const formData = new FormData();
@@ -142,6 +147,9 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
     } catch (error) {
       console.error("공지사항 저장 실패:", error);
       alert("서버 저장 중 오류가 발생했습니다. 잠시 후 다시 시도해주세요.");
+    } finally {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -179,9 +187,10 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
             </Button>
             <Button
               onClick={handlePublish}
+              disabled={isSubmitting}
               className="bg-indigo-600 text-white px-3 py-2 md:px-10 md:py-6 rounded-lg md:rounded-2xl font-black shadow-xl shadow-indigo-100 transition-all active:scale-95 text-[11px] md:text-sm h-auto"
             >
-              {notice ? "수정 완료" : "등록 완료"}
+              {isSubmitting ? "처리 중..." : (notice ? "수정 완료" : "등록 완료")}
             </Button>
           </div>
         </div>

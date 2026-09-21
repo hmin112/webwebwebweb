@@ -20,6 +20,8 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
 
   // ✨ 실제 서버 전송용 파일 객체를 담는 state
   const [imageFile, setImageFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
 
   useEffect(() => {
     if (event) setFormData(event);
@@ -39,10 +41,13 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
   };
 
   const handlePublish = async () => {
+    if (submitLockRef.current) return;
     if (!formData.title || !formData.date || !formData.location || !formData.content) {
       return alert("정보를 모두 입력해주세요. ⚠️");
     }
 
+    submitLockRef.current = true;
+    setIsSubmitting(true);
     try {
       // ✨ JSON 객체 대신 FormData 사용 (파일 전송을 위함)
       const submitData = new FormData();
@@ -76,6 +81,9 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
     } catch (error) {
       console.error("저장 실패:", error);
       alert("서버 통신 중 오류가 발생했습니다.");
+    } finally {
+      setIsSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 
@@ -91,9 +99,10 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
           </button>
           <Button
             onClick={handlePublish}
+            disabled={isSubmitting}
             className="bg-indigo-600 text-white font-bold px-8 py-6 rounded-2xl shadow-lg shadow-indigo-100 hover:bg-indigo-700 active:scale-95 transition-all"
           >
-            {event ? "수정 완료" : "등록 완료"}
+            {isSubmitting ? "처리 중..." : (event ? "수정 완료" : "등록 완료")}
           </Button>
         </div>
 

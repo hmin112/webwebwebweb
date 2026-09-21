@@ -1,5 +1,5 @@
 import { api } from "../../api/axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   User,
@@ -39,6 +39,8 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
   const [verificationCode, setVerificationCode] = useState("");
   const [verificationToken, setVerificationToken] = useState("");
   const [isSendingCode, setIsSendingCode] = useState(false);
+  const [isSigningUp, setIsSigningUp] = useState(false);
+  const signupLockRef = useRef(false);
 
   const [verifiedInfo, setVerifiedInfo] = useState<{
     name: string;
@@ -153,6 +155,7 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
   };
 
   const handleSignup = async () => {
+    if (signupLockRef.current) return;
     if (!idChecked) return alert("아이디 중복 확인을 완료해주세요.");
     if (!idRegex.test(formData.userId)) return alert("아이디 형식을 확인해주세요.");
     if (!passwordRegex.test(formData.password)) return alert("비밀번호는 특수문자 포함 8자 이상이어야 합니다.");
@@ -160,6 +163,8 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
     if (!discordVerified || !verifiedInfo) return alert("디스코드 인증을 완료해주세요.");
     if (!verificationToken) return alert("인증 토큰이 없습니다. 다시 인증해주세요.");
 
+    signupLockRef.current = true;
+    setIsSigningUp(true);
     try {
       const response = await api.post("/members/signup", {
         loginId: formData.userId,
@@ -175,6 +180,9 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
       }
     } catch {
       alert("회원가입에 실패했습니다.");
+    } finally {
+      setIsSigningUp(false);
+      signupLockRef.current = false;
     }
   };
 
@@ -342,10 +350,10 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
 
             <Button
               onClick={handleSignup}
-              disabled={!idChecked || !discordVerified}
-              className={`w-full py-4 md:py-6 rounded-xl md:rounded-[2rem] font-bold text-lg md:text-xl mt-8 md:mt-12 transition-all h-auto ${!idChecked || !discordVerified ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" : "bg-indigo-600 text-white shadow-2xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95"}`}
+              disabled={!idChecked || !discordVerified || isSigningUp}
+              className={`w-full py-4 md:py-6 rounded-xl md:rounded-[2rem] font-bold text-lg md:text-xl mt-8 md:mt-12 transition-all h-auto ${!idChecked || !discordVerified || isSigningUp ? "bg-slate-200 text-slate-400 cursor-not-allowed shadow-none" : "bg-indigo-600 text-white shadow-2xl shadow-indigo-100 hover:bg-indigo-700 active:scale-95"}`}
             >
-              회원가입 완료 <ArrowRight className="ml-2 w-5 h-5 md:w-6 md:h-6" />
+              {isSigningUp ? "가입 처리 중..." : "회원가입 완료"} <ArrowRight className="ml-2 w-5 h-5 md:w-6 md:h-6" />
             </Button>
           </form>
         </div>

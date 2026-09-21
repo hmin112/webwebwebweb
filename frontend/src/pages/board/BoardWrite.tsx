@@ -29,6 +29,8 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
   const [feeItems, setFeeItems] = useState<LedgerItem[]>([]);
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  // state 반영보다 빠른 연속 클릭도 즉시 차단한다.
+  const submitLockRef = useRef(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -115,6 +117,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
   // ✨ 제출 핸들러 (JSON 대신 FormData 사용)
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (submitLockRef.current) return;
     if (post && post.loginId !== user?.loginId) {
       alert("본인 글만 수정할 수 있습니다.");
       return;
@@ -134,6 +137,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
       return;
     }
 
+    submitLockRef.current = true;
     setIsSubmitting(true);
 
     try {
@@ -177,6 +181,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
       alert("저장 중 오류가 발생했습니다.");
     } finally {
       setIsSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 

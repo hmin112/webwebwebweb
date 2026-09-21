@@ -59,6 +59,7 @@ export const AssemblyPlanPage = ({
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
   const [submitting, setSubmitting] = useState(false);
+  const submitLockRef = useRef(false);
   const [teamMembers, setTeamMembers] = useState<any[] | null>(null); // null=로딩중, []=팀 없음(개인), [...]=팀원 목록
 
   const stateRef = useRef(state);
@@ -144,6 +145,8 @@ export const AssemblyPlanPage = ({
   };
 
   const handleSubmit = async () => {
+    if (submitLockRef.current) return;
+    submitLockRef.current = true;
     setSubmitting(true);
     try {
       await api.post("/assembly/plan/submit", buildPayload(stateRef.current));
@@ -154,6 +157,7 @@ export const AssemblyPlanPage = ({
       alert(`제출 실패: ${e.response?.data?.message || e.message}`);
     } finally {
       setSubmitting(false);
+      submitLockRef.current = false;
     }
   };
 

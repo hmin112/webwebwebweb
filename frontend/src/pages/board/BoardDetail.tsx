@@ -23,6 +23,8 @@ export const BoardDetail = ({
   onAddReply
 }: any) => {
   const [commentContent, setCommentContent] = useState("");
+  const [isCommentSubmitting, setIsCommentSubmitting] = useState(false);
+  const commentSubmitLockRef = useRef(false);
   const commentsEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -94,10 +96,18 @@ export const BoardDetail = ({
     return `${strId}학번`;
   };
 
-  const handleSendComment = () => {
+  const handleSendComment = async () => {
     if (!commentContent.trim()) return;
-    onAddComment(post.id, commentContent);
-    setCommentContent("");
+    if (commentSubmitLockRef.current) return;
+    commentSubmitLockRef.current = true;
+    setIsCommentSubmitting(true);
+    try {
+      await onAddComment(post.id, commentContent);
+      setCommentContent("");
+    } finally {
+      setIsCommentSubmitting(false);
+      commentSubmitLockRef.current = false;
+    }
   };
 
   return (
@@ -247,10 +257,10 @@ export const BoardDetail = ({
               <div className="flex justify-end mt-2.5 md:mt-3">
                 <button
                   onClick={handleSendComment}
-                  disabled={!commentContent.trim()}
+                  disabled={!commentContent.trim() || isCommentSubmitting}
                   className="flex items-center gap-1.5 px-4 py-2.5 md:px-5 md:py-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black text-[11px] md:text-sm shadow-sm hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-slate-200 disabled:text-slate-400"
                 >
-                  <Send className="w-3.5 h-3.5 md:w-4 md:h-4" /> 등록
+                  <Send className="w-3.5 h-3.5 md:w-4 md:h-4" /> {isCommentSubmitting ? "등록 중..." : "등록"}
                 </button>
               </div>
             </div>
