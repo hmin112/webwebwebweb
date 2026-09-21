@@ -67,8 +67,7 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
                     </div>
                   )}
                   <div className="absolute top-4 left-4 md:top-6 md:left-6 flex flex-wrap gap-1.5">
-                    {awardGroups.slice(0, 2).map((award: any) => <span key={award.awardName} className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
-                    {awardGroups.length > 2 && <span className="px-3 py-1.5 rounded-full bg-slate-900/75 text-white text-[10px] font-black">+{awardGroups.length - 2}</span>}
+                    {awardGroups.map((award: any) => <span key={award.awardName} className={`px-3.5 py-1.5 md:px-4 md:py-2 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
                   </div>
                 </div>
                 <div className="p-5 md:p-8">

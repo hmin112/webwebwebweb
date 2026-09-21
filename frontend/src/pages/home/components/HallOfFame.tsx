@@ -71,12 +71,12 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                     </div>
                   )}
                   <div className="absolute top-2 left-2 md:top-4 md:left-4 flex flex-wrap gap-1.5">
-                    {awardGroups.slice(0, 2).map((award: any) => <span key={award.awardName} className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-full text-[10px] md:text-xs font-black line-clamp-1 ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
+                    {awardGroups.map((award: any) => <span key={award.awardName} className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
                   </div>
 
                   {awardGroups.some((award: any) => award.participants?.length) && (
                     <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 flex flex-col items-end gap-1">
-                      {awardGroups.flatMap((award: any) => award.participants || []).slice(0, 3).map((p: any) => (
+                      {awardGroups.flatMap((award: any) => award.participants || []).map((p: any) => (
                         <div
                           key={p.loginId}
                           className="flex items-center gap-1 md:gap-1.5 bg-white/60 backdrop-blur-md shadow-md rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-white/40"
@@ -95,11 +95,6 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                           </span>
                         </div>
                       ))}
-                      {awardGroups.flatMap((award: any) => award.participants || []).length > 3 && (
-                        <span className="text-[10px] md:text-[11px] font-bold text-white bg-slate-900/70 backdrop-blur-sm rounded-full px-2 py-0.5">
-                          +{awardGroups.flatMap((award: any) => award.participants || []).length - 3}명
-                        </span>
-                      )}
                     </div>
                   )}
                 </div>
