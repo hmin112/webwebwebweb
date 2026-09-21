@@ -20,6 +20,16 @@ const getAwardBadgeStyle = (awardName?: string) => {
 };
 
 export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string, id?: number) => void; entries: any[] }) => {
+  // 홈 미리보기는 항상 네 칸만 쓴다. 여러 상 게시글은 가로 두 칸을 점유하므로,
+  // 그만큼 다음 게시글 수를 줄여 한 줄 안에서 균형을 맞춘다.
+  let occupiedSlots = 0;
+  const previewEntries = (entries || []).filter((entry) => {
+    const slots = entry.awards?.length > 1 ? 2 : 1;
+    if (occupiedSlots + slots > 4) return false;
+    occupiedSlots += slots;
+    return true;
+  });
+
   return (
     <section id="halloffame" className="py-10 md:py-16 bg-white">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -46,7 +56,7 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
           </div>
         ) : (
           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-8">
-            {entries.map((entry, index) => {
+            {previewEntries.map((entry, index) => {
               const awardGroups = entry.awards?.length ? entry.awards : [{ awardName: entry.awardName, participants: entry.participants || [] }];
               const hasMultipleAwards = awardGroups.length > 1;
               return (
@@ -58,7 +68,7 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                 onClick={() => onNavigate("halloffame-detail", entry.id)}
                 className={`group cursor-pointer ${hasMultipleAwards ? "col-span-2 md:col-span-2" : ""}`}
               >
-                <div className="relative w-full aspect-square rounded-2xl md:rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 mb-3 md:mb-4">
+                <div className={`relative w-full ${hasMultipleAwards ? "aspect-[2/1]" : "aspect-square"} rounded-2xl md:rounded-[2rem] overflow-hidden shadow-sm border border-slate-100 mb-3 md:mb-4`}>
                   {entry.image ? (
                     <img
                       src={entry.image}
