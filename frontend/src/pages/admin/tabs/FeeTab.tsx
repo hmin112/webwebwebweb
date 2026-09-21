@@ -267,6 +267,42 @@ export const FeeTab = () => {
     );
   };
 
+  // 작은 화면에서는 가로로 긴 표 대신, 한 사람씩 바로 선택·납부 처리할 수 있는 카드로 보여준다.
+  const renderMobileCard = (m: FeeMember) => {
+    const isSelected = selectedIds.includes(m.loginId);
+    const isFreshman = m.userStatus === "신입생";
+    return (
+      <div key={m.loginId} className={`p-4 border-b border-slate-100 last:border-b-0 ${isSelected ? "bg-indigo-50/50" : m.former ? "bg-slate-50/60" : "bg-white"}`}>
+        <div className="flex items-start gap-3">
+          <button onClick={() => toggleSelect(m.loginId)} aria-label={`${m.name} 선택`} className={`mt-0.5 shrink-0 ${isSelected ? "text-indigo-600" : "text-slate-300"}`}>
+            {isSelected ? <CheckCircle2 size={20} /> : <Circle size={20} />}
+          </button>
+          <div className="min-w-0 flex-1">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="font-black text-sm text-slate-900">{m.name}</span>
+              <span className={`px-1.5 py-0.5 text-[9px] font-black rounded ${isFreshman ? "bg-cyan-50 text-cyan-600" : "bg-green-50 text-green-600"}`}>{m.userStatus}</span>
+              {m.former && <span className="px-1.5 py-0.5 text-[9px] font-black rounded bg-slate-200 text-slate-500">현재 미대상</span>}
+            </div>
+            <p className="mt-1 text-[11px] font-bold text-slate-400">{m.studentId} · @{m.discordTag || "미연동"}</p>
+          </div>
+          <button
+            onClick={() => handleTogglePaid(m)}
+            disabled={togglingId === m.loginId}
+            className={`shrink-0 inline-flex items-center gap-1 px-2.5 py-2 rounded-lg font-black text-[10px] disabled:opacity-50 ${m.paid ? "bg-green-600 text-white" : "bg-white text-slate-500 border border-slate-200"}`}
+          >
+            {togglingId === m.loginId ? <Loader2 size={13} className="animate-spin" /> : m.paid ? <CheckCircle2 size={13} /> : <Circle size={13} />}
+            {m.paid ? "납부" : "미납"}
+          </button>
+        </div>
+        <div className="mt-2 ml-8 flex justify-end">
+          <button onClick={() => handleRemoveFromRoster(m)} className="inline-flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-red-500">
+            <Trash2 size={12} /> 이 달 명단에서 제외
+          </button>
+        </div>
+      </div>
+    );
+  };
+
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
       {/* 연도 / 월 선택 */}
@@ -280,7 +316,7 @@ export const FeeTab = () => {
             <ChevronRight size={16} />
           </button>
         </div>
-        <div className="flex gap-1.5 md:gap-2 overflow-x-auto no-scrollbar">
+        <div className="flex min-w-0 w-full gap-1.5 md:gap-2 overflow-x-auto no-scrollbar pb-1">
           {ACTIVE_MONTHS.map((m) => (
             <button
               key={m}
@@ -421,7 +457,7 @@ export const FeeTab = () => {
 
           {/* 명단 */}
           <div className="bg-white rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto no-scrollbar">
+            <div className="hidden md:block overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse min-w-[620px]">
                 <thead>
                   <tr className="bg-slate-50/50 border-b border-slate-100 text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest">
@@ -448,6 +484,15 @@ export const FeeTab = () => {
                   {paidVisible.map(renderRow)}
                 </tbody>
               </table>
+            </div>
+            <div className="md:hidden">
+              {unpaidVisible.map(renderMobileCard)}
+              {paidVisible.length > 0 && (
+                <div className="px-4 py-2.5 bg-green-50/60 border-y border-green-100 text-[10px] font-black text-green-600 uppercase tracking-widest">
+                  회비 낸 인원 ({paidVisible.length}명)
+                </div>
+              )}
+              {paidVisible.map(renderMobileCard)}
             </div>
             {filteredMembers.length === 0 && (
               <div className="text-center py-14 md:py-20 px-6">

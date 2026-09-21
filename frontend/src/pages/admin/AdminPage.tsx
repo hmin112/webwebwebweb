@@ -575,13 +575,15 @@ export const AdminPage = () => {
           </div>
         </div>
 
-        <div className="flex gap-2 p-1 bg-slate-200/50 rounded-xl md:rounded-[1.5rem] mb-8 md:mb-10 w-fit">
-          <button onClick={() => { setActiveTab("members"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "members" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>부원 명단</button>
-          <button onClick={() => { setActiveTab("access"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "access" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>통합 로그</button>
-          <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>삭제 기록</button>
-          <button onClick={() => { setActiveTab("discord"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "discord" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>디스코드 확인</button>
-          <button onClick={() => { setActiveTab("roster"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "roster" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>명단 대조</button>
-          <button onClick={() => { setActiveTab("fee"); setSearchQuery(""); }} className={`px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "fee" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>회비</button>
+        <div className="max-w-full overflow-x-auto no-scrollbar mb-8 md:mb-10 pb-1">
+          <div className="flex w-max gap-2 p-1 bg-slate-200/50 rounded-xl md:rounded-[1.5rem]">
+          <button onClick={() => { setActiveTab("members"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "members" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>부원 명단</button>
+          <button onClick={() => { setActiveTab("access"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "access" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>통합 로그</button>
+          <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>삭제 기록</button>
+          <button onClick={() => { setActiveTab("discord"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "discord" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>디스코드 확인</button>
+          <button onClick={() => { setActiveTab("roster"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "roster" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>명단 대조</button>
+          <button onClick={() => { setActiveTab("fee"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "fee" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>회비</button>
+          </div>
         </div>
 
         {activeTab === "members" && (
