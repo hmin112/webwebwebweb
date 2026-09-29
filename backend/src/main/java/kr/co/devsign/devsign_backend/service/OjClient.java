@@ -434,6 +434,27 @@ public class OjClient {
         return unwrap(response);
     }
 
+    // 서비스(관리자) 계정으로 제출 상세 조회 — OJ는 본인·관리자만 남의 제출 코드를 볼 수 있어서,
+    // 부원 간 코드 열람은 우리 백엔드가 권한을 판단한 뒤 이 메서드로 가져온다
+    public Map<String, Object> getSubmissionAsService(String submissionId) {
+        return getSubmission(serviceAppkey, submissionId);
+    }
+
+    // 동아리 부원(OJ 아이디 dv_ 접두어) 전체의 제출 목록 — OJ의 submission_list_show_all 옵션이 켜져 있어
+    // myself 없이 조회하면 모두의 제출이 오고, username 필터로 서비스·관리자 계정 제출(모범답안 검증용)은 뺀다
+    public Map<String, Object> getMemberSubmissionList(String appkey, String problemDisplayId, int limit) {
+        UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(ojBaseUrl + "/api/submissions")
+                .queryParam("limit", limit)
+                .queryParam("username", "dv_");
+        if (problemDisplayId != null && !problemDisplayId.isBlank()) {
+            builder.queryParam("problem_id", problemDisplayId);
+        }
+        HttpEntity<Void> entity = new HttpEntity<>(appkeyHeaders(appkey));
+        ResponseEntity<Map> response = restTemplate.exchange(
+                builder.toUriString(), HttpMethod.GET, entity, Map.class);
+        return unwrap(response);
+    }
+
     public Map<String, Object> getSubmissionList(String appkey, String problemDisplayId, int limit) {
         UriComponentsBuilder builder = UriComponentsBuilder.fromUriString(ojBaseUrl + "/api/submissions")
                 .queryParam("limit", limit)

@@ -1,7 +1,8 @@
 import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, Cpu, Play, Pencil, Check, X, Plus } from "lucide-react";
+import { ArrowLeft, Clock, Cpu, Play, Pencil, Check, X, Plus, Code2, Users, User } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { api } from "../../api/axios";
 
@@ -27,6 +28,20 @@ type OjSubmission = {
   language: string;
   create_time: string;
   statistic_info?: { time_cost?: number; memory_cost?: number };
+  code?: string;
+  memberName?: string;
+  memberStudentId?: string | null;
+  mine?: boolean;
+};
+
+const shortStudentId = (id?: string | null) => (id && String(id).length === 8 ? String(id).substring(2, 4) : id || "");
+
+const formatSubmitTime = (iso?: string) => {
+  if (!iso) return "";
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return "";
+  const pad = (n: number) => String(n).padStart(2, "0");
+  return `${pad(d.getMonth() + 1)}.${pad(d.getDate())} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
 const MONACO_LANGUAGE: Record<string, string> = {
@@ -65,6 +80,13 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
   const [submitting, setSubmitting] = useState(false);
   const [activeSubmission, setActiveSubmission] = useState<OjSubmission | null>(null);
   const [history, setHistory] = useState<OjSubmission[]>([]);
+  // ✨ [2026-09-29] 모든 부원의 제출도 참고용으로 열람 — 목록 탭 + 코드 보기 창
+  const [historyScope, setHistoryScope] = useState<"mine" | "all">("mine");
+  const historyScopeRef = useRef(historyScope);
+  historyScopeRef.current = historyScope; // 채점 폴링(setInterval) 안에서 최신 탭 값을 읽기 위해
+  const [allHistory, setAllHistory] = useState<OjSubmission[] | null>(null);
+  const [viewing, setViewing] = useState<OjSubmission | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [editingStatement, setEditingStatement] = useState(false);
@@ -116,6 +138,37 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
     }
   };
 
+  const fetchAllHistory = async () => {
+    if (!loginId || !problemId) return;
+    try {
+      const res = await api.get("/oj/submissions", {
+        params: { loginId, problemDisplayId: problemId, limit: 50, scope: "all" },
+      });
+      setAllHistory(res.data?.results ?? []);
+    } catch {
+      setAllHistory([]);
+    }
+  };
+
+  const switchScope = (scope: "mine" | "all") => {
+    setHistoryScope(scope);
+    if (scope === "all") fetchAllHistory();
+  };
+
+  const openSubmission = async (sub: OjSubmission) => {
+    setViewing(sub);
+    setViewLoading(true);
+    try {
+      const res = await api.get(`/oj/submissions/${sub.id}`, { params: { loginId } });
+      setViewing({ ...sub, ...res.data });
+    } catch (e: any) {
+      alert(e?.response?.data?.message || "제출 코드를 불러오지 못했습니다");
+      setViewing(null);
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
   const handleLanguageChange = (lang: string) => {
     setLanguage(lang);
     setCode(problem?.template?.[lang] ?? "");
@@ -131,6 +184,7 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
         if (!isPending(sub.result)) {
           if (pollRef.current) clearInterval(pollRef.current);
           fetchHistory();
+          if (historyScopeRef.current === "all") fetchAllHistory();
         }
       } catch {
         if (pollRef.current) clearInterval(pollRef.current);
@@ -350,22 +404,60 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
               ))
             )}
 
-            {history.length > 0 && (
-              <div className="mt-7 pt-6 border-t border-slate-100">
-                <p className="text-[13px] font-semibold text-slate-900 mb-3">내 제출 이력</p>
-                <div className="space-y-1.5">
-                  {history.map((h) => {
-                    const style = RESULT_STYLE[h.result] ?? { label: "-", color: "#8E8E93" };
-                    return (
-                      <div key={h.id} className="flex items-center justify-between text-[12px] py-1.5">
-                        <span className="text-slate-400">{h.language}</span>
-                        <span className="font-medium" style={{ color: style.color }}>{style.label}</span>
-                      </div>
-                    );
-                  })}
-                </div>
+            <div className="mt-7 pt-6 border-t border-slate-100">
+              <div className="flex items-center gap-1 mb-3 p-1 bg-slate-100 rounded-xl w-fit">
+                {([["mine", "내 제출", <User size={12} key="u" />], ["all", "모든 부원 제출", <Users size={12} key="a" />]] as const).map(([key, label, icon]) => (
+                  <button
+                    key={key}
+                    onClick={() => switchScope(key)}
+                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${
+                      historyScope === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                    }`}
+                  >
+                    {icon} {label}
+                  </button>
+                ))}
               </div>
-            )}
+              {(() => {
+                const rows = historyScope === "mine" ? history : allHistory;
+                if (rows === null) return <p className="text-[12px] text-slate-400 py-2">불러오는 중...</p>;
+                if (rows.length === 0) {
+                  return (
+                    <p className="text-[12px] text-slate-400 py-2">
+                      {historyScope === "mine" ? "아직 제출한 기록이 없어요" : "아직 이 문제를 제출한 부원이 없어요"}
+                    </p>
+                  );
+                }
+                return (
+                  <div className="space-y-0.5 max-h-[320px] overflow-y-auto -mx-2">
+                    {rows.map((h) => {
+                      const style = RESULT_STYLE[h.result] ?? { label: "-", color: "#8E8E93" };
+                      return (
+                        <button
+                          key={h.id}
+                          onClick={() => openSubmission(h)}
+                          className="w-full flex items-center justify-between gap-2 text-[12px] py-1.5 px-2 rounded-lg hover:bg-slate-50 text-left"
+                        >
+                          <span className="flex items-center gap-2 min-w-0">
+                            {historyScope === "all" && (
+                              <span className={`font-semibold truncate ${h.mine ? "text-indigo-600" : "text-slate-700"}`}>
+                                {shortStudentId(h.memberStudentId)} {h.memberName}
+                              </span>
+                            )}
+                            <span className="text-slate-400 shrink-0">{h.language}</span>
+                            <span className="text-slate-300 shrink-0 hidden sm:inline">{formatSubmitTime(h.create_time)}</span>
+                          </span>
+                          <span className="flex items-center gap-2 shrink-0">
+                            <span className="font-medium" style={{ color: style.color }}>{style.label}</span>
+                            <Code2 size={12} className="text-slate-300" />
+                          </span>
+                        </button>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
+            </div>
           </div>
         </div>
 
@@ -429,6 +521,65 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
           </div>
         </div>
       </motion.div>
+
+      {viewing &&
+        createPortal(
+          <div className="fixed inset-0 z-[400] flex items-center justify-center p-3 md:p-10">
+            <div className="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" onClick={() => setViewing(null)} />
+            <div className="relative w-full max-w-4xl max-h-full bg-white rounded-[24px] shadow-2xl overflow-hidden flex flex-col">
+              <div className="flex items-start justify-between gap-3 px-5 py-4 border-b border-slate-100">
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold text-slate-900 truncate">
+                    {viewing.memberName ? `${shortStudentId(viewing.memberStudentId)} ${viewing.memberName}` : "제출 코드"}
+                    {viewing.mine && <span className="ml-1.5 text-[11px] font-medium text-indigo-500">(나)</span>}
+                  </p>
+                  <p className="text-[12px] text-slate-400 mt-0.5 flex flex-wrap items-center gap-x-2">
+                    <span style={{ color: (RESULT_STYLE[viewing.result] ?? { color: "#8E8E93" }).color }} className="font-semibold">
+                      {(RESULT_STYLE[viewing.result] ?? { label: "-" }).label}
+                    </span>
+                    <span>{viewing.language}</span>
+                    {viewing.statistic_info?.time_cost !== undefined && (
+                      <span>{viewing.statistic_info.time_cost}ms · {viewing.statistic_info.memory_cost}KB</span>
+                    )}
+                    <span>{formatSubmitTime(viewing.create_time)}</span>
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 shrink-0">
+                  {viewing.mine && viewing.code && (
+                    <button
+                      onClick={() => {
+                        if (!window.confirm("지금 에디터의 코드를 이 제출 코드로 바꿀까요?")) return;
+                        if (viewing.language && problem?.languages.includes(viewing.language)) setLanguage(viewing.language);
+                        setCode(viewing.code ?? "");
+                        setViewing(null);
+                      }}
+                      className="h-8 px-3 rounded-lg text-[12px] font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200"
+                    >
+                      에디터로 불러오기
+                    </button>
+                  )}
+                  <button onClick={() => setViewing(null)} className="p-2 rounded-lg text-slate-400 hover:bg-slate-100">
+                    <X size={16} />
+                  </button>
+                </div>
+              </div>
+              {viewLoading ? (
+                <div className="h-[300px] flex items-center justify-center">
+                  <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
+                </div>
+              ) : (
+                <Editor
+                  height="60vh"
+                  language={MONACO_LANGUAGE[viewing.language] ?? "plaintext"}
+                  value={viewing.code ?? ""}
+                  theme="vs"
+                  options={{ readOnly: true, domReadOnly: true, fontSize: 13, minimap: { enabled: false }, scrollBeyondLastLine: false }}
+                />
+              )}
+            </div>
+          </div>,
+          document.body
+        )}
     </div>
   );
 };

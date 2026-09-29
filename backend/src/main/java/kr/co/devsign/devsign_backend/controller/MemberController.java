@@ -20,7 +20,9 @@ import kr.co.devsign.devsign_backend.dto.member.VerifyCodeRequest;
 import kr.co.devsign.devsign_backend.dto.member.VerifyCodeResponse;
 import kr.co.devsign.devsign_backend.dto.member.VerifyIdPwRequest;
 import kr.co.devsign.devsign_backend.dto.member.VerifyIdPwResponse;
+import kr.co.devsign.devsign_backend.config.AuthGuard;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,15 +77,19 @@ public class MemberController {
     // ✨ [수정 완료] 프론트엔드에서 쿼리 파라미터로 날아올 인증번호(authCode)를 받아서 Service(주방장)로 넘겨줍니다!
     @PutMapping("/update/{loginId}")
     public StatusResponse updateMember(
+            Authentication authentication,
             @PathVariable String loginId, 
             @RequestBody UpdateMemberRequest updateData,
             @RequestParam(required = false) String authCode
     ) {
+        // ✨ [2026-09-29] 본인 프로필만 수정 가능 — 남의 디스코드 계정을 바꿔치기해 비밀번호 재설정으로 계정을 빼앗는 경로 차단
+        AuthGuard.requireSelf(authentication, loginId);
         return memberService.updateMember(loginId, updateData, authCode);
     }
 
     @PutMapping("/change-password/{loginId}")
-    public StatusResponse changePassword(@PathVariable String loginId, @RequestBody ChangePasswordRequest request) {
+    public StatusResponse changePassword(Authentication authentication, @PathVariable String loginId, @RequestBody ChangePasswordRequest request) {
+        AuthGuard.requireSelf(authentication, loginId);
         return memberService.changePassword(loginId, request);
     }
 
