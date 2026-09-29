@@ -2,10 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  MonitorPlay, ChevronLeft, ChevronRight, X, Save, Plus, Trash2,
+  ChevronLeft, ChevronRight, X, Save, Plus, Trash2,
   Maximize, Minimize, Loader2, Megaphone, ListChecks, Users, Quote, CalendarClock, Clock,
 } from "lucide-react";
 import { api } from "../../../api/axios";
+import { PageHeader } from "../assemblyUi";
 import { AssemblyBannerDisplay, type AssemblyBannerData } from "../components/AssemblyBannerDisplay";
 
 const ACTIVE_MONTHS = [3, 4, 5, 6, 9, 10, 11, 12];
@@ -124,22 +125,21 @@ export const AssemblyBannerAdminTab = () => {
 
   return (
     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-6 md:space-y-8">
-      <div className="flex items-center gap-2 md:gap-3 px-1 md:px-2 mb-2 text-slate-400 uppercase tracking-widest font-black text-[10px] md:text-xs">
-        <MonitorPlay size={14} className="md:w-4 md:h-4" /> 총회 배너
-      </div>
-
-      <div className="flex items-center justify-center gap-4 md:gap-6 bg-white p-3 md:p-4 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm w-fit mx-auto">
-        <button onClick={() => setCurrentYear((y) => y - 1)} className="p-2 rounded-xl hover:bg-slate-50 text-slate-400">
-          <ChevronLeft size={18} />
-        </button>
-        <span className="text-lg md:text-xl font-black text-slate-900 tabular-nums w-20 text-center">{currentYear}년</span>
-        <button onClick={() => setCurrentYear((y) => y + 1)} className="p-2 rounded-xl hover:bg-slate-50 text-slate-400">
-          <ChevronRight size={18} />
-        </button>
-      </div>
+      {/* ✨ [2026-09-30] 애플 스타일 머리말 */}
+      <PageHeader
+        title="총회 배너"
+        desc="달마다 총회 화면에 띄울 배너를 만들고, 전체 화면으로 발표해요."
+        right={
+          <div className="flex items-center gap-1 bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] h-10 px-1.5 rounded-full">
+            <button onClick={() => setCurrentYear((y) => y - 1)} aria-label="이전 연도" className="w-7 h-7 rounded-full flex items-center justify-center text-[#6E6E73] hover:bg-black/[0.05]"><ChevronLeft size={16} /></button>
+            <span className="text-sm font-semibold text-[#1D1D1F] w-14 text-center tabular-nums">{currentYear}년</span>
+            <button onClick={() => setCurrentYear((y) => y + 1)} aria-label="다음 연도" className="w-7 h-7 rounded-full flex items-center justify-center text-[#6E6E73] hover:bg-black/[0.05]"><ChevronRight size={16} /></button>
+          </div>
+        }
+      />
 
       {isLoading ? (
-        <div className="flex flex-col items-center justify-center py-20 text-slate-400">
+        <div className="flex flex-col items-center justify-center py-20 text-[#8E8E93]">
           <Loader2 className="animate-spin mb-4" size={28} />
         </div>
       ) : (
@@ -151,13 +151,15 @@ export const AssemblyBannerAdminTab = () => {
               <button
                 key={month}
                 onClick={() => openEditor(month)}
-                className={`p-5 md:p-6 rounded-2xl md:rounded-[2rem] border shadow-sm text-left transition-all hover:shadow-md ${hasContent ? "bg-indigo-600 border-indigo-600 text-white" : "bg-white border-slate-100 text-slate-900"}`}
+                className="p-4 md:p-5 rounded-3xl text-left bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] hover:shadow-[0_8px_24px_rgb(0_0_0/0.06)] transition-shadow"
               >
-                <div className={`text-[10px] font-black uppercase tracking-widest mb-1 ${hasContent ? "text-indigo-200" : "text-slate-400"}`}>{month}월</div>
-                <div className="text-base md:text-lg font-black truncate">{banner?.title?.trim() || `${month}월 총회`}</div>
-                <div className={`text-[10px] md:text-xs font-bold mt-2 ${hasContent ? "text-indigo-100" : "text-slate-300"}`}>
-                  {hasContent ? "작성됨" : "미작성"}
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xl font-bold text-[#1D1D1F]">{month}<span className="text-sm text-[#8E8E93] font-semibold">월</span></span>
+                  <span className={`px-2 py-0.5 rounded-full text-[11px] font-semibold ${hasContent ? "bg-[#34C759]/10 text-[#248A3D]" : "bg-black/[0.05] text-[#8E8E93]"}`}>
+                    {hasContent ? "작성됨" : "미작성"}
+                  </span>
                 </div>
+                <div className={`text-sm md:text-[15px] font-semibold truncate ${hasContent ? "text-[#1D1D1F]" : "text-[#AEAEB2]"}`}>{banner?.title?.trim() || `${month}월 총회`}</div>
               </button>
             );
           })}
@@ -168,14 +170,14 @@ export const AssemblyBannerAdminTab = () => {
       <AnimatePresence>
         {editingMonth !== null && editorData && (
           <div className="fixed inset-0 z-[400] flex items-center justify-center px-4 md:px-6 py-8">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/60 backdrop-blur-md" onClick={closeEditor} />
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={closeEditor} />
             <motion.div
               initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
-              className="relative bg-white w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-2xl md:rounded-[2.5rem] p-6 md:p-10 shadow-2xl"
+              className="relative bg-[#fff] w-full max-w-2xl max-h-[85vh] overflow-y-auto rounded-3xl p-6 md:p-10 shadow-2xl"
             >
               <div className="flex items-center justify-between mb-6 md:mb-8">
-                <h2 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight">{currentYear}년 {editingMonth}월 총회 배너</h2>
-                <button onClick={closeEditor} className="p-2 rounded-xl hover:bg-slate-50 text-slate-400"><X size={20} /></button>
+                <h2 className="text-lg md:text-2xl font-bold text-[#1D1D1F] tracking-tight">{currentYear}년 {editingMonth}월 총회 배너</h2>
+                <button onClick={closeEditor} className="p-2 rounded-xl hover:bg-black/[0.04] text-[#8E8E93]"><X size={20} /></button>
               </div>
 
               <div className="space-y-6">
@@ -184,7 +186,7 @@ export const AssemblyBannerAdminTab = () => {
                     value={editorData.title || ""}
                     onChange={(e) => setEditorData({ ...editorData, title: e.target.value })}
                     placeholder={`${editingMonth}월 총회`}
-                    className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                    className="w-full px-4 py-3 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                   />
                 </Field>
 
@@ -215,7 +217,7 @@ export const AssemblyBannerAdminTab = () => {
                       value={editorData.attendanceCount ?? ""}
                       onChange={(e) => setEditorData({ ...editorData, attendanceCount: e.target.value === "" ? null : Number(e.target.value) })}
                       placeholder="예: 33"
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                      className="w-full px-4 py-3 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                     />
                   </Field>
                   <Field label="종료 목표 시각" icon={<Clock size={14} />}>
@@ -223,7 +225,7 @@ export const AssemblyBannerAdminTab = () => {
                       type="time"
                       value={editorData.targetEndTime || ""}
                       onChange={(e) => setEditorData({ ...editorData, targetEndTime: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                      className="w-full px-4 py-3 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                     />
                   </Field>
                 </div>
@@ -233,7 +235,7 @@ export const AssemblyBannerAdminTab = () => {
                     value={editorData.quote || ""}
                     onChange={(e) => setEditorData({ ...editorData, quote: e.target.value })}
                     placeholder="예: 동아리방에서 꼭 정숙하기"
-                    className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                    className="w-full px-4 py-3 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                   />
                 </Field>
 
@@ -243,7 +245,7 @@ export const AssemblyBannerAdminTab = () => {
                       value={editorData.nextAssemblyLabel || ""}
                       onChange={(e) => setEditorData({ ...editorData, nextAssemblyLabel: e.target.value })}
                       placeholder="예: 6월 총회"
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                      className="w-full px-4 py-3 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                     />
                   </Field>
                   <Field label="다음 총회 날짜">
@@ -251,7 +253,7 @@ export const AssemblyBannerAdminTab = () => {
                       type="date"
                       value={editorData.nextAssemblyDate || ""}
                       onChange={(e) => setEditorData({ ...editorData, nextAssemblyDate: e.target.value })}
-                      className="w-full px-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                      className="w-full px-4 py-3 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                     />
                   </Field>
                 </div>
@@ -260,14 +262,14 @@ export const AssemblyBannerAdminTab = () => {
               <div className="flex gap-3 mt-8">
                 <button
                   onClick={openFullscreen}
-                  className="flex-1 flex items-center justify-center gap-2 h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base bg-slate-50 text-slate-600 hover:bg-slate-100 transition-all"
+                  className="flex-1 flex items-center justify-center gap-2 h-12 md:h-14 rounded-xl md:rounded-2xl font-bold text-sm md:text-base bg-[#F5F5F7] text-[#3A3A3C] hover:bg-black/[0.06] transition-all"
                 >
                   <Maximize size={16} /> 전체화면으로 보기
                 </button>
                 <button
                   onClick={handleSave}
                   disabled={isSaving}
-                  className="flex-1 flex items-center justify-center gap-2 h-12 md:h-14 rounded-xl md:rounded-2xl font-black text-sm md:text-base bg-indigo-600 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-700 transition-all disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 h-12 md:h-14 rounded-xl md:rounded-2xl font-bold text-sm md:text-base bg-[#0071E3] text-white hover:bg-[#0077ED] transition-all disabled:opacity-50"
                 >
                   {isSaving ? <Loader2 size={16} className="animate-spin" /> : <Save size={16} />} 저장
                 </button>
@@ -283,7 +285,7 @@ export const AssemblyBannerAdminTab = () => {
         <div ref={fullscreenRef} className="fixed inset-0 z-[9999] bg-[#f5f5f7] overflow-y-auto">
           <button
             onClick={closeFullscreen}
-            className="fixed top-4 right-4 md:top-6 md:right-6 z-10 p-3 rounded-full bg-white/70 backdrop-blur-md shadow-md text-slate-600 hover:bg-white transition-all"
+            className="fixed top-4 right-4 md:top-6 md:right-6 z-10 p-3 rounded-full bg-[#fff]/70 backdrop-blur-md shadow-md text-[#3A3A3C] hover:bg-[#fff] transition-all"
           >
             <Minimize size={18} />
           </button>
@@ -297,7 +299,7 @@ export const AssemblyBannerAdminTab = () => {
 
 const Field = ({ label, icon, placeholder, children }: { label: string; icon?: React.ReactNode; placeholder?: string; children: React.ReactNode }) => (
   <div>
-    <label className="flex items-center gap-1.5 text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+    <label className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold text-[#8E8E93] uppercase tracking-wide mb-2">
       {icon} {label}
     </label>
     {children}
@@ -309,7 +311,7 @@ const ListField = ({ icon, label, items, onChange, onAdd, onRemove, placeholder 
   onChange: (i: number, v: string) => void; onAdd: () => void; onRemove: (i: number) => void; placeholder: string;
 }) => (
   <div>
-    <label className="flex items-center gap-1.5 text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-2">
+    <label className="flex items-center gap-1.5 text-[10px] md:text-xs font-bold text-[#8E8E93] uppercase tracking-wide mb-2">
       {icon} {label}
     </label>
     <div className="space-y-2">
@@ -319,14 +321,14 @@ const ListField = ({ icon, label, items, onChange, onAdd, onRemove, placeholder 
             value={item}
             onChange={(e) => onChange(i, e.target.value)}
             placeholder={placeholder}
-            className="flex-1 px-4 py-2.5 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+            className="flex-1 px-4 py-2.5 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
           />
           <button onClick={() => onRemove(i)} className="p-2.5 bg-red-50 text-red-500 rounded-xl hover:bg-red-100 transition-all shrink-0">
             <Trash2 size={14} />
           </button>
         </div>
       ))}
-      <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2.5 bg-indigo-50 text-indigo-600 rounded-xl font-black text-xs hover:bg-indigo-100 transition-all">
+      <button onClick={onAdd} className="flex items-center gap-1.5 px-4 py-2.5 bg-[#0071E3]/10 text-[#0071E3] rounded-xl font-bold text-xs hover:bg-[#0071E3]/15 transition-all">
         <Plus size={14} /> 항목 추가
       </button>
     </div>

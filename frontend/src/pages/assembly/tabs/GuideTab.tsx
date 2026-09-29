@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
+import { MonthCard as RealMonthCard, StatusBadge, reportKind } from "../assemblyUi";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   AlertTriangle, ArrowLeft, BookOpen, CalendarDays, Check, CheckCircle2, CheckSquare, ChevronDown,
@@ -25,26 +26,26 @@ const SECTIONS = [
   { id: "guide-faq", label: "자주 묻는 질문", icon: <MessageCircle size={14} /> },
 ];
 
-const scrollToSection = (id: string) => {
+export const scrollToSection = (id: string) => {
   document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "start" });
 };
 
-const Avatar = ({ name, size = "w-8 h-8", tone = "bg-indigo-100 text-indigo-600" }: { name: string; size?: string; tone?: string }) => (
-  <div className={`${size} ${tone} rounded-full flex items-center justify-center font-black text-xs shrink-0`}>{name[0]}</div>
+export const Avatar = ({ name, size = "w-8 h-8", tone = "bg-[#E0E7FF] text-[#0071E3]" }: { name: string; size?: string; tone?: string }) => (
+  <div className={`${size} ${tone} rounded-full flex items-center justify-center font-bold text-xs shrink-0`}>{name[0]}</div>
 );
 
-const Section = ({
+export const Section = ({
   id, no, icon, title, desc, children,
 }: { id: string; no: string; icon: ReactNode; title: string; desc: string; children: ReactNode }) => (
   <section id={id} className="scroll-mt-28 lg:scroll-mt-8 mb-20 md:mb-28">
     <div className="flex items-start gap-3 md:gap-4 mb-6 md:mb-8">
-      <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-indigo-600 text-white flex items-center justify-center shrink-0 shadow-lg shadow-indigo-100">
+      <div className="w-10 h-10 md:w-12 md:h-12 rounded-2xl bg-[#4F46E5] text-white flex items-center justify-center shrink-0">
         {icon}
       </div>
       <div className="min-w-0">
-        <p className="text-[10px] md:text-xs font-black text-indigo-500 uppercase tracking-[0.2em] mb-0.5">STEP {no}</p>
-        <h2 className="text-xl md:text-3xl font-black text-slate-900 tracking-tight">{title}</h2>
-        <p className="text-xs md:text-sm text-slate-500 font-medium mt-1.5 leading-relaxed">{desc}</p>
+        <p className="text-[10px] md:text-xs font-bold text-[#0071E3] uppercase tracking-[0.2em] mb-0.5">STEP {no}</p>
+        <h2 className="text-xl md:text-3xl font-bold text-[#1D1D1F] tracking-tight">{title}</h2>
+        <p className="text-xs md:text-sm text-[#6E6E73] font-medium mt-1.5 leading-relaxed">{desc}</p>
       </div>
     </div>
     {children}
@@ -52,140 +53,114 @@ const Section = ({
 );
 
 // 실제 화면을 담는 틀 — 상단 바에 "직접 눌러보세요" 안내와 처음으로 되돌리기 버튼
-const DemoFrame = ({
+export const DemoFrame = ({
   label, hint = "직접 눌러보세요", onReset, children, minH = "",
 }: { label: string; hint?: string; onReset?: () => void; children: ReactNode; minH?: string }) => (
-  <div className="rounded-[1.75rem] md:rounded-[2.25rem] bg-slate-100/80 border border-slate-200/70 p-2 md:p-3 shadow-inner">
+  <div className="rounded-[1.75rem] md:rounded-[2.25rem] bg-black/[0.05]/80 border border-black/[0.08]/70 p-2 md:p-3 shadow-inner">
     <div className="flex items-center justify-between gap-2 px-2.5 md:px-3 pt-1 pb-2.5">
       <div className="flex items-center gap-1.5 min-w-0">
         <span className="w-2.5 h-2.5 rounded-full bg-[#FF5F57]" />
         <span className="w-2.5 h-2.5 rounded-full bg-[#FEBC2E]" />
         <span className="w-2.5 h-2.5 rounded-full bg-[#28C840]" />
-        <span className="ml-2 text-[10px] md:text-[11px] font-bold text-slate-400 truncate">{label}</span>
+        <span className="ml-2 text-[10px] md:text-[11px] font-bold text-[#8E8E93] truncate">{label}</span>
       </div>
       <div className="flex items-center gap-2 shrink-0">
-        <span className="hidden sm:flex items-center gap-1 text-[10px] font-black text-pink-500">
+        <span className="hidden sm:flex items-center gap-1 text-[10px] font-bold text-[#FF3B30]">
           <MousePointerClick size={12} /> {hint}
         </span>
         {onReset && (
-          <button onClick={onReset} className="flex items-center gap-1 text-[10px] font-bold text-slate-400 hover:text-slate-700 px-2 py-1 rounded-lg hover:bg-white">
+          <button onClick={onReset} className="flex items-center gap-1 text-[10px] font-bold text-[#8E8E93] hover:text-[#1D1D1F] px-2 py-1 rounded-lg hover:bg-[#fff]">
             <RotateCcw size={11} /> 처음으로
           </button>
         )}
       </div>
     </div>
-    <div className={`relative bg-slate-50 rounded-[1.4rem] md:rounded-[1.75rem] p-3 md:p-6 overflow-hidden ${minH}`}>{children}</div>
+    <div className={`relative bg-[#F8FAFC] rounded-[1.4rem] md:rounded-[1.75rem] p-3 md:p-6 overflow-hidden ${minH}`}>{children}</div>
   </div>
 );
 
 // 화면 위에 찍는 번호 표시 — 오른쪽 설명(Steps)의 번호와 짝
-const Pin = ({ n, className = "" }: { n: number; className?: string }) => (
-  <span className={`absolute z-10 w-5 h-5 rounded-full bg-pink-500 text-white text-[10px] font-black flex items-center justify-center shadow-md ring-2 ring-white pointer-events-none ${className}`}>
+export const Pin = ({ n, className = "" }: { n: number; className?: string }) => (
+  <span className={`absolute z-10 w-5 h-5 rounded-full bg-[#EC4899] text-white text-[10px] font-bold flex items-center justify-center shadow-md ring-2 ring-white pointer-events-none ${className}`}>
     {n}
   </span>
 );
 
-const Steps = ({ items }: { items: { title: string; body: ReactNode }[] }) => (
+export const Steps = ({ items }: { items: { title: string; body: ReactNode }[] }) => (
   <ol className="space-y-4 md:space-y-5">
     {items.map((it, i) => (
       <li key={i} className="flex gap-3">
-        <span className="w-6 h-6 rounded-full bg-pink-500 text-white text-[11px] font-black flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
+        <span className="w-6 h-6 rounded-full bg-[#EC4899] text-white text-[11px] font-bold flex items-center justify-center shrink-0 mt-0.5">{i + 1}</span>
         <div className="min-w-0">
-          <p className="text-sm md:text-[15px] font-black text-slate-900">{it.title}</p>
-          <div className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed mt-0.5">{it.body}</div>
+          <p className="text-sm md:text-[15px] font-bold text-[#1D1D1F]">{it.title}</p>
+          <div className="text-xs md:text-sm text-[#6E6E73] font-medium leading-relaxed mt-0.5">{it.body}</div>
         </div>
       </li>
     ))}
   </ol>
 );
 
-const Note = ({ tone = "tip", children }: { tone?: "tip" | "warn"; children: ReactNode }) => (
+export const Note = ({ tone = "tip", children }: { tone?: "tip" | "warn"; children: ReactNode }) => (
   <div className={`flex gap-2.5 p-3.5 md:p-4 rounded-2xl border text-xs md:text-sm font-medium leading-relaxed ${
-    tone === "tip" ? "bg-indigo-50/70 border-indigo-100 text-indigo-900" : "bg-amber-50 border-amber-100 text-amber-900"
+    tone === "tip" ? "bg-[#EEF2FF]/70 border-[#0071E3]/20 text-indigo-900" : "bg-amber-50 border-amber-100 text-amber-900"
   }`}>
-    {tone === "tip" ? <Lightbulb size={16} className="text-indigo-500 shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />}
+    {tone === "tip" ? <Lightbulb size={16} className="text-[#0071E3] shrink-0 mt-0.5" /> : <AlertTriangle size={16} className="text-amber-500 shrink-0 mt-0.5" />}
     <div className="min-w-0">{children}</div>
   </div>
 );
 
-const TwoCol = ({ demo, side }: { demo: ReactNode; side: ReactNode }) => (
+export const TwoCol = ({ demo, side }: { demo: ReactNode; side: ReactNode }) => (
   <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] gap-6 md:gap-8 items-start mb-8 md:mb-10">
     <div className="min-w-0">{demo}</div>
     <div className="min-w-0 xl:sticky xl:top-8">{side}</div>
   </div>
 );
 
-const SubTitle = ({ children }: { children: ReactNode }) => (
-  <h3 className="text-base md:text-lg font-black text-slate-900 mb-4 flex items-center gap-2">
-    <span className="w-1.5 h-5 rounded-full bg-indigo-500" /> {children}
+export const SubTitle = ({ children }: { children: ReactNode }) => (
+  <h3 className="text-base md:text-lg font-bold text-[#1D1D1F] mb-4 flex items-center gap-2">
+    <span className="w-1.5 h-5 rounded-full bg-[#6366F1]" /> {children}
   </h3>
 );
 
 // 실제 화면의 상태 배지와 동일
-const StatusPill = ({ state }: { state: "done" | "open" | "closed" }) => (
-  <span className={`text-[9px] md:text-[10px] font-bold px-2 md:px-4 py-1.5 md:py-2 rounded-full border shrink-0 ${
-    state === "done" ? "text-green-600 bg-green-50 border-green-100"
-      : state === "open" ? "text-indigo-600 bg-indigo-50 border-indigo-100"
-        : "text-orange-600 bg-orange-50 border-orange-100"
-  }`}>
-    {state === "done" ? "완료" : state === "open" ? "가능" : "불가"}
-  </span>
-);
-
 type MonthCard = { month: number; type: "PLAN" | "PROGRESS" | "RESULT"; state: "done" | "open" | "closed"; title?: string; date?: string; startDate?: string };
 
-// 마이 페이지 / 팀 공유 자료의 달별 카드 (실제 화면과 동일한 모양)
+// 달별 카드 — ✨ [2026-09-30] 실제 화면과 같은 공통 카드(assemblyUi.MonthCard)를 그대로 사용
 const MonthCardView = ({ card, onClick, pin, team }: { card: MonthCard; onClick?: () => void; pin?: number; team?: boolean }) => (
-  <motion.div
-    whileHover={onClick ? { scale: 1.01, y: -2 } : {}}
-    onClick={onClick}
-    className={`relative bg-white p-3.5 md:p-5 rounded-2xl md:rounded-[1.75rem] border border-slate-100 shadow-sm flex items-center justify-between gap-2 transition-all ${onClick ? "cursor-pointer hover:shadow-lg" : ""}`}
-  >
-    {pin && <Pin n={pin} className="-top-2 -left-2" />}
-    <div className="flex items-center gap-3 md:gap-5 min-w-0">
-      <span className={`text-lg md:text-xl font-bold shrink-0 ${card.state === "done" ? "text-indigo-600" : "text-slate-400"}`}>{card.month}월</span>
-      <div className="h-8 w-px bg-slate-200 shrink-0" />
-      <div className="min-w-0">
-        <div className="flex items-center gap-2 mb-0.5">
-          <span className={`px-1.5 py-0.5 rounded-md text-[8px] md:text-[10px] font-bold uppercase shrink-0 ${card.state === "done" ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{card.type}</span>
-          <h4 className="font-bold text-slate-900 text-xs md:text-base truncate">
-            {card.state === "done" && card.title ? card.title : team ? `${card.month}월 팀 자료` : `${card.month}월 프로젝트 보고서`}
-          </h4>
-        </div>
-        <div className="text-[9px] md:text-[11px] font-bold truncate">
-          {card.state === "done" ? (
-            <span className="flex items-center gap-1 text-indigo-500"><Check size={12} /> {card.date} 제출됨{team ? " · 김데브" : ""}</span>
-          ) : card.state === "open" ? (
-            <span className="flex items-center gap-1 text-green-500 font-black"><Clock size={12} /> 현재 제출 가능</span>
-          ) : (
-            <span className="flex items-center gap-1 text-slate-400"><Clock size={12} /> {card.startDate}</span>
-          )}
-        </div>
-      </div>
-    </div>
-    <StatusPill state={card.state} />
-  </motion.div>
+  <div className="relative">
+    {pin && <Pin n={pin} className="-top-2 -left-2 z-20" />}
+    <RealMonthCard
+      month={card.month}
+      title={card.title}
+      state={card.state === "closed" ? "upcoming" : card.state}
+      date={card.date}
+      startDate={card.startDate}
+      endDate={card.state === "open" ? "2026-10-15" : undefined}
+      extra={team && card.state === "done" ? "김데브" : undefined}
+      onClick={onClick}
+    />
+  </div>
 );
 
 // 실제 화면의 파일 칸(UploadSlot)
 const UploadSlotView = ({ label, fileName, onClick, pin }: { label: string; fileName?: string; onClick?: () => void; pin?: number }) => (
-  <div onClick={onClick} className={`relative flex items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${onClick ? "cursor-pointer" : ""} ${fileName ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100 hover:border-indigo-200"}`}>
+  <div onClick={onClick} className={`relative flex items-center justify-between p-3 md:p-4 rounded-xl md:rounded-2xl border transition-all ${onClick ? "cursor-pointer" : ""} ${fileName ? "bg-[#EEF2FF] border-[#0071E3]/20" : "bg-[#F8FAFC] border-black/[0.06] hover:border-[#0071E3]/30"}`}>
     {pin && <Pin n={pin} className="-top-2 -right-2" />}
     <div className="flex items-center gap-2.5 min-w-0">
-      <div className={`w-8 h-8 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${fileName ? "bg-indigo-600 text-white" : "bg-white text-slate-400 border"}`}>
+      <div className={`w-8 h-8 md:w-9 md:h-9 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${fileName ? "bg-[#4F46E5] text-white" : "bg-[#fff] text-[#8E8E93] border"}`}>
         {label === "발표자료" ? <Presentation size={15} /> : label === "PDF" ? <FileText size={15} /> : <FileArchive size={15} />}
       </div>
       <div className="min-w-0">
-        <p className="text-[11px] md:text-sm font-bold text-slate-800">{label}</p>
-        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase truncate">{fileName || "끌어다 놓거나 선택"}</p>
+        <p className="text-[11px] md:text-sm font-bold text-[#1D1D1F]">{label}</p>
+        <p className="text-[8px] md:text-[10px] font-bold text-[#8E8E93] uppercase truncate">{fileName || "끌어다 놓거나 선택"}</p>
       </div>
     </div>
-    <Plus size={15} className={fileName ? "text-indigo-400" : "text-slate-300"} />
+    <Plus size={15} className={fileName ? "text-[#0071E3]/70" : "text-[#C7C7CC]"} />
   </div>
 );
 
 // 체험 화면 안에서 뜨는 팝업(실제 화면의 모달과 같은 모양, 틀 안에만 뜬다)
-const DemoModal = ({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) => (
+export const DemoModal = ({ open, onClose, children }: { open: boolean; onClose: () => void; children: ReactNode }) => (
   <AnimatePresence>
     {open && (
       <div className="absolute inset-0 z-20 flex items-center justify-center p-3 md:p-6">
@@ -194,7 +169,7 @@ const DemoModal = ({ open, onClose, children }: { open: boolean; onClose: () => 
           initial={{ opacity: 0, scale: 0.92, y: 16 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.92, y: 16 }}
-          className="relative w-full max-w-md bg-white rounded-[1.75rem] md:rounded-[2.25rem] p-5 md:p-7 shadow-2xl max-h-full overflow-y-auto"
+          className="relative w-full max-w-md bg-[#fff] rounded-[1.75rem] md:rounded-[2.25rem] p-5 md:p-7 shadow-2xl max-h-full overflow-y-auto"
         >
           {children}
         </motion.div>
@@ -229,29 +204,29 @@ const StartSection = () => {
         demo={
           <DemoFrame label="devsign.co.kr/assembly · 왼쪽 메뉴" hint="메뉴를 눌러보세요">
             <div className="flex flex-col sm:flex-row gap-3 md:gap-5">
-              <div className="sm:w-56 bg-white rounded-2xl border border-slate-100 p-3 md:p-4 shrink-0">
+              <div className="sm:w-56 bg-[#fff] rounded-2xl border border-black/[0.06] p-3 md:p-4 shrink-0">
                 <div className="mb-5 px-2">
-                  <div className="flex items-center gap-2 text-indigo-600 mb-1">
+                  <div className="flex items-center gap-2 text-[#0071E3] mb-1">
                     <Layers size={14} />
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em]">총회 시스템</span>
+                    <span className="text-[9px] font-bold uppercase tracking-[0.2em]">총회 시스템</span>
                   </div>
-                  <p className="text-lg font-black text-slate-900 tracking-tight">DEVSIGN</p>
+                  <p className="text-lg font-bold text-[#1D1D1F] tracking-tight">DEVSIGN</p>
                 </div>
                 <div className="space-y-1">
                   {MENU_INFO.map((m) => (
                     <button
                       key={m.id}
                       onClick={() => setActive(m.id)}
-                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${active === m.id ? "bg-indigo-50 text-indigo-600" : "text-slate-500 hover:bg-slate-50"}`}
+                      className={`w-full flex items-center justify-between px-3 py-2.5 rounded-xl transition-all ${active === m.id ? "bg-[#EEF2FF] text-[#0071E3]" : "text-[#6E6E73] hover:bg-[#F8FAFC]"}`}
                     >
                       <span className="flex items-center gap-2.5">
-                        <span className={active === m.id ? "" : "text-slate-400"}>{m.icon}</span>
+                        <span className={active === m.id ? "" : "text-[#8E8E93]"}>{m.icon}</span>
                         <span className="font-bold text-[13px]">{m.name}</span>
                       </span>
                       {active === m.id && <ChevronRight size={14} />}
                     </button>
                   ))}
-                  <div className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-indigo-50/50 text-indigo-400">
+                  <div className="w-full flex items-center gap-2.5 px-3 py-2.5 rounded-xl bg-[#EEF2FF]/50 text-[#0071E3]/70">
                     <BookOpen size={18} /> <span className="font-bold text-[13px]">사용법</span>
                   </div>
                 </div>
@@ -262,12 +237,12 @@ const StartSection = () => {
                   initial={{ opacity: 0, x: 8 }}
                   animate={{ opacity: 1, x: 0 }}
                   exit={{ opacity: 0, x: -8 }}
-                  className="flex-1 bg-white rounded-2xl border border-slate-100 p-5 md:p-6 flex flex-col"
+                  className="flex-1 bg-[#fff] rounded-2xl border border-black/[0.06] p-5 md:p-6 flex flex-col"
                 >
-                  <div className="w-10 h-10 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center mb-3">{info.icon}</div>
-                  <p className="text-lg font-black text-slate-900 mb-1.5">{info.name}</p>
-                  <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed flex-1">{info.desc}</p>
-                  <button onClick={() => scrollToSection(info.go)} className="mt-4 self-start flex items-center gap-1 text-xs font-black text-indigo-600 hover:text-indigo-700">
+                  <div className="w-10 h-10 rounded-xl bg-[#EEF2FF] text-[#0071E3] flex items-center justify-center mb-3">{info.icon}</div>
+                  <p className="text-lg font-bold text-[#1D1D1F] mb-1.5">{info.name}</p>
+                  <p className="text-xs md:text-sm text-[#6E6E73] font-medium leading-relaxed flex-1">{info.desc}</p>
+                  <button onClick={() => scrollToSection(info.go)} className="mt-4 self-start flex items-center gap-1 text-xs font-bold text-[#0071E3] hover:text-[#0062C4]">
                     자세한 사용법 보기 <ChevronRight size={14} />
                   </button>
                 </motion.div>
@@ -283,16 +258,15 @@ const StartSection = () => {
                 {FLOW.map((f, i) => (
                   <div key={f.type} className="relative flex items-stretch gap-3">
                     <div className="flex flex-col items-center">
-                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${f.color} text-white text-[11px] font-black flex items-center justify-center shrink-0`}>{i + 1}</div>
+                      <div className={`w-9 h-9 rounded-xl bg-gradient-to-br ${f.color} text-white text-[11px] font-bold flex items-center justify-center shrink-0`}>{i + 1}</div>
                       {i < FLOW.length - 1 && <div className="w-px flex-1 bg-slate-200 my-1" />}
                     </div>
-                    <div className="bg-white rounded-2xl border border-slate-100 px-4 py-3 flex-1 min-w-0 mb-1">
+                    <div className="bg-[#fff] rounded-2xl border border-black/[0.06] px-4 py-3 flex-1 min-w-0 mb-1">
                       <div className="flex items-center gap-2 mb-0.5 flex-wrap">
-                        <span className="text-sm font-black text-slate-900">{f.title}</span>
-                        <span className="px-1.5 py-0.5 rounded-md text-[9px] font-bold bg-pink-50 text-pink-600">{f.type}</span>
-                        <span className="text-[11px] font-bold text-slate-400">{f.month}</span>
+                        <span className="text-sm font-bold text-[#1D1D1F]">{f.title}</span>
+                        <span className="text-[11px] font-bold text-[#8E8E93]">{f.month}</span>
                       </div>
-                      <p className="text-xs text-slate-500 font-medium">{f.desc}</p>
+                      <p className="text-xs text-[#6E6E73] font-medium">{f.desc}</p>
                     </div>
                   </div>
                 ))}
@@ -300,15 +274,16 @@ const StartSection = () => {
             </div>
             <div>
               <SubTitle>상태 표시 읽는 법</SubTitle>
-              <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-3">
+              <div className="bg-[#fff] rounded-2xl border border-black/[0.06] p-4 space-y-3">
                 {[
                   { s: "done" as const, t: "제출을 마친 달이에요. 기간 안이면 다시 눌러서 수정할 수 있어요." },
-                  { s: "open" as const, t: "지금 제출할 수 있는 달이에요. \"현재 제출 가능\"이라고도 떠요." },
-                  { s: "closed" as const, t: "아직 기간이 아니거나(시작일 표시) 기간이 끝난 달(\"제출 종료\")이에요." },
+                  { s: "open" as const, t: "지금 제출할 수 있는 달이에요. 언제까지인지 카드에 나와요." },
+                  { s: "upcoming" as const, t: "아직 제출 기간이 아닌 달이에요. 언제부터인지 카드에 나와요." },
+                  { s: "past" as const, t: "제출 기간이 끝난 달이에요. 읽기 전용으로 잠겨요." },
                 ].map((row) => (
                   <div key={row.s} className="flex items-start gap-3">
-                    <div className="w-12 shrink-0 flex justify-center"><StatusPill state={row.s} /></div>
-                    <p className="text-xs md:text-sm text-slate-500 font-medium leading-relaxed">{row.t}</p>
+                    <div className="w-[76px] shrink-0 flex"><StatusBadge state={row.s} /></div>
+                    <p className="text-xs md:text-sm text-[#6E6E73] font-medium leading-relaxed">{row.t}</p>
                   </div>
                 ))}
               </div>
@@ -364,31 +339,31 @@ const MyPageSection = () => {
           <DemoFrame label="총회 › 마이 페이지" onReset={reset} minH="min-h-[560px]">
             {/* 헤더: 학기 선택 + 제출 현황 */}
             <div className="flex items-center gap-2 mb-4">
-              <div className="relative flex-1 h-11 flex items-center gap-2 bg-white px-3 rounded-xl border border-slate-100 shadow-sm min-w-0">
+              <div className="relative flex-1 h-11 flex items-center gap-2 bg-[#fff] px-3 rounded-xl border border-black/[0.06] shadow-sm min-w-0">
                 <Pin n={1} className="-top-2 -left-2" />
-                <CalendarDays className="text-indigo-600 shrink-0" size={15} />
-                <span className="font-bold text-slate-900 text-xs md:text-sm truncate">2026년도 2학기</span>
-                <ChevronDown className="ml-auto text-slate-400 shrink-0" size={14} />
+                <CalendarDays className="text-[#0071E3] shrink-0" size={15} />
+                <span className="font-bold text-[#1D1D1F] text-xs md:text-sm truncate">2026년도 2학기</span>
+                <ChevronDown className="ml-auto text-[#8E8E93] shrink-0" size={14} />
               </div>
-              <div className="h-11 flex items-center gap-2 bg-white px-3 rounded-xl border border-slate-100 shadow-sm flex-1 min-w-0">
-                <div className="w-7 h-7 rounded-lg flex items-center justify-center border text-indigo-600 bg-indigo-50 border-indigo-100 shrink-0"><FileText size={14} /></div>
-                <span className="text-[9px] font-bold text-slate-400 truncate">제출 현황</span>
-                <span className="ml-auto text-sm font-bold text-slate-900">{months.filter((m) => m.state === "done").length} / 4</span>
+              <div className="h-11 flex items-center gap-2 bg-[#fff] px-3 rounded-xl border border-black/[0.06] shadow-sm flex-1 min-w-0">
+                <div className="w-7 h-7 rounded-lg flex items-center justify-center border text-[#0071E3] bg-[#EEF2FF] border-[#0071E3]/20 shrink-0"><FileText size={14} /></div>
+                <span className="text-[9px] font-bold text-[#8E8E93] truncate">제출 현황</span>
+                <span className="ml-auto text-sm font-bold text-[#1D1D1F]">{months.filter((m) => m.state === "done").length} / 4</span>
               </div>
             </div>
 
             {/* 관련 링크 */}
-            <div className="relative bg-white p-3.5 md:p-5 rounded-2xl border border-slate-100 shadow-sm mb-5">
+            <div className="relative bg-[#fff] p-3.5 md:p-5 rounded-2xl border border-black/[0.06] shadow-sm mb-5">
               <Pin n={2} className="-top-2 -left-2" />
               <div className="flex items-center justify-between mb-3">
-                <p className="flex items-center gap-1.5 text-indigo-500 text-[10px] font-bold uppercase tracking-widest"><Link2 size={13} /> 관련 링크 (2026년 2학기)</p>
-                <button onClick={() => setLinkSaved(true)} className="text-[10px] md:text-xs font-bold text-indigo-600">{linkSaved ? "저장됨 ✓" : "저장"}</button>
+                <p className="flex items-center gap-1.5 text-[#0071E3] text-[10px] font-bold uppercase tracking-wide"><Link2 size={13} /> 관련 링크 (2026년 2학기)</p>
+                <button onClick={() => setLinkSaved(true)} className="text-[10px] md:text-xs font-bold text-[#0071E3]">{linkSaved ? "저장됨 ✓" : "저장"}</button>
               </div>
               <div className="space-y-2">
                 {links.map((l, i) => (
                   <div key={i} className="flex items-center gap-2">
-                    <input value={l.label} onChange={(e) => { setLinkSaved(false); setLinks((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x))); }} className="w-20 md:w-28 shrink-0 px-2.5 py-2 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-[11px] md:text-xs" />
-                    <input value={l.url} placeholder="https://..." onChange={(e) => { setLinkSaved(false); setLinks((p) => p.map((x, j) => (j === i ? { ...x, url: e.target.value } : x))); }} className="flex-1 min-w-0 px-2.5 py-2 bg-slate-50 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-[11px] md:text-xs" />
+                    <input value={l.label} onChange={(e) => { setLinkSaved(false); setLinks((p) => p.map((x, j) => (j === i ? { ...x, label: e.target.value } : x))); }} className="w-20 md:w-28 shrink-0 px-2.5 py-2 bg-[#F8FAFC] rounded-lg outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-[11px] md:text-xs" />
+                    <input value={l.url} placeholder="https://..." onChange={(e) => { setLinkSaved(false); setLinks((p) => p.map((x, j) => (j === i ? { ...x, url: e.target.value } : x))); }} className="flex-1 min-w-0 px-2.5 py-2 bg-[#F8FAFC] rounded-lg outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-[11px] md:text-xs" />
                   </div>
                 ))}
               </div>
@@ -396,8 +371,8 @@ const MyPageSection = () => {
 
             {/* 달별 카드 */}
             <div className="flex items-center justify-between mb-3 px-1">
-              <p className="text-sm font-bold text-slate-900 uppercase tracking-wider">총회자료 제출</p>
-              <p className="text-[10px] md:text-xs font-bold text-slate-500 truncate ml-2">스마트홈 IoT 프로젝트</p>
+              <p className="text-sm font-bold text-[#1D1D1F] uppercase tracking-wider">총회자료 제출</p>
+              <p className="text-[10px] md:text-xs font-bold text-[#6E6E73] truncate ml-2">스마트홈 IoT 프로젝트</p>
             </div>
             <div className="space-y-2.5">
               {months.map((m) => (
@@ -421,38 +396,38 @@ const MyPageSection = () => {
                 <>
                   <div className="flex justify-between items-start mb-5">
                     <div>
-                      <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-bold rounded-md uppercase border border-indigo-100">{card.month}월 자료</span>
-                      <h3 className="text-lg md:text-2xl font-bold text-slate-900 mt-1">{card.state === "done" ? (card.state === "done" && card.month === 10 ? "제출 내용 수정" : "제출 자료 확인") : "신규 자료 제출"}</h3>
+                      <span className="px-2 py-0.5 bg-[#EEF2FF] text-[#0071E3] text-[9px] font-bold rounded-md uppercase border border-[#0071E3]/20">{card.month}월 자료</span>
+                      <h3 className="text-lg md:text-2xl font-bold text-[#1D1D1F] mt-1">{card.state === "done" ? (card.state === "done" && card.month === 10 ? "제출 내용 수정" : "제출 자료 확인") : "신규 자료 제출"}</h3>
                     </div>
-                    <button onClick={() => setOpenMonth(null)} className="p-2 bg-slate-50 text-slate-400 rounded-xl"><X size={16} /></button>
+                    <button onClick={() => setOpenMonth(null)} className="p-2 bg-[#F8FAFC] text-[#8E8E93] rounded-xl"><X size={16} /></button>
                   </div>
                   {card.state === "closed" && (
                     <div className="mb-4 p-3 bg-slate-900 rounded-xl flex items-center gap-2 text-white">
-                      <Lock size={14} className="text-indigo-400 shrink-0" />
+                      <Lock size={14} className="text-[#0071E3]/70 shrink-0" />
                       <p className="text-[11px] font-bold">현재 제출 및 수정 가능 기간이 아닙니다.</p>
                     </div>
                   )}
                   <div className="relative mb-5">
                     <Pin n={4} className="-top-2 -right-1" />
-                    <p className="flex items-center gap-1.5 mb-2 ml-1 text-[10px] font-bold text-slate-400 uppercase tracking-widest"><MessageCircle size={13} className="text-indigo-500" /> 활동 요약</p>
+                    <p className="flex items-center gap-1.5 mb-2 ml-1 text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide"><MessageCircle size={13} className="text-[#0071E3]" /> 활동 요약</p>
                     <textarea
                       value={memo}
                       disabled={card.state === "closed"}
                       onChange={(e) => setMemo(e.target.value)}
                       placeholder="활동 내용을 입력해주세요."
-                      className="w-full p-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs min-h-[70px] resize-none disabled:opacity-50"
+                      className="w-full p-3 bg-[#F8FAFC] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-xs min-h-[70px] resize-none disabled:opacity-50"
                     />
                   </div>
-                  <p className="text-[10px] font-bold text-slate-400 ml-1 uppercase mb-2">제출 파일 관리</p>
+                  <p className="text-[10px] font-bold text-[#8E8E93] ml-1 uppercase mb-2">제출 파일 관리</p>
                   <div className="space-y-2 mb-5">
                     <UploadSlotView label="발표자료" pin={5} fileName={files.pres} onClick={card.state === "closed" ? undefined : () => setFiles((f) => ({ ...f, pres: "10월_진행보고.pptx" }))} />
                     <UploadSlotView label="PDF" fileName={files.pdf} onClick={card.state === "closed" ? undefined : () => setFiles((f) => ({ ...f, pdf: "10월_진행보고.pdf" }))} />
                     <UploadSlotView label="기타 자료" fileName={files.other} onClick={card.state === "closed" ? undefined : () => setFiles((f) => ({ ...f, other: "시연영상.mp4" }))} />
                   </div>
                   <div className="flex gap-2">
-                    <button onClick={() => setOpenMonth(null)} className="flex-1 py-3 bg-slate-50 text-slate-500 rounded-xl font-bold text-xs">닫기</button>
+                    <button onClick={() => setOpenMonth(null)} className="flex-1 py-3 bg-[#F8FAFC] text-[#6E6E73] rounded-xl font-bold text-xs">닫기</button>
                     {card.state !== "closed" && (
-                      <button onClick={submit} disabled={!canSubmit} className={`relative flex-[2] py-3 rounded-xl font-bold text-xs ${canSubmit ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}>
+                      <button onClick={submit} disabled={!canSubmit} className={`relative flex-[2] py-3 rounded-xl font-bold text-xs ${canSubmit ? "bg-[#4F46E5] text-white shadow-xl" : "bg-black/[0.05] text-[#8E8E93] cursor-not-allowed"}`}>
                         <Pin n={6} className="-top-2 -right-2" />
                         {card.state === "done" ? "수정 저장" : "제출 완료"}
                       </button>
@@ -464,12 +439,12 @@ const MyPageSection = () => {
 
             <DemoModal open={planNotice} onClose={() => setPlanNotice(false)}>
               <div className="text-center py-2">
-                <div className="w-12 h-12 rounded-2xl bg-indigo-50 text-indigo-600 flex items-center justify-center mx-auto mb-3"><Target size={22} /></div>
-                <p className="text-base font-black text-slate-900 mb-1.5">계획서 달은 작성 페이지로 이동해요</p>
-                <p className="text-xs text-slate-500 font-medium leading-relaxed mb-5">3월·9월 카드를 누르면 제출 창 대신<br />계획서 작성 페이지가 열려요.</p>
+                <div className="w-12 h-12 rounded-2xl bg-[#EEF2FF] text-[#0071E3] flex items-center justify-center mx-auto mb-3"><Target size={22} /></div>
+                <p className="text-base font-bold text-[#1D1D1F] mb-1.5">계획서 달은 작성 페이지로 이동해요</p>
+                <p className="text-xs text-[#6E6E73] font-medium leading-relaxed mb-5">3월·9월 카드를 누르면 제출 창 대신<br />계획서 작성 페이지가 열려요.</p>
                 <button
                   onClick={() => { setPlanNotice(false); scrollToSection("guide-plan"); }}
-                  className="w-full py-3 rounded-xl bg-indigo-600 text-white font-bold text-xs"
+                  className="w-full py-3 rounded-xl bg-[#4F46E5] text-white font-bold text-xs"
                 >
                   계획서 사용법 보러 가기
                 </button>
@@ -559,41 +534,41 @@ const PlanSection = () => {
         demo={
           <DemoFrame label="총회 › 마이 페이지 › 9월 계획서" onReset={reset} hint="'샘플 파일로 체험하기'를 눌러보세요" minH="min-h-[620px]">
             <div className="flex items-center justify-between mb-4">
-              <span className="flex items-center gap-1.5 text-slate-400 font-bold text-xs"><ArrowLeft size={14} /> 마이 페이지로</span>
+              <span className="flex items-center gap-1.5 text-[#8E8E93] font-bold text-xs"><ArrowLeft size={14} /> 마이 페이지로</span>
               <span className="text-[10px] font-bold">
-                {saved === "saving" ? <span className="flex items-center gap-1 text-slate-400"><Loader2 size={11} className="animate-spin" /> 저장 중...</span>
-                  : saved === "saved" ? <span className="flex items-center gap-1 text-indigo-500"><Check size={11} /> 자동 저장됨</span>
-                    : <span className="text-slate-300">작성하면 자동으로 저장됩니다</span>}
+                {saved === "saving" ? <span className="flex items-center gap-1 text-[#8E8E93]"><Loader2 size={11} className="animate-spin" /> 저장 중...</span>
+                  : saved === "saved" ? <span className="flex items-center gap-1 text-[#0071E3]"><Check size={11} /> 자동 저장됨</span>
+                    : <span className="text-[#C7C7CC]">작성하면 자동으로 저장됩니다</span>}
               </span>
             </div>
-            <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-bold rounded-md border border-indigo-100">9월 계획서</span>
-            <p className="text-xl md:text-2xl font-black text-slate-900 tracking-tight mt-1.5 mb-4">{submitted ? "계획서 수정" : "계획서 작성"}</p>
+            <span className="px-2 py-0.5 bg-[#EEF2FF] text-[#0071E3] text-[9px] font-bold rounded-md border border-[#0071E3]/20">9월 계획서</span>
+            <p className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-tight mt-1.5 mb-4">{submitted ? "계획서 수정" : "계획서 작성"}</p>
 
             {/* 파일로 올리기 카드 */}
-            <div className="relative bg-white rounded-2xl border border-slate-100 shadow-sm p-4 mb-4">
+            <div className="relative bg-[#fff] rounded-2xl border border-black/[0.06] shadow-sm p-4 mb-4">
               <Pin n={1} className="-top-2 -right-2" />
               <div className="flex items-start justify-between gap-2 mb-3">
                 <div className="min-w-0">
-                  <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-0.5"><FileUp size={13} className="text-indigo-500" /> 파일로 올리기 (선택)</p>
-                  <p className="text-[11px] text-slate-500 font-medium">PDF · Word · 한글 · PowerPoint</p>
+                  <p className="flex items-center gap-1.5 text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide mb-0.5"><FileUp size={13} className="text-[#0071E3]" /> 파일로 올리기 (선택)</p>
+                  <p className="text-[11px] text-[#6E6E73] font-medium">PDF · Word · 한글 · PowerPoint</p>
                 </div>
-                <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-indigo-50 text-indigo-600 text-[10px] font-bold shrink-0"><FileDown size={12} /> 양식 내려받기</span>
+                <span className="flex items-center gap-1 px-2.5 py-1.5 rounded-lg bg-[#EEF2FF] text-[#0071E3] text-[10px] font-bold shrink-0"><FileDown size={12} /> 양식 내려받기</span>
               </div>
               {phase === "done" && (
-                <div className="flex items-center justify-between gap-2 p-2.5 mb-2 rounded-xl border border-slate-100 bg-slate-50">
+                <div className="flex items-center justify-between gap-2 p-2.5 mb-2 rounded-xl border border-black/[0.06] bg-[#F8FAFC]">
                   <span className="flex items-center gap-2 min-w-0">
-                    <span className="w-8 h-8 rounded-lg bg-white border border-slate-100 text-indigo-600 flex items-center justify-center shrink-0"><FileText size={14} /></span>
+                    <span className="w-8 h-8 rounded-lg bg-[#fff] border border-black/[0.06] text-[#0071E3] flex items-center justify-center shrink-0"><FileText size={14} /></span>
                     <span className="min-w-0">
-                      <span className="block text-xs font-bold text-slate-800 truncate">스마트홈_계획서.docx</span>
-                      <span className="block text-[9px] font-bold text-slate-400">첨부된 계획서 원본</span>
+                      <span className="block text-xs font-bold text-[#1D1D1F] truncate">스마트홈_계획서.docx</span>
+                      <span className="block text-[9px] font-bold text-[#8E8E93]">첨부된 계획서 원본</span>
                     </span>
                   </span>
-                  <span className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-white border border-slate-200 text-slate-600 text-[10px] font-bold shrink-0"><Download size={11} /> 다운로드</span>
+                  <span className="flex items-center gap-1 px-2 py-1.5 rounded-lg bg-[#fff] border border-black/[0.08] text-[#3A3A3C] text-[10px] font-bold shrink-0"><Download size={11} /> 다운로드</span>
                 </div>
               )}
               <button
                 onClick={simulateUpload}
-                className="relative w-full flex items-center justify-center gap-2 px-3 py-4 rounded-xl border-2 border-dashed border-slate-200 text-slate-400 hover:border-indigo-300 hover:text-indigo-500 text-xs font-bold transition-colors"
+                className="relative w-full flex items-center justify-center gap-2 px-3 py-4 rounded-xl border-2 border-dashed border-black/[0.08] text-[#8E8E93] hover:border-indigo-300 hover:text-[#0071E3] text-xs font-bold transition-colors"
               >
                 {phase === "reading" ? <><Loader2 size={15} className="animate-spin" /> 파일을 읽는 중...</>
                   : phase === "done" ? <><FileUp size={15} /> 다른 파일로 바꾸기</>
@@ -609,32 +584,32 @@ const PlanSection = () => {
             </div>
 
             {/* 작성 폼 */}
-            <motion.div layout className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-5 space-y-5">
+            <motion.div layout className="bg-[#fff] rounded-2xl border border-black/[0.06] shadow-sm p-4 md:p-5 space-y-5">
               <div className="relative">
                 <Pin n={2} className="-top-2 -right-1" />
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">프로젝트 명<span className="text-indigo-400"> *</span></p>
-                <input value={plan.title} onChange={(e) => setPlan((p) => ({ ...p, title: e.target.value }))} placeholder="예: 동아리 웹 프로젝트" className={`w-full p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs transition-colors ${phase === "done" ? "bg-emerald-50/60" : "bg-slate-50"}`} />
+                <p className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide mb-1.5">프로젝트 명<span className="text-[#0071E3]/70"> *</span></p>
+                <input value={plan.title} onChange={(e) => setPlan((p) => ({ ...p, title: e.target.value }))} placeholder="예: 동아리 웹 프로젝트" className={`w-full p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-xs transition-colors ${phase === "done" ? "bg-emerald-50/60" : "bg-[#F8FAFC]"}`} />
               </div>
               <div>
-                <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5"><Target size={12} className="text-indigo-500" /> 배경 및 목표 개요<span className="text-indigo-400"> *</span></p>
-                <textarea value={plan.overview} onChange={(e) => setPlan((p) => ({ ...p, overview: e.target.value }))} placeholder="이 프로젝트를 왜 하는지, 무엇을 이루고 싶은지 자유롭게 적어주세요." className={`w-full p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-xs min-h-[56px] resize-none transition-colors ${phase === "done" ? "bg-emerald-50/60" : "bg-slate-50"}`} />
+                <p className="flex items-center gap-1.5 text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide mb-1.5"><Target size={12} className="text-[#0071E3]" /> 배경 및 목표 개요<span className="text-[#0071E3]/70"> *</span></p>
+                <textarea value={plan.overview} onChange={(e) => setPlan((p) => ({ ...p, overview: e.target.value }))} placeholder="이 프로젝트를 왜 하는지, 무엇을 이루고 싶은지 자유롭게 적어주세요." className={`w-full p-2.5 rounded-lg outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-medium text-xs min-h-[56px] resize-none transition-colors ${phase === "done" ? "bg-emerald-50/60" : "bg-[#F8FAFC]"}`} />
               </div>
               <div>
-                <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5"><ListChecks size={12} className="text-indigo-500" /> 핵심 목표 ({plan.goals.length}/10)<span className="text-indigo-400"> *</span></p>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide mb-1.5"><ListChecks size={12} className="text-[#0071E3]" /> 핵심 목표 ({plan.goals.length}/10)<span className="text-[#0071E3]/70"> *</span></p>
                 <div className="space-y-1.5">
                   {plan.goals.map((g, i) => (
                     <div key={i} className="flex items-center gap-2">
-                      <span className="w-5 h-5 shrink-0 rounded-full bg-indigo-50 text-indigo-500 text-[10px] font-black flex items-center justify-center">{i + 1}</span>
-                      <input value={g} onChange={(e) => setPlan((p) => ({ ...p, goals: p.goals.map((x, j) => (j === i ? e.target.value : x)) }))} placeholder="예: 지문인식 도어락 웹 원격 제어 구현" className={`flex-1 min-w-0 px-2.5 py-2 rounded-lg outline-none focus:ring-2 focus:ring-indigo-500 font-medium text-xs transition-colors ${phase === "done" ? "bg-emerald-50/60" : "bg-slate-50"}`} />
+                      <span className="w-5 h-5 shrink-0 rounded-full bg-[#EEF2FF] text-[#0071E3] text-[10px] font-bold flex items-center justify-center">{i + 1}</span>
+                      <input value={g} onChange={(e) => setPlan((p) => ({ ...p, goals: p.goals.map((x, j) => (j === i ? e.target.value : x)) }))} placeholder="예: 지문인식 도어락 웹 원격 제어 구현" className={`flex-1 min-w-0 px-2.5 py-2 rounded-lg outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-medium text-xs transition-colors ${phase === "done" ? "bg-emerald-50/60" : "bg-[#F8FAFC]"}`} />
                     </div>
                   ))}
                 </div>
               </div>
               <div className="relative">
                 <Pin n={3} className="-top-2 -right-1" />
-                <p className="flex items-center gap-1.5 text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2"><Route size={12} className="text-indigo-500" /> 로드맵<span className="text-indigo-400"> *</span></p>
+                <p className="flex items-center gap-1.5 text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide mb-2"><Route size={12} className="text-[#0071E3]" /> 로드맵<span className="text-[#0071E3]/70"> *</span></p>
                 {plan.roadmap.length === 0 ? (
-                  <div className="p-3 rounded-xl border border-dashed border-slate-200 text-[11px] text-slate-400 font-bold text-center">일정 제목 · 시작일 · 종료일을 넣고 '추가'</div>
+                  <div className="p-3 rounded-xl border border-dashed border-black/[0.08] text-[11px] text-[#8E8E93] font-bold text-center">일정 제목 · 시작일 · 종료일을 넣고 '추가'</div>
                 ) : (
                   <div className="space-y-2.5">
                     {plan.roadmap.map((r, i) => {
@@ -643,10 +618,10 @@ const PlanSection = () => {
                       return (
                         <motion.div key={i} initial={{ opacity: 0, x: -6 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: i * 0.12 }}>
                           <div className="flex items-center justify-between mb-1">
-                            <span className="text-[11px] font-bold text-slate-700 truncate">{r.title}</span>
-                            <span className="text-[9px] text-slate-400 shrink-0 ml-2">{r.start} ~ {r.end}</span>
+                            <span className="text-[11px] font-bold text-[#1D1D1F] truncate">{r.title}</span>
+                            <span className="text-[9px] text-[#8E8E93] shrink-0 ml-2">{r.start} ~ {r.end}</span>
                           </div>
-                          <div className="relative h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                          <div className="relative h-2.5 bg-black/[0.05] rounded-full overflow-hidden">
                             <motion.div
                               initial={{ width: 0 }}
                               animate={{ width: `${Math.max(((e - s) / span) * 100, 3)}%` }}
@@ -663,14 +638,14 @@ const PlanSection = () => {
               </div>
               {plan.roles.length > 0 && (
                 <div>
-                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5">역할 및 담당</p>
+                  <p className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide mb-1.5">역할 및 담당</p>
                   <div className="space-y-1.5">
                     {plan.roles.map((r) => (
-                      <div key={r.name} className="flex items-center gap-2 p-2 bg-slate-50 rounded-lg">
+                      <div key={r.name} className="flex items-center gap-2 p-2 bg-[#F8FAFC] rounded-lg">
                         <Avatar name={r.name} size="w-6 h-6" />
-                        <span className="text-[11px] font-bold text-slate-800 w-14 shrink-0">{r.name}</span>
-                        <span className="text-[11px] text-slate-600 bg-white px-2 py-1 rounded-md border border-slate-100">{r.role}</span>
-                        <span className="text-[11px] text-slate-500 truncate">{r.duties}</span>
+                        <span className="text-[11px] font-bold text-[#1D1D1F] w-14 shrink-0">{r.name}</span>
+                        <span className="text-[11px] text-[#3A3A3C] bg-[#fff] px-2 py-1 rounded-md border border-black/[0.06]">{r.role}</span>
+                        <span className="text-[11px] text-[#6E6E73] truncate">{r.duties}</span>
                       </div>
                     ))}
                   </div>
@@ -679,11 +654,11 @@ const PlanSection = () => {
             </motion.div>
 
             <div className="flex gap-2 mt-4">
-              <button className="flex-1 py-3 bg-white border border-slate-100 text-slate-500 rounded-xl font-bold text-xs">닫기</button>
+              <button className="flex-1 py-3 bg-[#fff] border border-black/[0.06] text-[#6E6E73] rounded-xl font-bold text-xs">닫기</button>
               <button
                 onClick={() => canSubmit && setSubmitted(true)}
                 disabled={!canSubmit}
-                className={`relative flex-[2] py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 ${canSubmit ? "bg-indigo-600 text-white shadow-xl shadow-indigo-100" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
+                className={`relative flex-[2] py-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1.5 ${canSubmit ? "bg-[#4F46E5] text-white" : "bg-black/[0.05] text-[#8E8E93] cursor-not-allowed"}`}
               >
                 <Pin n={4} className="-top-2 -right-2" />
                 <Send size={13} /> {submitted ? "제출 완료! (다시 확정 가능)" : "제출 확정"}
@@ -701,9 +676,9 @@ const PlanSection = () => {
                 { title: "제출 확정", body: "필수 항목이 다 차면 버튼이 켜져요. 쓰는 동안은 자동 저장되니 중간에 나가도 괜찮아요." },
               ]}
             />
-            <div className="bg-white rounded-2xl border border-slate-100 overflow-hidden">
-              <div className="px-4 py-3 border-b border-slate-100 flex items-center gap-2"><FileText size={14} className="text-indigo-500" /><p className="text-sm font-black text-slate-900">계획서 필수 항목</p></div>
-              <div className="divide-y divide-slate-50 text-xs">
+            <div className="bg-[#fff] rounded-2xl border border-black/[0.06] overflow-hidden">
+              <div className="px-4 py-3 border-b border-black/[0.06] flex items-center gap-2"><FileText size={14} className="text-[#0071E3]" /><p className="text-sm font-bold text-[#1D1D1F]">계획서 필수 항목</p></div>
+              <div className="divide-y divide-black/[0.04] text-xs">
                 {[
                   ["■ 프로젝트 명", "필수 (개인만)", "팀은 팀 탭의 프로젝트명을 써요"],
                   ["■ 배경 및 목표 개요", "필수", "자유롭게"],
@@ -714,9 +689,9 @@ const PlanSection = () => {
                   ["■ 기타 참고사항", "선택", ""],
                 ].map(([a, b, c]) => (
                   <div key={a} className="grid grid-cols-[1.3fr_0.8fr_1.4fr] gap-2 px-4 py-2.5 items-center">
-                    <span className="font-bold text-slate-800">{a}</span>
-                    <span className={`font-black ${b.startsWith("필수") ? "text-indigo-600" : "text-slate-400"}`}>{b}</span>
-                    <span className="text-slate-500">{c}</span>
+                    <span className="font-bold text-[#1D1D1F]">{a}</span>
+                    <span className={`font-bold ${b.startsWith("필수") ? "text-[#0071E3]" : "text-[#8E8E93]"}`}>{b}</span>
+                    <span className="text-[#6E6E73]">{c}</span>
                   </div>
                 ))}
               </div>
@@ -762,41 +737,41 @@ const CommunitySection = () => {
                 <motion.div key="list" initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -10 }}>
                   <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3 mb-6">
                     <div>
-                      <p className="text-2xl font-[900] text-slate-900 tracking-tighter uppercase">커뮤니티</p>
-                      <p className="text-slate-400 font-bold text-[11px]">DEVSIGN 부원들의 실시간 프로젝트 현황입니다.</p>
+                      <p className="text-2xl font-bold text-[#1D1D1F] tracking-tighter uppercase">커뮤니티</p>
+                      <p className="text-[#8E8E93] font-bold text-[11px]">DEVSIGN 부원들의 실시간 프로젝트 현황입니다.</p>
                     </div>
                     <div className="relative sm:w-56">
                       <Pin n={1} className="-top-2 -left-2" />
-                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="부원 또는 프로젝트 검색" className="w-full pl-8 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-xs" />
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-[#C7C7CC]" size={14} />
+                      <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="부원 또는 프로젝트 검색" className="w-full pl-8 pr-3 py-2.5 bg-[#fff] border border-black/[0.08] rounded-xl outline-none font-bold text-xs" />
                     </div>
                   </div>
                   <div className="flex items-center gap-2 mb-4">
-                    <Users className="text-indigo-600 w-5 h-5" />
-                    <p className="text-lg font-[900] uppercase tracking-tighter text-indigo-600">재학 중인 부원 <span className="text-sm opacity-70">({filtered.length})</span></p>
+                    <Users className="text-[#0071E3] w-5 h-5" />
+                    <p className="text-lg font-bold text-[#0071E3]">재학 중인 부원 <span className="text-sm opacity-70">({filtered.length})</span></p>
                   </div>
                   {["23", "24"].map((year) => {
                     const list = filtered.filter((m) => m.year === year);
                     if (list.length === 0) return null;
                     return (
                       <div key={year} className="mb-5">
-                        <div className="flex items-center gap-3 mb-3"><span className="text-xs font-black text-slate-400">{year}학번</span><div className="h-px bg-slate-100 flex-1" /></div>
+                        <div className="flex items-center gap-3 mb-3"><span className="text-xs font-bold text-[#8E8E93]">{year}학번</span><div className="h-px bg-black/[0.05] flex-1" /></div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5">
                           {list.map((m) => (
                             <motion.div
                               key={m.name}
                               whileHover={{ scale: 1.02 }}
                               onClick={() => m.name === "김데브" && setView("detail")}
-                              className={`relative bg-white p-3.5 rounded-2xl border border-slate-100 shadow-sm flex items-center gap-3 transition-all ${m.name === "김데브" ? "cursor-pointer hover:border-indigo-200 hover:shadow-xl ring-2 ring-pink-200" : "opacity-70"}`}
+                              className={`relative bg-[#fff] p-3.5 rounded-2xl border border-black/[0.06] shadow-sm flex items-center gap-3 transition-all ${m.name === "김데브" ? "cursor-pointer hover:border-[#0071E3]/30 hover:shadow-xl ring-2 ring-pink-200" : "opacity-70"}`}
                             >
                               {m.name === "김데브" && <Pin n={2} className="-top-2 -right-2" />}
                               <Avatar name={m.name} size="w-11 h-11" />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span className="text-sm font-black text-slate-900">{m.name}</span>
-                                  <span className="text-[8px] font-black text-indigo-500 bg-indigo-50 px-1.5 py-0.5 rounded-md border border-indigo-100/50">{m.year}학번</span>
+                                  <span className="text-sm font-bold text-[#1D1D1F]">{m.name}</span>
+                                  <span className="text-[8px] font-bold text-[#0071E3] bg-[#EEF2FF] px-1.5 py-0.5 rounded-md border border-[#0071E3]/20/50">{m.year}학번</span>
                                 </div>
-                                <p className="text-[11px] font-bold text-slate-400 truncate">{m.project}</p>
+                                <p className="text-[11px] font-bold text-[#8E8E93] truncate">{m.project}</p>
                               </div>
                               <ChevronRight className="text-slate-200 w-4 h-4 shrink-0" />
                             </motion.div>
@@ -810,67 +785,67 @@ const CommunitySection = () => {
                 <motion.div key="detail" initial={{ opacity: 0, x: 10 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 10 }}>
                   <div className="flex items-center justify-between gap-2 mb-5">
                     <div className="flex items-center gap-3 min-w-0">
-                      <button onClick={() => setView("list")} className="p-2.5 bg-white border border-slate-100 rounded-xl text-slate-400 hover:text-indigo-600 shrink-0"><ArrowLeft size={16} /></button>
+                      <button onClick={() => setView("list")} className="p-2.5 bg-[#fff] border border-black/[0.06] rounded-xl text-[#8E8E93] hover:text-[#0071E3] shrink-0"><ArrowLeft size={16} /></button>
                       <div className="min-w-0">
                         <div className="flex items-center gap-2">
-                          <p className="text-xl font-[900] text-slate-900 truncate">김데브</p>
-                          <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] font-black rounded-md border border-indigo-100/50">23학번</span>
+                          <p className="text-xl font-bold text-[#1D1D1F] truncate">김데브</p>
+                          <span className="px-2 py-0.5 bg-[#EEF2FF] text-[#0071E3] text-[8px] font-bold rounded-md border border-[#0071E3]/20/50">23학번</span>
                         </div>
-                        <p className="text-slate-400 font-bold flex items-center gap-1 text-[11px] truncate"><ExternalLink size={11} className="text-indigo-400" /> {project === "personal" ? "스마트홈 IoT 프로젝트" : "캠퍼스 길찾기 앱"}</p>
+                        <p className="text-[#8E8E93] font-bold flex items-center gap-1 text-[11px] truncate"><ExternalLink size={11} className="text-[#0071E3]/70" /> {project === "personal" ? "스마트홈 IoT 프로젝트" : "캠퍼스 길찾기 앱"}</p>
                       </div>
                     </div>
-                    <span className="flex items-center gap-1.5 bg-white px-3 py-2 rounded-xl border border-slate-100 text-[11px] font-black text-slate-900 shrink-0"><CalendarDays size={13} className="text-indigo-600" /> 2026년도 2학기 <ChevronDown size={12} className="text-slate-400" /></span>
+                    <span className="flex items-center gap-1.5 bg-[#fff] px-3 py-2 rounded-xl border border-black/[0.06] text-[11px] font-bold text-[#1D1D1F] shrink-0"><CalendarDays size={13} className="text-[#0071E3]" /> 2026년도 2학기 <ChevronDown size={12} className="text-[#8E8E93]" /></span>
                   </div>
                   {project === "personal" && (
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-100 mb-4">
-                      <p className="flex items-center gap-1.5 text-indigo-500 text-[10px] font-black uppercase tracking-widest mb-2"><Link2 size={12} /> 관련 링크</p>
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-slate-50 rounded-full border border-slate-100 text-xs font-black text-slate-700">Git <ExternalLink size={11} className="text-slate-300" /></span>
+                    <div className="bg-[#fff] p-3.5 rounded-2xl border border-black/[0.06] mb-4">
+                      <p className="flex items-center gap-1.5 text-[#0071E3] text-[10px] font-bold uppercase tracking-wide mb-2"><Link2 size={12} /> 관련 링크</p>
+                      <span className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-[#F8FAFC] rounded-full border border-black/[0.06] text-xs font-bold text-[#1D1D1F]">Git <ExternalLink size={11} className="text-[#C7C7CC]" /></span>
                     </div>
                   )}
                   <div className="relative flex items-center gap-2 mb-4">
                     <Pin n={3} className="-top-2 -left-2" />
-                    <button onClick={() => setProject("personal")} className={`px-3.5 py-2 rounded-xl font-black text-xs border transition-all ${project === "personal" ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-500 border-slate-100"}`}><UserCircle size={12} className="inline mr-1 -mt-0.5" />개인 프로젝트</button>
-                    <button onClick={() => setProject("team")} className={`px-3.5 py-2 rounded-xl font-black text-xs border transition-all ${project === "team" ? "bg-indigo-600 text-white border-indigo-600" : "bg-white text-slate-500 border-slate-100"}`}><Layers size={12} className="inline mr-1 -mt-0.5" />길찾기팀</button>
+                    <button onClick={() => setProject("personal")} className={`px-3.5 py-2 rounded-xl font-bold text-xs border transition-all ${project === "personal" ? "bg-[#4F46E5] text-white border-[#0071E3]" : "bg-[#fff] text-[#6E6E73] border-black/[0.06]"}`}><UserCircle size={12} className="inline mr-1 -mt-0.5" />개인 프로젝트</button>
+                    <button onClick={() => setProject("team")} className={`px-3.5 py-2 rounded-xl font-bold text-xs border transition-all ${project === "team" ? "bg-[#4F46E5] text-white border-[#0071E3]" : "bg-[#fff] text-[#6E6E73] border-black/[0.06]"}`}><Layers size={12} className="inline mr-1 -mt-0.5" />길찾기팀</button>
                   </div>
                   {project === "team" && (
-                    <div className="bg-white p-3.5 rounded-2xl border border-slate-100 mb-4">
-                      <div className="flex items-center gap-2 mb-0.5"><p className="font-black text-slate-900 text-sm">길찾기팀</p><span className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[9px] font-black">팀원 2명</span></div>
-                      <p className="text-slate-400 font-bold text-[11px] mb-2.5">캠퍼스 길찾기 앱</p>
+                    <div className="bg-[#fff] p-3.5 rounded-2xl border border-black/[0.06] mb-4">
+                      <div className="flex items-center gap-2 mb-0.5"><p className="font-bold text-[#1D1D1F] text-sm">길찾기팀</p><span className="px-1.5 py-0.5 rounded-md bg-[#EEF2FF] text-[#0071E3] text-[9px] font-bold">팀원 2명</span></div>
+                      <p className="text-[#8E8E93] font-bold text-[11px] mb-2.5">캠퍼스 길찾기 앱</p>
                       <div className="flex flex-wrap gap-1.5">
                         {[{ n: "김데브", leader: true }, { n: "박코드", leader: false }].map((m) => (
-                          <div key={m.n} className={`flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border ${m.leader ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-100"}`}>
+                          <div key={m.n} className={`flex items-center gap-1.5 pl-1 pr-2.5 py-1 rounded-full border ${m.leader ? "bg-amber-50 border-amber-200" : "bg-[#F8FAFC] border-black/[0.06]"}`}>
                             <Avatar name={m.n} size="w-6 h-6" />
                             <span className="flex flex-col leading-tight">
-                              <span className="text-[10px] font-black text-slate-700 flex items-center gap-0.5">{m.n}{m.leader && <Crown size={10} className="text-amber-500" />}</span>
-                              <span className={`text-[8px] font-bold ${m.leader ? "text-amber-600" : "text-slate-400"}`}>{m.leader ? "팀장" : "팀원"}</span>
+                              <span className="text-[10px] font-bold text-[#1D1D1F] flex items-center gap-0.5">{m.n}{m.leader && <Crown size={10} className="text-amber-500" />}</span>
+                              <span className={`text-[8px] font-bold ${m.leader ? "text-amber-600" : "text-[#8E8E93]"}`}>{m.leader ? "팀장" : "팀원"}</span>
                             </span>
                           </div>
                         ))}
                       </div>
                     </div>
                   )}
-                  <p className="text-sm font-black text-slate-900 uppercase tracking-wider mb-3">{project === "personal" ? "개인 프로젝트 타임라인" : "길찾기팀 타임라인"}</p>
+                  <p className="text-sm font-bold text-[#1D1D1F] uppercase tracking-wider mb-3">{project === "personal" ? "개인 프로젝트 타임라인" : "길찾기팀 타임라인"}</p>
                   <div className="space-y-2">
                     {timeline.map((it) => (
                       <motion.div
                         key={it.m}
                         whileHover={it.done ? { scale: 1.01 } : {}}
                         onClick={() => it.done && it.m === 9 && setModal(true)}
-                        className={`relative bg-white p-3 rounded-2xl border border-slate-100 flex items-center justify-between ${it.done ? (it.m === 9 ? "cursor-pointer hover:shadow-lg ring-2 ring-pink-200" : "") : "opacity-40"}`}
+                        className={`relative bg-[#fff] p-3 rounded-2xl border border-black/[0.06] flex items-center justify-between ${it.done ? (it.m === 9 ? "cursor-pointer hover:shadow-lg ring-2 ring-pink-200" : "") : "opacity-40"}`}
                       >
                         {it.m === 9 && <Pin n={4} className="-top-2 -right-2" />}
                         <div className="flex items-center gap-3 min-w-0">
-                          <span className={`text-lg font-[900] shrink-0 ${it.done ? "text-indigo-600" : "text-slate-400"}`}>{it.m}월</span>
+                          <span className={`text-lg font-bold shrink-0 ${it.done ? "text-[#0071E3]" : "text-[#8E8E93]"}`}>{it.m}월</span>
                           <div className="h-7 w-px bg-slate-200 shrink-0" />
                           <div className="min-w-0">
                             <div className="flex items-center gap-1.5">
-                              <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-black ${it.done ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{it.t}</span>
-                              <span className="font-bold text-slate-900 text-xs truncate">{it.done ? it.title : `${it.m}월 자료 미제출`}</span>
+                              <span className="text-[10px] font-semibold text-[#8E8E93]">{reportKind(it.m)}</span>
+                              <span className="font-bold text-[#1D1D1F] text-xs truncate">{it.done ? it.title : `${reportKind(it.m)} 미제출`}</span>
                             </div>
-                            <p className="text-[9px] text-slate-400 font-black flex items-center gap-1 mt-0.5">{it.done ? <><Check size={10} className="text-indigo-500" /> 2026.{String(it.m).padStart(2, "0")}.12 제출됨</> : <><Clock size={10} /> 기록이 없습니다</>}</p>
+                            <p className="text-[9px] text-[#8E8E93] font-bold flex items-center gap-1 mt-0.5">{it.done ? <><Check size={10} className="text-[#0071E3]" /> 2026.{String(it.m).padStart(2, "0")}.12 제출됨</> : <><Clock size={10} /> 기록이 없습니다</>}</p>
                           </div>
                         </div>
-                        {it.done && <span className="p-2 bg-slate-50 text-slate-300 rounded-xl shrink-0"><Download size={14} /></span>}
+                        {it.done && <span className="p-2 bg-[#F8FAFC] text-[#C7C7CC] rounded-xl shrink-0"><Download size={14} /></span>}
                       </motion.div>
                     ))}
                   </div>
@@ -881,32 +856,32 @@ const CommunitySection = () => {
             <DemoModal open={modal} onClose={() => setModal(false)}>
               <div className="flex justify-between items-start mb-4">
                 <div>
-                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] font-black rounded-md border border-indigo-100">김데브 부원 · 9월 자료</span>
-                  <p className="text-lg font-[900] text-slate-900 tracking-tighter mt-1">{project === "personal" ? "스마트홈 IoT 프로젝트" : "팀 계획서"}</p>
+                  <span className="px-2 py-0.5 bg-[#EEF2FF] text-[#0071E3] text-[8px] font-bold rounded-md border border-[#0071E3]/20">김데브 부원 · 9월 자료</span>
+                  <p className="text-lg font-bold text-[#1D1D1F] tracking-tighter mt-1">{project === "personal" ? "스마트홈 IoT 프로젝트" : "팀 계획서"}</p>
                 </div>
-                <button onClick={() => setModal(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl"><X size={15} /></button>
+                <button onClick={() => setModal(false)} className="p-2 bg-[#F8FAFC] text-[#8E8E93] rounded-xl"><X size={15} /></button>
               </div>
-              <p className="flex items-center gap-1.5 mb-2 text-[10px] font-black text-slate-400 uppercase tracking-widest"><MessageCircle size={12} className="text-indigo-500" /> 활동 요약 내용</p>
-              <div className="p-3 bg-slate-50 rounded-xl font-bold text-slate-700 text-xs mb-4">라즈베리파이 기반 스마트홈 시스템 계획서입니다.</div>
-              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-2">첨부 파일</p>
+              <p className="flex items-center gap-1.5 mb-2 text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide"><MessageCircle size={12} className="text-[#0071E3]" /> 활동 요약 내용</p>
+              <div className="p-3 bg-[#F8FAFC] rounded-xl font-bold text-[#1D1D1F] text-xs mb-4">라즈베리파이 기반 스마트홈 시스템 계획서입니다.</div>
+              <p className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide mb-2">첨부 파일</p>
               <div className="space-y-2">
                 {[
                   { l: "발표자료 (PPT)", has: false, preview: false },
                   { l: "PDF 보고서", has: false, preview: false },
                   { l: "계획서 원본 파일", has: true, preview: true },
                 ].map((f) => (
-                  <div key={f.l} className={`flex items-center justify-between p-3 rounded-xl border ${f.has ? "bg-white border-slate-100" : "bg-slate-50 border-transparent opacity-30"}`}>
+                  <div key={f.l} className={`flex items-center justify-between p-3 rounded-xl border ${f.has ? "bg-[#fff] border-black/[0.06]" : "bg-[#F8FAFC] border-transparent opacity-30"}`}>
                     <div className="flex items-center gap-2.5">
-                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${f.has ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-300"}`}><FileText size={14} /></span>
+                      <span className={`w-8 h-8 rounded-lg flex items-center justify-center ${f.has ? "bg-[#EEF2FF] text-[#0071E3]" : "bg-black/[0.05] text-[#C7C7CC]"}`}><FileText size={14} /></span>
                       <span>
-                        <span className="block text-xs font-black text-slate-800">{f.l}</span>
-                        <span className="block text-[9px] font-bold text-slate-400">{f.has ? "확인 및 다운로드" : "첨부 파일 없음"}</span>
+                        <span className="block text-xs font-bold text-[#1D1D1F]">{f.l}</span>
+                        <span className="block text-[9px] font-bold text-[#8E8E93]">{f.has ? "확인 및 다운로드" : "첨부 파일 없음"}</span>
                       </span>
                     </div>
                     {f.has && (
                       <span className="flex items-center gap-1.5">
-                        {f.preview && <span className="p-2 bg-indigo-50 text-indigo-600 rounded-lg flex items-center gap-1 text-[10px] font-black"><Eye size={12} /> 미리보기</span>}
-                        <span className="p-2 bg-slate-50 text-slate-400 rounded-lg"><Download size={13} /></span>
+                        {f.preview && <span className="p-2 bg-[#EEF2FF] text-[#0071E3] rounded-lg flex items-center gap-1 text-[10px] font-bold"><Eye size={12} /> 미리보기</span>}
+                        <span className="p-2 bg-[#F8FAFC] text-[#8E8E93] rounded-lg"><Download size={13} /></span>
                       </span>
                     )}
                   </div>
@@ -976,69 +951,69 @@ const TeamSection = () => {
         demo={
           <DemoFrame label="총회 › 팀 프로젝트" onReset={reset} hint={stage === "team" ? "'팀원 초대'를 눌러보세요" : "'새 팀 만들기'를 눌러보세요"} minH="min-h-[560px]">
             {stage !== "team" ? (
-              <div className="bg-white rounded-2xl border border-dashed border-slate-200 p-6 md:p-10 text-center">
+              <div className="bg-[#fff] rounded-2xl border border-dashed border-black/[0.08] p-6 md:p-10 text-center">
                 <Layers size={34} className="mx-auto text-slate-200 mb-3" />
-                <p className="text-slate-500 font-bold mb-5 text-xs md:text-sm leading-relaxed">아직 소속된 팀이 없습니다.<br />팀을 만들어 팀원들과 총회자료를 함께 제출해보세요.</p>
+                <p className="text-[#6E6E73] font-bold mb-5 text-xs md:text-sm leading-relaxed">아직 소속된 팀이 없습니다.<br />팀을 만들어 팀원들과 총회자료를 함께 제출해보세요.</p>
                 {stage === "empty" ? (
-                  <button onClick={() => setStage("form")} className="relative inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 text-xs">
+                  <button onClick={() => setStage("form")} className="relative inline-flex items-center gap-2 px-5 py-3 rounded-2xl bg-[#4F46E5] text-white font-bold text-xs">
                     <Pin n={1} className="-top-2 -right-2" />
                     <PlusCircle size={16} /> 새 팀 만들기
                   </button>
                 ) : (
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="max-w-xs mx-auto space-y-2">
-                    <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="팀 이름" className="w-full px-3.5 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs" />
-                    <input value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder="프로젝트 명" className="w-full px-3.5 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs" />
-                    <button onClick={create} disabled={creating} className="w-full px-4 py-3 rounded-xl bg-indigo-600 text-white font-black text-xs disabled:opacity-60">{creating ? "생성 중..." : "팀 생성"}</button>
+                    <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="팀 이름" className="w-full px-3.5 py-3 bg-[#F8FAFC] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-xs" />
+                    <input value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder="프로젝트 명" className="w-full px-3.5 py-3 bg-[#F8FAFC] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-xs" />
+                    <button onClick={create} disabled={creating} className="w-full px-4 py-3 rounded-xl bg-[#4F46E5] text-white font-bold text-xs disabled:opacity-60">{creating ? "생성 중..." : "팀 생성"}</button>
                   </motion.div>
                 )}
               </div>
             ) : (
               <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }}>
                 <div className="flex items-center gap-2 mb-4 overflow-x-auto no-scrollbar">
-                  <span className="px-3.5 py-2 rounded-xl font-black text-xs bg-indigo-600 text-white border border-indigo-600 whitespace-nowrap">{teamName}<Crown size={10} className="inline ml-1 -mt-0.5" /></span>
-                  <span className="px-3.5 py-2 rounded-xl font-black text-xs bg-white text-indigo-600 border border-indigo-100 whitespace-nowrap"><PlusCircle size={12} className="inline mr-1 -mt-0.5" />새 팀</span>
+                  <span className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#4F46E5] text-white border border-[#0071E3] whitespace-nowrap">{teamName}<Crown size={10} className="inline ml-1 -mt-0.5" /></span>
+                  <span className="px-3.5 py-2 rounded-xl font-bold text-xs bg-[#fff] text-[#0071E3] border border-[#0071E3]/20 whitespace-nowrap"><PlusCircle size={12} className="inline mr-1 -mt-0.5" />새 팀</span>
                 </div>
-                <div className="bg-white rounded-2xl p-4 md:p-6 border border-slate-100 shadow-sm">
+                <div className="bg-[#fff] rounded-2xl p-4 md:p-6 border border-black/[0.06] shadow-sm">
                   <div className="flex items-start justify-between gap-3 mb-5">
                     <div className="relative min-w-0 space-y-2.5">
                       <Pin n={2} className="-top-2 -left-3" />
                       <div>
-                        <span className="text-[9px] font-black text-indigo-500 uppercase tracking-widest">Team Name</span>
-                        <div className="flex items-center gap-1.5"><p className="text-lg md:text-xl font-black text-slate-900 truncate">{teamName}</p><Edit2 size={13} className="text-slate-300 shrink-0" /></div>
+                        <span className="text-[9px] font-bold text-[#0071E3] uppercase tracking-wide">Team Name</span>
+                        <div className="flex items-center gap-1.5"><p className="text-lg md:text-xl font-bold text-[#1D1D1F] truncate">{teamName}</p><Edit2 size={13} className="text-[#C7C7CC] shrink-0" /></div>
                       </div>
                       <div>
-                        <span className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Project Title</span>
-                        <div className="flex items-center gap-1.5"><p className="text-xs md:text-sm font-bold text-slate-500 truncate">{projectTitle}</p><Edit2 size={11} className="text-slate-300 shrink-0" /></div>
+                        <span className="text-[9px] font-bold text-[#8E8E93] uppercase tracking-wide">Project Title</span>
+                        <div className="flex items-center gap-1.5"><p className="text-xs md:text-sm font-bold text-[#6E6E73] truncate">{projectTitle}</p><Edit2 size={11} className="text-[#C7C7CC] shrink-0" /></div>
                       </div>
                     </div>
-                    <span className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-pink-50 text-pink-600 font-bold text-[11px]"><Trash2 size={12} /> 팀 해체</span>
+                    <span className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-[#FDF2F8] text-[#FF3B30] font-bold text-[11px]"><Trash2 size={12} /> 팀 해체</span>
                   </div>
                   <div className="flex items-center justify-between mb-3">
-                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">팀원 ({members.length})</p>
-                    <button onClick={() => setInviteOpen(true)} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-[11px] hover:bg-indigo-100">
+                    <p className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-wide">팀원 ({members.length})</p>
+                    <button onClick={() => setInviteOpen(true)} className="relative flex items-center gap-1.5 px-3 py-2 rounded-xl bg-[#EEF2FF] text-[#0071E3] font-bold text-[11px] hover:bg-[#E0E7FF]">
                       <Pin n={3} className="-top-2 -right-2" />
                       <UserPlus size={13} /> 팀원 초대
                     </button>
                   </div>
                   <div className="space-y-2">
                     {members.map((m) => (
-                      <motion.div layout key={m.name} className="flex items-center justify-between gap-2 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                      <motion.div layout key={m.name} className="flex items-center justify-between gap-2 p-3 bg-[#F8FAFC] rounded-xl border border-black/[0.06]">
                         <div className="flex items-center gap-2.5 min-w-0">
                           <Avatar name={m.name} size="w-8 h-8" />
-                          <span className="font-bold text-slate-800 text-xs truncate">23 {m.name}</span>
+                          <span className="font-bold text-[#1D1D1F] text-xs truncate">23 {m.name}</span>
                           {m.leader && <Crown size={12} className="text-amber-500 shrink-0" />}
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span className={`text-[9px] font-black px-2 py-1 rounded-full ${m.status === "ACCEPTED" ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-500"}`}>{m.status === "ACCEPTED" ? "수락됨" : "대기중"}</span>
+                          <span className={`text-[9px] font-bold px-2 py-1 rounded-full ${m.status === "ACCEPTED" ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-500"}`}>{m.status === "ACCEPTED" ? "수락됨" : "대기중"}</span>
                           {m.status === "PENDING" && (
-                            <button onClick={() => setMembers((p) => p.map((x) => (x.name === m.name ? { ...x, status: "ACCEPTED" } : x)))} className="text-[9px] font-black text-indigo-500 underline underline-offset-2">(체험) 수락시키기</button>
+                            <button onClick={() => setMembers((p) => p.map((x) => (x.name === m.name ? { ...x, status: "ACCEPTED" } : x)))} className="text-[9px] font-bold text-[#0071E3] underline underline-offset-2">(체험) 수락시키기</button>
                           )}
                         </div>
                       </motion.div>
                     ))}
                   </div>
                 </div>
-                <p className="text-sm font-black text-slate-900 flex items-center gap-2 mt-5 mb-3"><FileText size={14} className="text-indigo-500" /> 팀 공유 자료</p>
+                <p className="text-sm font-bold text-[#1D1D1F] flex items-center gap-2 mt-5 mb-3"><FileText size={14} className="text-[#0071E3]" /> 팀 공유 자료</p>
                 <div className="relative space-y-2">
                   <Pin n={4} className="-top-2 -left-2" />
                   <MonthCardView team card={{ month: 9, type: "PLAN", state: "done", title: "9월 팀 자료", date: "2026.09.12" }} />
@@ -1049,20 +1024,20 @@ const TeamSection = () => {
 
             <DemoModal open={inviteOpen} onClose={() => setInviteOpen(false)}>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-lg font-black text-slate-900">팀원 초대</p>
-                <button onClick={() => setInviteOpen(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl"><X size={15} /></button>
+                <p className="text-lg font-bold text-[#1D1D1F]">팀원 초대</p>
+                <button onClick={() => setInviteOpen(false)} className="p-2 bg-[#F8FAFC] text-[#8E8E93] rounded-xl"><X size={15} /></button>
               </div>
               <div className="relative mb-3">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
-                <input placeholder="이름 또는 학번 검색" className="w-full pl-9 pr-3 py-2.5 bg-slate-50 rounded-xl outline-none font-bold text-xs" />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C7C7CC]" size={14} />
+                <input placeholder="이름 또는 학번 검색" className="w-full pl-9 pr-3 py-2.5 bg-[#F8FAFC] rounded-xl outline-none font-bold text-xs" />
               </div>
               <div className="space-y-1">
                 {[{ n: "이자인", s: "23" }, { n: "박코드", s: "24" }, { n: "최서버", s: "25" }].map((m) => {
                   const invited = members.some((x) => x.name === m.n);
                   return (
-                    <div key={m.n} className="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-slate-50">
-                      <div className="flex items-center gap-2.5"><Avatar name={m.n} size="w-8 h-8" /><span><span className="block font-bold text-slate-800 text-xs">{m.n}</span><span className="block text-[9px] text-slate-400 font-bold">20{m.s}학번</span></span></div>
-                      <button onClick={() => invite(m.n)} disabled={invited} className={`px-3 py-1.5 rounded-lg font-bold text-[11px] ${invited ? "bg-slate-100 text-slate-400" : "bg-indigo-600 text-white"}`}>{invited ? "초대함" : "초대"}</button>
+                    <div key={m.n} className="flex items-center justify-between gap-3 p-2.5 rounded-xl hover:bg-[#F8FAFC]">
+                      <div className="flex items-center gap-2.5"><Avatar name={m.n} size="w-8 h-8" /><span><span className="block font-bold text-[#1D1D1F] text-xs">{m.n}</span><span className="block text-[9px] text-[#8E8E93] font-bold">20{m.s}학번</span></span></div>
+                      <button onClick={() => invite(m.n)} disabled={invited} className={`px-3 py-1.5 rounded-lg font-bold text-[11px] ${invited ? "bg-black/[0.05] text-[#8E8E93]" : "bg-[#4F46E5] text-white"}`}>{invited ? "초대함" : "초대"}</button>
                     </div>
                   );
                 })}
@@ -1081,26 +1056,26 @@ const TeamSection = () => {
               ]}
             />
             <div>
-              <p className="text-xs font-black text-slate-500 mb-2 ml-1">초대를 받으면 팀 프로젝트 탭 맨 위에 이렇게 떠요</p>
-              <div className="bg-white p-4 rounded-2xl border border-indigo-100 shadow-sm">
-                <p className="text-xs font-black text-slate-900 flex items-center gap-1.5 mb-2.5"><Mail size={13} className="text-indigo-500" /> 받은 팀 초대</p>
+              <p className="text-xs font-bold text-[#6E6E73] mb-2 ml-1">초대를 받으면 팀 프로젝트 탭 맨 위에 이렇게 떠요</p>
+              <div className="bg-[#fff] p-4 rounded-2xl border border-[#0071E3]/20 shadow-sm">
+                <p className="text-xs font-bold text-[#1D1D1F] flex items-center gap-1.5 mb-2.5"><Mail size={13} className="text-[#0071E3]" /> 받은 팀 초대</p>
                 <AnimatePresence mode="wait">
                   {invitation === "pending" ? (
                     <motion.div key="p" exit={{ opacity: 0 }} className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <p className="font-black text-slate-900 text-sm">알고리즘팀</p>
-                        <p className="text-[11px] text-slate-400 font-bold">프로젝트: 알고리즘 스터디 봇</p>
-                        <p className="text-[11px] text-slate-400 font-bold mt-0.5">박코드 님이 팀에 초대했습니다.</p>
+                        <p className="font-bold text-[#1D1D1F] text-sm">알고리즘팀</p>
+                        <p className="text-[11px] text-[#8E8E93] font-bold">프로젝트: 알고리즘 스터디 봇</p>
+                        <p className="text-[11px] text-[#8E8E93] font-bold mt-0.5">박코드 님이 팀에 초대했습니다.</p>
                       </div>
                       <div className="flex gap-2 shrink-0">
-                        <button onClick={() => setInvitation("declined")} className="px-3.5 py-2 rounded-xl bg-slate-50 text-slate-500 font-bold text-xs">거절</button>
-                        <button onClick={() => setInvitation("accepted")} className="px-3.5 py-2 rounded-xl bg-indigo-600 text-white font-bold text-xs shadow-md">수락</button>
+                        <button onClick={() => setInvitation("declined")} className="px-3.5 py-2 rounded-xl bg-[#F8FAFC] text-[#6E6E73] font-bold text-xs">거절</button>
+                        <button onClick={() => setInvitation("accepted")} className="px-3.5 py-2 rounded-xl bg-[#4F46E5] text-white font-bold text-xs shadow-md">수락</button>
                       </div>
                     </motion.div>
                   ) : (
-                    <motion.p key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`text-xs font-bold flex items-center gap-1.5 ${invitation === "accepted" ? "text-green-600" : "text-slate-400"}`}>
+                    <motion.p key="r" initial={{ opacity: 0 }} animate={{ opacity: 1 }} className={`text-xs font-bold flex items-center gap-1.5 ${invitation === "accepted" ? "text-green-600" : "text-[#8E8E93]"}`}>
                       {invitation === "accepted" ? <><CheckCircle2 size={14} /> 알고리즘팀에 합류했어요! 위쪽 팀 목록에 추가돼요.</> : <><X size={14} /> 초대를 거절했어요.</>}
-                      <button onClick={() => setInvitation("pending")} className="ml-auto text-[10px] text-slate-400 underline">다시</button>
+                      <button onClick={() => setInvitation("pending")} className="ml-auto text-[10px] text-[#8E8E93] underline">다시</button>
                     </motion.p>
                   )}
                 </AnimatePresence>
@@ -1155,21 +1130,21 @@ const AttendanceSection = () => {
           <DemoFrame label="총회 › 출석" onReset={reset} hint={`화면의 번호 ${DEMO_CODE}를 입력해보세요`} minH="min-h-[380px]">
             <div className="grid grid-cols-1 sm:grid-cols-[0.9fr_1.1fr] gap-4 items-center">
               <div className="rounded-2xl bg-slate-900 text-white p-5 text-center shadow-xl">
-                <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">총회장 화면</p>
-                <p className="text-5xl font-black tracking-[0.25em] tabular-nums">{DEMO_CODE}</p>
-                <p className="text-[10px] text-slate-400 mt-3">남은 시간 04:32</p>
+                <p className="text-[10px] font-bold text-[#8E8E93] uppercase tracking-[0.2em] mb-2">총회장 화면</p>
+                <p className="text-5xl font-bold tracking-[0.25em] tabular-nums">{DEMO_CODE}</p>
+                <p className="text-[10px] text-[#8E8E93] mt-3">남은 시간 04:32</p>
               </div>
-              <div className="bg-white rounded-[24px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] px-5 py-8 text-center">
+              <div className="bg-[#fff] rounded-[24px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.06)] px-5 py-8 text-center">
                 {done ? (
                   <motion.div initial={{ scale: 0.9, opacity: 0 }} animate={{ scale: 1, opacity: 1 }}>
                     <div className="w-12 h-12 rounded-full flex items-center justify-center text-white mx-auto mb-4 bg-[#34C759]"><CheckCircle2 size={24} /></div>
-                    <p className="text-lg font-semibold text-slate-900">출석 완료</p>
-                    <p className="text-xs text-slate-400 mt-1">13 / 30명 출석</p>
+                    <p className="text-lg font-semibold text-[#1D1D1F]">출석 완료</p>
+                    <p className="text-xs text-[#8E8E93] mt-1">13 / 30명 출석</p>
                   </motion.div>
                 ) : (
                   <>
-                    <p className="text-lg font-semibold text-slate-900 mb-1">인증번호 입력</p>
-                    <p className="text-xs text-slate-400 mb-6">화면에 표시된 3자리 숫자를 입력하세요</p>
+                    <p className="text-lg font-semibold text-[#1D1D1F] mb-1">인증번호 입력</p>
+                    <p className="text-xs text-[#8E8E93] mb-6">화면에 표시된 3자리 숫자를 입력하세요</p>
                     <motion.div animate={shake ? { x: [0, -9, 9, -7, 7, -4, 4, 0] } : { x: 0 }} transition={{ duration: 0.4 }} className="flex items-center justify-center gap-2.5 mb-3">
                       {digits.map((d, i) => (
                         <input
@@ -1182,7 +1157,7 @@ const AttendanceSection = () => {
                           onKeyDown={(e) => {
                             if (e.key === "Backspace" && !digits[i] && i > 0) refs[i - 1].current?.focus();
                           }}
-                          className="w-12 h-14 md:w-14 md:h-16 text-center text-2xl font-medium text-slate-900 bg-slate-50 border border-slate-200 rounded-2xl outline-none focus:bg-white focus:border-slate-900 focus:ring-[3px] focus:ring-slate-900/[0.06]"
+                          className="w-12 h-14 md:w-14 md:h-16 text-center text-2xl font-medium text-[#1D1D1F] bg-[#F8FAFC] border border-black/[0.08] rounded-2xl outline-none focus:bg-[#fff] focus:border-slate-900 focus:ring-[3px] focus:ring-slate-900/[0.06]"
                         />
                       ))}
                     </motion.div>
@@ -1202,8 +1177,8 @@ const AttendanceSection = () => {
                 { title: "출석 완료 확인", body: "초록 체크와 함께 지금까지 출석한 인원이 보여요." },
               ]}
             />
-            <div className="bg-white rounded-2xl border border-slate-100 p-4 space-y-2.5">
-              <p className="text-xs font-black text-slate-500 mb-1">이런 화면이 뜰 수도 있어요</p>
+            <div className="bg-[#fff] rounded-2xl border border-black/[0.06] p-4 space-y-2.5">
+              <p className="text-xs font-bold text-[#6E6E73] mb-1">이런 화면이 뜰 수도 있어요</p>
               {[
                 { t: "현재 진행 중인 출석이 없습니다", d: "아직 시작 전이거나 이미 끝났어요." },
                 { t: "이번 출석 대상자가 아닙니다", d: "운영진이 올린 출석 명단에 없어요. 운영진에게 알려주세요." },
@@ -1211,7 +1186,7 @@ const AttendanceSection = () => {
               ].map((r) => (
                 <div key={r.t} className="flex gap-2.5">
                   <span className="w-1.5 h-1.5 rounded-full bg-slate-300 mt-1.5 shrink-0" />
-                  <p className="text-xs text-slate-500 font-medium"><b className="text-slate-800">{r.t}</b> — {r.d}</p>
+                  <p className="text-xs text-[#6E6E73] font-medium"><b className="text-[#1D1D1F]">{r.t}</b> — {r.d}</p>
                 </div>
               ))}
             </div>
@@ -1241,20 +1216,20 @@ const FaqSection = () => {
   const [open, setOpen] = useState<number | null>(0);
   return (
     <Section id="guide-faq" no="6" icon={<MessageCircle size={20} />} title="자주 묻는 질문" desc="막히는 게 있으면 여기부터 확인해보세요. 그래도 해결되지 않으면 운영진에게 알려주세요.">
-      <div className="bg-white rounded-2xl md:rounded-[2rem] border border-slate-100 shadow-sm divide-y divide-slate-100 overflow-hidden">
+      <div className="bg-[#fff] rounded-3xl border border-black/[0.06] shadow-sm divide-y divide-black/[0.06] overflow-hidden">
         {FAQS.map((f, i) => (
           <div key={i}>
-            <button onClick={() => setOpen(open === i ? null : i)} className="w-full flex items-center justify-between gap-3 px-5 md:px-7 py-4 md:py-5 text-left hover:bg-slate-50/60">
+            <button onClick={() => setOpen(open === i ? null : i)} className="w-full flex items-center justify-between gap-3 px-5 md:px-7 py-4 md:py-5 text-left hover:bg-[#F8FAFC]/60">
               <span className="flex items-center gap-2.5 min-w-0">
-                <span className="text-indigo-500 font-black text-sm shrink-0">Q.</span>
-                <span className="text-sm md:text-[15px] font-bold text-slate-900">{f.q}</span>
+                <span className="text-[#0071E3] font-bold text-sm shrink-0">Q.</span>
+                <span className="text-sm md:text-[15px] font-bold text-[#1D1D1F]">{f.q}</span>
               </span>
-              <ChevronDown size={16} className={`text-slate-400 shrink-0 transition-transform ${open === i ? "rotate-180" : ""}`} />
+              <ChevronDown size={16} className={`text-[#8E8E93] shrink-0 transition-transform ${open === i ? "rotate-180" : ""}`} />
             </button>
             <AnimatePresence initial={false}>
               {open === i && (
                 <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} className="overflow-hidden">
-                  <div className="px-5 md:px-7 pb-5 pl-11 md:pl-[3.25rem] text-xs md:text-sm text-slate-500 font-medium leading-relaxed">{f.a}</div>
+                  <div className="px-5 md:px-7 pb-5 pl-11 md:pl-[3.25rem] text-xs md:text-sm text-[#6E6E73] font-medium leading-relaxed">{f.a}</div>
                 </motion.div>
               )}
             </AnimatePresence>
@@ -1270,21 +1245,21 @@ const FaqSection = () => {
 // ---------------------------------------------------------------------------
 
 export const GuideTab = () => (
-  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-16 max-w-6xl">
+  <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-16 w-full">
     {/* 머리말 */}
-    <div className="relative overflow-hidden rounded-[2rem] md:rounded-[3rem] bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 text-white p-6 md:p-12 mb-12 md:mb-20 shadow-xl shadow-indigo-100">
-      <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-white/10 blur-2xl" />
-      <div className="absolute right-10 -bottom-24 w-72 h-72 rounded-full bg-pink-400/20 blur-3xl" />
+    <div className="relative overflow-hidden rounded-[28px] bg-gradient-to-br from-indigo-600 via-indigo-600 to-violet-600 text-white p-6 md:p-12 mb-12 md:mb-20">
+      <div className="absolute -right-16 -top-16 w-64 h-64 rounded-full bg-[#fff]/10 blur-2xl" />
+      <div className="absolute right-10 -bottom-24 w-72 h-72 rounded-full bg-[#F472B6]/20 blur-3xl" />
       <div className="relative">
-        <p className="flex items-center gap-2 text-[10px] md:text-xs font-black uppercase tracking-[0.25em] text-indigo-200 mb-3"><BookOpen size={14} /> Guide</p>
-        <h1 className="text-2xl md:text-5xl font-black tracking-tight mb-3">총회 시스템 사용법</h1>
-        <p className="text-xs md:text-base text-indigo-100 font-medium leading-relaxed max-w-2xl">
+        <p className="flex items-center gap-2 text-[10px] md:text-xs font-bold uppercase tracking-[0.25em] text-white/70 mb-3"><BookOpen size={14} /> Guide</p>
+        <h1 className="text-2xl md:text-5xl font-bold tracking-tight mb-3">총회 시스템 사용법</h1>
+        <p className="text-xs md:text-base text-white/80 font-medium leading-relaxed max-w-2xl">
           마이 페이지 제출부터 계획서, 커뮤니티, 팀 프로젝트, 출석까지 — 실제 화면 그대로 눌러보면서 익힐 수 있어요.
           <span className="hidden md:inline"> 체험 화면은 연습용이라 눌러도 실제로 제출되지 않아요.</span>
         </p>
         <div className="flex flex-wrap gap-2 mt-6 md:mt-8">
           {SECTIONS.map((s) => (
-            <button key={s.id} onClick={() => scrollToSection(s.id)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full bg-white/15 hover:bg-white/25 backdrop-blur text-[11px] md:text-xs font-bold transition-colors">
+            <button key={s.id} onClick={() => scrollToSection(s.id)} className="flex items-center gap-1.5 px-3.5 py-2 rounded-full hero-glass text-white text-[11px] md:text-xs font-bold">
               {s.icon} {s.label}
             </button>
           ))}

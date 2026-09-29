@@ -111,7 +111,7 @@ const AttendeeGrid = ({
               </div>
             )}
           </div>
-          <p className="text-[11px] font-medium text-slate-700 leading-tight text-center truncate w-full">
+          <p className="text-[11px] font-medium text-[#1D1D1F] leading-tight text-center truncate w-full">
             {formatStudentId(m.studentId)} {m.name}
           </p>
         </button>
@@ -150,28 +150,28 @@ const HistoryPanel = ({
   };
 
   return (
-    <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-7">
+    <div className="bg-[#fff] rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-7">
       <div className="flex items-center gap-3 mb-6">
         {selected ? (
           <button
             onClick={() => setSelectedId(null)}
-            className="w-8 h-8 rounded-full hover:bg-slate-100 flex items-center justify-center text-slate-500 transition-colors -ml-1.5"
+            className="w-8 h-8 rounded-full hover:bg-black/[0.06] flex items-center justify-center text-[#6E6E73] transition-colors -ml-1.5"
           >
             <ChevronLeft size={18} />
           </button>
         ) : (
-          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500">
+          <div className="w-8 h-8 rounded-full bg-black/[0.05] flex items-center justify-center text-[#6E6E73]">
             <History size={15} />
           </div>
         )}
-        <h3 className="text-[15px] font-semibold text-slate-900 tracking-[-0.01em] flex-1 truncate">
+        <h3 className="text-[15px] font-semibold text-[#1D1D1F] tracking-[-0.01em] flex-1 truncate">
           {selected ? selected.title : "출석 이력"}
         </h3>
         {selected && (
           <div className="flex items-center gap-2 shrink-0">
             <button
               onClick={() => onDownload(selected)}
-              className="flex items-center gap-1.5 text-[12px] font-medium text-slate-500 hover:text-slate-900 bg-slate-100 hover:bg-slate-200/70 px-3.5 py-1.5 rounded-full transition-colors"
+              className="flex items-center gap-1.5 text-[12px] font-medium text-[#6E6E73] hover:text-[#1D1D1F] bg-black/[0.05] hover:bg-slate-200/70 px-3.5 py-1.5 rounded-full transition-colors"
             >
               <Download size={13} /> 엑셀 다운로드
             </button>
@@ -191,7 +191,7 @@ const HistoryPanel = ({
 
       {!selected &&
         (history.length === 0 ? (
-          <div className="text-center py-14 text-slate-300 font-medium flex flex-col items-center gap-3">
+          <div className="text-center py-14 text-[#C7C7CC] font-medium flex flex-col items-center gap-3">
             <History size={36} className="opacity-30" />
             <span className="text-[13px]">저장된 출석 기록이 없습니다</span>
           </div>
@@ -201,15 +201,15 @@ const HistoryPanel = ({
               <button
                 key={session.sessionId}
                 onClick={() => setSelectedId(session.sessionId)}
-                className="w-full flex items-center justify-between gap-4 p-3.5 rounded-2xl hover:bg-slate-50 transition-colors text-left"
+                className="w-full flex items-center justify-between gap-4 p-3.5 rounded-2xl hover:bg-black/[0.04] transition-colors text-left"
               >
                 <div className="min-w-0">
-                  <p className="text-[14px] font-medium text-slate-900 truncate">{session.title}</p>
-                  <p className="text-[12px] text-slate-400 mt-0.5">
+                  <p className="text-[14px] font-medium text-[#1D1D1F] truncate">{session.title}</p>
+                  <p className="text-[12px] text-[#8E8E93] mt-0.5">
                     {(session.startedAt || "").slice(0, 10)} · {session.checkedCount} / {session.totalCount}명 출석
                   </p>
                 </div>
-                <ChevronRight size={16} className="text-slate-300 shrink-0" />
+                <ChevronRight size={16} className="text-[#C7C7CC] shrink-0" />
               </button>
             ))}
           </div>
@@ -217,7 +217,7 @@ const HistoryPanel = ({
 
       {selected && (
         <>
-          <p className="text-[12px] text-slate-400 mb-5">항목을 클릭하면 출석/미출석을 수기로 정정할 수 있습니다</p>
+          <p className="text-[12px] text-[#8E8E93] mb-5">항목을 클릭하면 출석/미출석을 수기로 정정할 수 있습니다</p>
           <AttendeeGrid items={selected.targets} sessionId={selected.sessionId} onToggled={onToggled} />
         </>
       )}
@@ -336,23 +336,26 @@ export const AttendanceAdminTab = () => {
 
   return (
     <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-      <h1 className="text-[26px] font-semibold text-slate-900 tracking-[-0.01em] mb-8">출석 설정</h1>
+      <div className="mb-6 md:mb-8">
+        <h1 className="text-[28px] md:text-[34px] font-bold text-[#1D1D1F] tracking-[-0.02em] leading-tight">출석 설정</h1>
+        <p className="text-sm md:text-[15px] text-[#6E6E73] mt-1.5">디스코드 공지에 ✅를 누른 부원을 대상으로, 인증번호로 출석을 받아요.</p>
+      </div>
 
       {!isActive && (
         <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,420px)_1fr] gap-6 items-start">
-          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10">
-            <div className="w-11 h-11 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 mb-6">
+          <div className="bg-[#fff] rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10">
+            <div className="w-11 h-11 rounded-full bg-black/[0.05] flex items-center justify-center text-[#8E8E93] mb-6">
               <Timer size={20} />
             </div>
-            <h2 className="text-[19px] font-semibold text-slate-900 tracking-[-0.01em] mb-1.5">디스코드 메시지로 출석 시작</h2>
-            <p className="text-[13px] text-slate-400 leading-relaxed mb-5">
-              대상자 모집 메시지의 <b className="text-slate-500 font-semibold">메시지 ID</b>를 붙여넣으면,
+            <h2 className="text-[19px] font-semibold text-[#1D1D1F] tracking-[-0.01em] mb-1.5">디스코드 메시지로 출석 시작</h2>
+            <p className="text-[13px] text-[#8E8E93] leading-relaxed mb-5">
+              대상자 모집 메시지의 <b className="text-[#6E6E73] font-semibold">메시지 ID</b>를 붙여넣으면,
               그 메시지에 ✅ 반응을 남긴 사람들을 대상으로 출석이 시작됩니다.
               <br />
-              <span className="text-slate-300">(디스코드 개발자 모드 켜기 → 메시지 우클릭 → "메시지 ID 복사")</span>
+              <span className="text-[#C7C7CC]">(디스코드 개발자 모드 켜기 → 메시지 우클릭 → "메시지 ID 복사")</span>
             </p>
-            <div className="flex items-center gap-3.5 border border-slate-200 rounded-2xl p-4 mb-5 focus-within:border-slate-300">
-              <div className="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-slate-400 shrink-0">
+            <div className="flex items-center gap-3.5 border border-black/[0.08] rounded-2xl p-4 mb-5 focus-within:border-slate-300">
+              <div className="w-10 h-10 rounded-xl bg-black/[0.05] flex items-center justify-center text-[#8E8E93] shrink-0">
                 <MessageSquare size={18} />
               </div>
               <input
@@ -361,7 +364,7 @@ export const AttendanceAdminTab = () => {
                 value={messageId}
                 onChange={(e) => setMessageId(e.target.value.replace(/[^0-9]/g, ""))}
                 placeholder="메시지 ID 붙여넣기 (예: 1234567890123456789)"
-                className="min-w-0 flex-1 text-[14px] font-medium text-slate-800 outline-none placeholder:text-slate-300 placeholder:font-normal"
+                className="min-w-0 flex-1 text-[14px] font-medium text-[#1D1D1F] outline-none placeholder:text-[#C7C7CC] placeholder:font-normal"
               />
             </div>
 
@@ -388,33 +391,33 @@ export const AttendanceAdminTab = () => {
 
       {isActive && status && (
         <div className="space-y-6">
-          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10 flex flex-col items-center justify-center text-center relative">
-            <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-slate-100 text-slate-500 text-[13px] font-medium px-3 py-1.5 rounded-full">
+          <div className="bg-[#fff] rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-10 flex flex-col items-center justify-center text-center relative">
+            <div className="absolute top-6 right-6 flex items-center gap-1.5 bg-black/[0.05] text-[#6E6E73] text-[13px] font-medium px-3 py-1.5 rounded-full">
               <Timer size={13} /> {formatTime(remaining)}
             </div>
-            <p className="text-[12px] font-medium text-slate-400 uppercase tracking-[0.12em] mb-3">인증번호</p>
-            <h2 className="text-[76px] font-semibold text-slate-900 leading-none tracking-[0.03em] tabular-nums">
+            <p className="text-[12px] font-medium text-[#8E8E93] uppercase tracking-[0.12em] mb-3">인증번호</p>
+            <h2 className="text-[76px] font-semibold text-[#1D1D1F] leading-none tracking-[0.03em] tabular-nums">
               {status.code}
             </h2>
-            <p className="text-[13px] text-slate-400 mt-5">
+            <p className="text-[13px] text-[#8E8E93] mt-5">
               {status.checkedCount} / {status.totalCount}명 출석
             </p>
             <button
               onClick={handleClose}
-              className="mt-7 text-[13px] font-medium text-slate-500 hover:text-slate-900 border border-slate-200 hover:border-slate-300 rounded-full px-5 py-2 transition-colors"
+              className="mt-7 text-[13px] font-medium text-[#6E6E73] hover:text-[#1D1D1F] border border-black/[0.08] hover:border-slate-300 rounded-full px-5 py-2 transition-colors"
             >
               출석 종료
             </button>
           </div>
 
-          <div className="bg-white rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-9">
+          <div className="bg-[#fff] rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_28px_rgba(0,0,0,0.05)] p-9">
             <div className="flex items-center justify-between mb-1">
               <div className="flex items-center gap-2">
-                <Users size={16} className="text-slate-400" />
-                <h3 className="text-[13px] font-semibold text-slate-500 uppercase tracking-[0.08em]">실시간 출석 현황</h3>
+                <Users size={16} className="text-[#8E8E93]" />
+                <h3 className="text-[13px] font-semibold text-[#6E6E73] uppercase tracking-[0.08em]">실시간 출석 현황</h3>
               </div>
             </div>
-            <p className="text-[12px] text-slate-400 mb-6">지각자 등은 항목을 클릭해 수기로 출석 처리할 수 있습니다</p>
+            <p className="text-[12px] text-[#8E8E93] mb-6">지각자 등은 항목을 클릭해 수기로 출석 처리할 수 있습니다</p>
             <AttendeeGrid items={status.targets} sessionId={status.sessionId ?? undefined} onToggled={fetchStatus} />
           </div>
 
