@@ -232,42 +232,37 @@ export const Navbar = ({
           </button>
 
           {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
-          {/* ✨ [2026-09-29] 리퀴드 글라스 메뉴 — 평평한 메뉴 줄에서 선택된 메뉴만 유리 알약이 아래에서 위로
-              톡 떠오른다(누른 버튼이 밑에서 밀려 올라오는 느낌). 이전 알약은 살짝 가라앉으며 사라진다. */}
+          {/* ✨ [2026-09-29] 리퀴드 글라스 메뉴 — 평평한 메뉴 줄 위를 떠 있는 유리 알약 하나가 눌린 메뉴까지
+              좌우로 미끄러져 이어서 이동한다(layoutId 공유). 거리와 상관없이 같은 시간(duration 기반 스프링)에
+              도착하게 해서, 맨 끝 ↔ 맨 앞처럼 멀리 가도 과하게 튕기지 않고 자연스럽다.
+              누름 효과는 글자에만 준다 — 버튼 자체를 줄이면 알약 위치 측정이 흔들려 이동이 튀었음. */}
           <div className="hidden lg:flex items-center gap-0.5 xl:gap-1">
             {visibleLinks.map((link) => {
               const isActive = activeTab === link.id;
               return (
-                <motion.button
+                <button
                   key={link.id}
                   onClick={() => handleNavigate(link.id)}
                   aria-current={isActive ? "page" : undefined}
-                  whileTap={{ scale: 0.95 }}
-                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   className={`relative px-3 xl:px-4 h-8 xl:h-9 rounded-full font-medium tracking-[-0.01em] text-[12px] xl:text-[14px] whitespace-nowrap transition-colors duration-300 ${
                     isActive ? "text-[#1D1D1F]" : "text-[#1D1D1F]/60 hover:text-[#1D1D1F]"
                   }`}
                 >
-                  <AnimatePresence initial={false}>
-                    {isActive && (
-                      <motion.span
-                        key="lens"
-                        className="absolute inset-0 rounded-full glass-lens"
-                        initial={{ opacity: 0, y: 7, scale: 0.82 }}
-                        animate={{ opacity: 1, y: -1, scale: 1 }}
-                        exit={{ opacity: 0, y: 4, scale: 0.9, transition: { duration: 0.18, ease: [0.4, 0, 1, 1] } }}
-                        transition={{ type: "spring", stiffness: 420, damping: 24, mass: 0.8 }}
-                      />
-                    )}
-                  </AnimatePresence>
+                  {isActive && (
+                    <motion.span
+                      layoutId="active-navigation-indicator"
+                      className="absolute inset-0 -top-px bottom-px rounded-full glass-lens"
+                      transition={{ type: "spring", bounce: 0.18, duration: 0.5 }}
+                    />
+                  )}
                   <motion.span
                     className="relative z-[1] inline-block"
-                    animate={{ y: isActive ? -1 : 0 }}
-                    transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                    whileTap={{ scale: 0.94 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   >
                     {link.name}
                   </motion.span>
-                </motion.button>
+                </button>
               );
             })}
           </div>
