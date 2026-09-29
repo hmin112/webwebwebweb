@@ -15,6 +15,13 @@
   html {
     scroll-behavior: smooth;
     background: #f5f5f7;
+    /* ✨ [2026-09-30] 맨 위·맨 아래에서 더 당길 때 생기는 고무줄(바운스) 스크롤을 끈다 — 바운스 중에 상단 바의
+       흰 알약들이 따로 그려지면서 위에서 하얀색이 내려오는 것처럼 보이던 문제 */
+    overscroll-behavior-y: none;
+  }
+
+  body {
+    overscroll-behavior-y: none;
   }
 
   body {
@@ -105,7 +112,6 @@
     box-shadow:
       0 0 0 0.5px rgb(0 0 0 / 0.08),
       0 1px 2px rgb(0 0 0 / 0.05);
-    will-change: transform;
   }
 
   /* 로그인처럼 강조가 필요한 버튼 — 애플 블루 단색 */
@@ -113,7 +119,6 @@
     color: white;
     background: #0071e3;
     transition: background-color 180ms ease;
-    will-change: transform;
   }
 
   .glass-lens-blue:hover {
