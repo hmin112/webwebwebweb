@@ -47,6 +47,7 @@ public class TeamSubmissionService {
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
     private final PlanFileExtractor planFileExtractor;
+    private final kr.co.devsign.devsign_backend.util.PlanPdfGenerator planPdfGenerator;
 
     @Value("${app.upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -217,6 +218,27 @@ public class TeamSubmissionService {
         } catch (IOException | RuntimeException ignored) {
             // 이전 첨부 파일 정리 실패는 업로드 자체를 막지 않는다
         }
+    }
+
+    // ✨ [2026-09-30] 팀 계획서(웹 작성)를 PDF로 — 커뮤니티에서 팀 계획서를 내려받을 때 사용
+    @Transactional(readOnly = true)
+    public org.springframework.http.ResponseEntity<byte[]> planPdf(Long submissionId) {
+        TeamSubmission sub = submissionRepository.findById(submissionId).orElse(null);
+        boolean webPlan = sub != null && "PLAN".equals(sub.getType()) && (StringUtils.hasText(sub.getPlanOverview())
+                || !sub.getPlanGoals().isEmpty() || !sub.getPlanRoadmapItems().isEmpty());
+        if (!webPlan) {
+            return org.springframework.http.ResponseEntity.status(org.springframework.http.HttpStatus.NOT_FOUND).body(new byte[0]);
+        }
+        Team team = sub.getTeam();
+        String title = StringUtils.hasText(team.getProjectTitle()) ? team.getProjectTitle() : sub.getMonth() + "월 팀 계획서";
+        String author = StringUtils.hasText(team.getTeamName()) ? team.getTeamName() : "팀 프로젝트";
+        byte[] pdf = planPdfGenerator.generate(
+                title, author, sub.getDate(), sub.getPlanOverview(), sub.getPlanGoals(),
+                sub.getPlanRoadmapItems().stream().map(t -> new PlanRoadmapItemDto(t.getTitle(), t.getStartDate(), t.getEndDate(), t.getDetail())).toList(),
+                sub.getPlanRoles().stream().map(r -> new PlanRoleDto(r.getLoginId(), r.getName(), r.getRole(), r.getDuties())).toList(),
+                sub.getPlanLinks().stream().map(l -> new PlanLinkDto(l.getLabel(), l.getUrl())).toList(),
+                sub.getPlanNotes());
+        return AssemblyService.pdfResponse(pdf, author + "_" + title + ".pdf");
     }
 
     private boolean hasUpload(MultipartFile file) {

@@ -126,4 +126,10 @@ public class TeamSubmissionController {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
         }
     }
+
+    // ✨ [2026-09-30] 팀 웹 계획서 PDF (커뮤니티에서 내려받기)
+    @GetMapping("/plan/pdf")
+    public ResponseEntity<byte[]> planPdf(@RequestParam Long submissionId) {
+        return teamSubmissionService.planPdf(submissionId);
+    }
 }

@@ -551,116 +551,127 @@ export const TeamTab = ({
               )}
             </div>
           ) : (
-            <div className="bg-[#fff] rounded-3xl p-6 md:p-12 border border-black/[0.06] shadow-sm">
-              <div className="flex items-start justify-between gap-4 mb-8 md:mb-10">
-                <div className="min-w-0 flex-1 space-y-4">
-                  <div>
-                    <span className="text-xs font-semibold text-[#8E8E93]">팀 이름</span>
-                    {isEditingTeamName ? (
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          autoFocus
-                          value={teamNameDraft}
-                          onChange={(e) => setTeamNameDraft(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleSaveTeamName()}
-                          className="flex-1 bg-[#F5F5F7] px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-lg md:text-2xl text-[#1D1D1F] min-w-0"
-                        />
-                        <button onClick={handleSaveTeamName} className="p-2.5 bg-[#0071E3] text-white rounded-xl shadow-md shrink-0"><Save size={18} /></button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 mt-1">
-                        <h2 className="text-xl md:text-3xl font-bold text-[#1D1D1F] truncate">{team.teamName}</h2>
-                        {isLeader && (
-                          <button onClick={() => { setIsEditingTeamName(true); setTeamNameDraft(team.teamName); }} className="text-[#C7C7CC] hover:text-[#0071E3] shrink-0 transition-colors">
-                            <Edit2 size={16} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-
-                  <div>
-                    <span className="text-xs font-semibold text-[#8E8E93]">프로젝트</span>
-                    {isEditingProjectTitle ? (
-                      <div className="flex items-center gap-2 mt-2">
-                        <input
-                          autoFocus
-                          value={projectTitleDraft}
-                          onChange={(e) => setProjectTitleDraft(e.target.value)}
-                          onKeyDown={(e) => e.key === "Enter" && handleSaveProjectTitle()}
-                          className="flex-1 bg-[#F5F5F7] px-3.5 py-2 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm md:text-base text-[#1D1D1F] min-w-0"
-                        />
-                        <button onClick={handleSaveProjectTitle} className="p-2 bg-[#0071E3] text-white rounded-xl shadow-md shrink-0"><Save size={15} /></button>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm md:text-base font-bold text-[#6E6E73] truncate">{team.projectTitle}</p>
-                        {isLeader && (
-                          <button onClick={() => { setIsEditingProjectTitle(true); setProjectTitleDraft(team.projectTitle); }} className="text-[#C7C7CC] hover:text-[#0071E3] shrink-0 transition-colors">
-                            <Edit2 size={13} />
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                {isLeader ? (
-                  <button onClick={handleDisband} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FF3B30]/[0.08] text-[#FF3B30] font-bold text-xs md:text-sm hover:bg-[#FF3B30]/[0.12] transition-all">
-                    <Trash2 size={14} /> 팀 해체
-                  </button>
-                ) : (
-                  <button onClick={handleLeaveTeam} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#F5F5F7] text-[#6E6E73] font-bold text-xs md:text-sm hover:bg-black/[0.06] transition-all">
-                    <LogOut size={14} /> 팀 나가기
-                  </button>
-                )}
-              </div>
-
-              <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] md:text-xs font-bold text-[#8E8E93] uppercase tracking-widest">팀원 ({team.members.length})</p>
-                {isLeader && (
-                  <button onClick={openInviteModal} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0071E3]/10 text-[#0071E3] font-bold text-xs hover:bg-[#0071E3]/15 transition-all">
-                    <UserPlus size={14} /> 팀원 초대
-                  </button>
-                )}
-              </div>
-
-              <div className="space-y-2 md:space-y-3">
-                {team.members.map((m: any) => (
-                  <div key={m.teamMemberId} className="flex items-center justify-between gap-3 p-3.5 md:p-4 bg-[#F5F5F7] rounded-xl md:rounded-2xl border border-black/[0.06]">
-                    <div className="flex items-center gap-3 min-w-0">
-                      <img
-                        src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
-                        onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
-                        className="w-9 h-9 md:w-11 md:h-11 rounded-full object-cover border-2 border-white shadow-sm shrink-0"
-                        alt={m.name}
-                      />
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-[#1D1D1F] text-sm truncate">{formatStudentId(m.studentId)} {m.name}</span>
-                          {m.isLeader && <Crown size={13} className="text-[#FF9500] shrink-0" />}
+            // ✨ [2026-09-30] 팀 카드 — 왼쪽: 팀 이름·프로젝트·해체/나가기, 오른쪽 끝: 팀원 프로필(사진 + 이름 + 상태).
+            // 팀원 목록이 세로로 길게 자리를 차지하던 것을 줄여, 바로 아래 팀 공유 자료가 스크롤 없이 보이게.
+            <div className="bg-[#fff] rounded-3xl p-5 md:p-7 border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)]">
+              <div className="flex flex-col lg:flex-row lg:items-start justify-between gap-6">
+                <div className="min-w-0 flex-1">
+                  <div className="min-w-0 flex-1 space-y-4">
+                    <div>
+                      <span className="text-xs font-semibold text-[#8E8E93]">팀 이름</span>
+                      {isEditingTeamName ? (
+                        <div className="flex items-center gap-2 mt-2">
+                          <input
+                            autoFocus
+                            value={teamNameDraft}
+                            onChange={(e) => setTeamNameDraft(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSaveTeamName()}
+                            className="flex-1 bg-[#F5F5F7] px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-lg md:text-2xl text-[#1D1D1F] min-w-0"
+                          />
+                          <button onClick={handleSaveTeamName} className="p-2.5 bg-[#0071E3] text-white rounded-xl shadow-md shrink-0"><Save size={18} /></button>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <h2 className="text-xl md:text-3xl font-bold text-[#1D1D1F] truncate">{team.teamName}</h2>
+                          {isLeader && (
+                            <button onClick={() => { setIsEditingTeamName(true); setTeamNameDraft(team.teamName); }} className="text-[#C7C7CC] hover:text-[#0071E3] shrink-0 transition-colors">
+                              <Edit2 size={16} />
+                            </button>
+                          )}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full ${m.status === "ACCEPTED" ? "bg-[#34C759]/10 text-[#248A3D]" : "bg-[#FF9500]/10 text-[#C93400]"}`}>
-                        {m.status === "ACCEPTED" ? "수락됨" : "대기중"}
-                      </span>
-                      {isLeader && !m.isLeader && (
-                        <button onClick={() => handleRemoveMember(m.loginId)} className="p-1.5 text-[#C7C7CC] hover:text-[#FF3B30] transition-colors">
-                          <X size={16} />
-                        </button>
+
+                    <div>
+                      <span className="text-xs font-semibold text-[#8E8E93]">프로젝트</span>
+                      {isEditingProjectTitle ? (
+                        <div className="flex items-center gap-2 mt-2">
+                          <input
+                            autoFocus
+                            value={projectTitleDraft}
+                            onChange={(e) => setProjectTitleDraft(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSaveProjectTitle()}
+                            className="flex-1 bg-[#F5F5F7] px-3.5 py-2 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm md:text-base text-[#1D1D1F] min-w-0"
+                          />
+                          <button onClick={handleSaveProjectTitle} className="p-2 bg-[#0071E3] text-white rounded-xl shadow-md shrink-0"><Save size={15} /></button>
+                        </div>
+                      ) : (
+                        <div className="flex items-center gap-2 mt-1">
+                          <p className="text-sm md:text-base font-bold text-[#6E6E73] truncate">{team.projectTitle}</p>
+                          {isLeader && (
+                            <button onClick={() => { setIsEditingProjectTitle(true); setProjectTitleDraft(team.projectTitle); }} className="text-[#C7C7CC] hover:text-[#0071E3] shrink-0 transition-colors">
+                              <Edit2 size={13} />
+                            </button>
+                          )}
+                        </div>
                       )}
                     </div>
                   </div>
-                ))}
+                  <div className="mt-4">
+                  {isLeader ? (
+                    <button onClick={handleDisband} className="flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-[#FF3B30]/[0.08] text-[#FF3B30] font-bold text-xs md:text-sm hover:bg-[#FF3B30]/[0.12] transition-all">
+                      <Trash2 size={14} /> 팀 해체
+                    </button>
+                  ) : (
+                    <button onClick={handleLeaveTeam} className="flex items-center gap-1.5 h-9 px-3.5 rounded-full bg-[#F5F5F7] text-[#6E6E73] font-bold text-xs md:text-sm hover:bg-black/[0.06] transition-all">
+                      <LogOut size={14} /> 팀 나가기
+                    </button>
+                  )}
+                  </div>
+                </div>
+
+                <div className="lg:max-w-[55%]">
+                  <p className="text-xs font-semibold text-[#8E8E93] mb-3 lg:text-right">팀원 {team.members.length}명</p>
+                  <div className="flex flex-wrap gap-x-3 gap-y-3 lg:justify-end">
+                    {team.members.map((m: any) => (
+                      <div key={m.teamMemberId} className="group relative w-[68px] flex flex-col items-center text-center">
+                        <div className="relative">
+                          <img
+                            src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=F2F2F7&color=1D1D1F`}
+                            onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=F2F2F7&color=1D1D1F`; }}
+                            className={`w-12 h-12 rounded-full object-cover ring-2 ${m.isLeader ? "ring-[#FF9500]/60" : "ring-black/[0.06]"} ${m.status === "ACCEPTED" ? "" : "opacity-60"}`}
+                            alt={m.name}
+                          />
+                          {m.isLeader && (
+                            <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#fff] shadow-sm flex items-center justify-center" title="팀장">
+                              <Crown size={11} className="text-[#FF9500]" />
+                            </span>
+                          )}
+                          {isLeader && !m.isLeader && (
+                            <button
+                              onClick={() => handleRemoveMember(m.loginId)}
+                              aria-label={`${m.name} 내보내기`}
+                              title="내보내기"
+                              className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-[#fff] shadow-sm text-[#8E8E93] hover:text-[#FF3B30] flex items-center justify-center opacity-100 lg:opacity-0 lg:group-hover:opacity-100 transition-opacity"
+                            >
+                              <X size={12} />
+                            </button>
+                          )}
+                        </div>
+                        <span className="mt-1.5 text-[12px] font-semibold text-[#1D1D1F] w-full truncate">{m.name}</span>
+                        <span className={`text-[10px] font-semibold ${m.status === "ACCEPTED" ? "text-[#248A3D]" : "text-[#C93400]"}`}>
+                          {m.isLeader ? "팀장" : m.status === "ACCEPTED" ? "수락됨" : "대기중"}
+                        </span>
+                      </div>
+                    ))}
+                    {isLeader && (
+                      <button onClick={openInviteModal} className="w-[68px] flex flex-col items-center text-center group">
+                        <span className="w-12 h-12 rounded-full border-2 border-dashed border-black/15 text-[#8E8E93] group-hover:border-[#0071E3] group-hover:text-[#0071E3] flex items-center justify-center transition-colors">
+                          <UserPlus size={18} />
+                        </span>
+                        <span className="mt-1.5 text-[12px] font-semibold text-[#0071E3]">초대</span>
+                      </button>
+                    )}
+                  </div>
+                </div>
               </div>
             </div>
           )}
 
           {/* ✨ [신규] 팀 공유 자료 — 개인 마이페이지와 완전히 별개의 제출 트랙, 팀원 누구나 제출/수정 가능 */}
           {team && (
-            <div className="mt-10 md:mt-14">
-              <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] flex items-center gap-2 mb-4 md:mb-6">
+            <div className="mt-6 md:mt-8">
+              <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] flex items-center gap-2 mb-3 md:mb-4">
                 <FileText size={16} className="text-[#0071E3]" /> 팀 공유 자료
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">

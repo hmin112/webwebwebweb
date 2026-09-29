@@ -213,6 +213,13 @@
     backdrop-filter: saturate(170%) blur(18px);
   }
 
+  /* ✨ [2026-09-30] 입력칸 안에 겹쳐 놓은 아이콘(검색 돋보기 등)이 사라지던 문제 — 위 규칙의 backdrop-filter 때문에 입력칸이
+     쌓임 순서상 위로 올라와 아이콘을 덮었다(새로고침 직후 CSS 적용 전에만 잠깐 보였음). 절대 위치 아이콘을 항상 위로. */
+  .apple-app main svg.absolute {
+    z-index: 1;
+    pointer-events: none;
+  }
+
   .apple-app main input:focus,
   .apple-app main textarea:focus,
   .apple-app main select:focus {

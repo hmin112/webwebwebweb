@@ -55,6 +55,8 @@ public class AssemblyService {
     private final AssemblyReportRepository reportRepository;
     private final AssemblyProjectRepository projectRepository;
     private final PlanFileExtractor planFileExtractor;
+    private final kr.co.devsign.devsign_backend.util.PlanPdfGenerator planPdfGenerator;
+    private final kr.co.devsign.devsign_backend.repository.MemberRepository memberRepository;
     @Value("${app.upload.base-dir:uploads}")
     private String uploadBaseDir;
 
@@ -118,13 +120,19 @@ public class AssemblyService {
         // 팀이 없으면 아예 비어 있었다(개인 프로젝트를 따로 노출할 방법이 없었음).
         // 마이페이지가 이미 쓰고 있는 것과 같은 출처 — 본인 계획서(3월/9월)의 "프로젝트 명"(memo) —
         // 를 그대로 쓰도록 바꿔서, 커뮤니티/마이페이지가 같은 값을 보고 팀과도 독립되게 한다.
+        // ✨ [2026-09-30] 단, 웹 계획서가 도입되기 전 학기(예: 2026년 1학기)는 계획서를 파일로 냈고 그때 memo에는
+        // "활동 요약"이 들어 있었다 — 그런 학기는 마이페이지에서 따로 저장했던 AssemblyProject.title을 쓴다.
         int planMonth = (semester == 1) ? 3 : 9;
-        String projectTitle = reports.stream()
-                .filter(r -> r.getMonth() == planMonth)
-                .map(AssemblyReport::getMemo)
-                .filter(m -> m != null && !m.isBlank())
-                .findFirst()
-                .orElse("");
+        AssemblyReport planReport = reports.stream().filter(r -> r.getMonth() == planMonth).findFirst().orElse(null);
+        boolean webPlan = planReport != null && isWebAuthoredPlan(planReport);
+        String projectTitle;
+        if (webPlan && StringUtils.hasText(planReport.getMemo())) {
+            projectTitle = planReport.getMemo();
+        } else if (project != null && StringUtils.hasText(project.getTitle())) {
+            projectTitle = project.getTitle();
+        } else {
+            projectTitle = "";
+        }
         List<kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto> projectLinks = project == null
                 ? List.of()
                 : project.getLinks().stream()
@@ -400,6 +408,45 @@ public class AssemblyService {
         } catch (IOException | RuntimeException ignored) {
             // 이전 첨부 파일 정리 실패는 업로드 자체를 막지 않는다
         }
+    }
+
+    static boolean isWebAuthoredPlan(AssemblyReport report) {
+        return StringUtils.hasText(report.getPlanOverview())
+                || !report.getPlanGoals().isEmpty()
+                || !report.getPlanRoadmapItems().isEmpty();
+    }
+
+    // ✨ [2026-09-30] 웹으로 작성한 계획서를 PDF로 — 커뮤니티에서 부원 계획서를 내려받을 때 사용 (로그인한 부원 누구나)
+    @Transactional(readOnly = true)
+    public ResponseEntity<byte[]> planPdf(Long reportId) {
+        AssemblyReport report = reportRepository.findById(reportId).orElse(null);
+        if (report == null || !"PLAN".equals(report.getType()) || !isWebAuthoredPlan(report)) {
+            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(new byte[0]);
+        }
+        String author = memberRepository.findByLoginId(report.getLoginId()).map(m -> m.getName()).orElse(report.getLoginId());
+        String title = StringUtils.hasText(report.getMemo()) ? report.getMemo() : report.getMonth() + "월 계획서";
+        byte[] pdf = planPdfGenerator.generate(
+                title, author, report.getDate(), report.getPlanOverview(), report.getPlanGoals(),
+                report.getPlanRoadmapItems().stream()
+                        .map(t -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoadmapItemDto(t.getTitle(), t.getStartDate(), t.getEndDate(), t.getDetail()))
+                        .toList(),
+                report.getPlanRoles().stream()
+                        .map(r -> new kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto(r.getLoginId(), r.getName(), r.getRole(), r.getDuties()))
+                        .toList(),
+                report.getPlanLinks().stream()
+                        .map(l -> new kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto(l.getLabel(), l.getUrl()))
+                        .toList(),
+                report.getPlanNotes());
+        return pdfResponse(pdf, author + "_" + title + ".pdf");
+    }
+
+    static ResponseEntity<byte[]> pdfResponse(byte[] pdf, String fileName) {
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.APPLICATION_PDF);
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename(fileName.replaceAll("[\\\\/:*?\"<>|]", "_"), StandardCharsets.UTF_8)
+                .build());
+        return new ResponseEntity<>(pdf, headers, HttpStatus.OK);
     }
 
     public ResponseEntity<byte[]> downloadFile(String path) {

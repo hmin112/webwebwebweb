@@ -78,10 +78,9 @@ export const MonthCard = ({
       <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 ${
         state === "done" ? "bg-[#34C759]/10" : state === "open" ? "bg-[#0071E3]/10" : "bg-black/[0.04]"
       }`}>
-        <span className={`text-lg md:text-xl font-bold leading-none ${
+        <span className={`text-base md:text-lg font-bold leading-none tracking-[-0.02em] whitespace-nowrap ${
           state === "done" ? "text-[#248A3D]" : state === "open" ? "text-[#0071E3]" : "text-[#6E6E73]"
-        }`}>{month}</span>
-        <span className="text-[10px] font-semibold text-[#8E8E93] mt-0.5">월</span>
+        }`}>{month}월</span>
       </div>
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2 mb-1">
@@ -117,14 +116,17 @@ export const TermSelect = ({
   options: { year: number; semester: number }[];
   onChange: (v: { year: number; semester: number }) => void;
 }) => (
+  // ✨ [2026-09-30] 알약 전체(화살표 포함)가 눌리도록 — 투명한 select를 알약 전체에 덮고, 글자는 따로 표시
   <label className={`${CARD} relative inline-flex items-center h-10 pl-4 pr-9 rounded-full cursor-pointer`}>
+    <span className="text-sm font-semibold text-[#1D1D1F] whitespace-nowrap pointer-events-none">{value.year}년 {value.semester}학기</span>
     <select
       value={`${value.year}-${value.semester}`}
       onChange={(e) => {
         const [y, s] = e.target.value.split("-").map(Number);
         onChange({ year: y, semester: s });
       }}
-      className="appearance-none bg-transparent outline-none text-sm font-semibold text-[#1D1D1F] cursor-pointer pr-1 !border-0 !shadow-none !bg-transparent"
+      aria-label="학기 선택"
+      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer appearance-none"
     >
       {options.map((o) => (
         <option key={`${o.year}-${o.semester}`} value={`${o.year}-${o.semester}`}>{o.year}년 {o.semester}학기</option>

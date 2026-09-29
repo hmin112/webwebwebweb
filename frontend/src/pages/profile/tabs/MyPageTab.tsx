@@ -19,6 +19,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   const [submissionPeriods, setSubmissionPeriods] = useState<any[]>([]);
   // ✨ [2026-09-07 추가] 학기별 관련 링크(깃/노션 등) — 커뮤니티 부원 상세에도 그대로 노출됨
   const [projectLinks, setProjectLinks] = useState<{ label: string; url: string }[]>([]);
+  const [serverProjectTitle, setServerProjectTitle] = useState("");
   const [isLinksSaving, setIsLinksSaving] = useState(false);
 
   const [uploadedFiles, setUploadedFiles] = useState<{
@@ -70,6 +71,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
 
       if (res.data) {
         setReports(res.data.reports || []);
+        setServerProjectTitle(res.data.projectTitle || "");
         setProjectLinks(
           res.data.projectLinks && res.data.projectLinks.length > 0
             ? res.data.projectLinks
@@ -125,18 +127,9 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
     });
   }, [reports, selectedTerm, submissionPeriods]);
 
-  // ✨ 마이페이지 우측 상단 "프로젝트 명"은 이제 별도로 편집하지 않고, 계획서(3월/9월)에서
-  // 작성한 "프로젝트 명"(memo 필드)을 그대로 읽기 전용으로 보여준다 — 진짜 수정은 계획서
-  // 작성 화면에서만 가능(단일 출처 유지, 마이페이지와 계획서가 서로 다른 값을 갖지 않도록).
-  const projectTitle = useMemo(() => {
-    const planMonth = selectedTerm.semester === 1 ? 3 : 9;
-    const planReport = reports.find(r =>
-      Number(r.month) === planMonth &&
-      Number(r.year) === Number(selectedTerm.year) &&
-      Number(r.semester) === Number(selectedTerm.semester)
-    );
-    return planReport?.memo || "";
-  }, [reports, selectedTerm]);
+  // ✨ [2026-09-30] 프로젝트 명은 서버가 정해서 내려준다 — 웹 계획서가 있으면 그 "프로젝트 명", 없으면(예: 파일로
+  // 계획서를 냈던 2026년 1학기) 그때 마이페이지에서 따로 저장했던 프로젝트명.
+  const projectTitle = serverProjectTitle;
 
   const canSubmit = useMemo(() => {
     if (!selectedReport || !selectedReport.isWithinPeriod) return false;

@@ -241,6 +241,32 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
     }
   };
 
+  // ✨ [2026-09-30] 웹 계획서 PDF — 개인은 reportId, 팀은 submissionId로 서버에서 만들어 받는다
+  const openPlanPdf = async (preview: boolean) => {
+    if (!selectedReport?.id) return;
+    try {
+      const response = isPersonalView
+        ? await api.get("/assembly/plan/pdf", { params: { reportId: selectedReport.id }, responseType: "blob" })
+        : await api.get("/team-submissions/plan/pdf", { params: { submissionId: selectedReport.id }, responseType: "blob" });
+      const blob = new Blob([response.data], { type: "application/pdf" });
+      if (preview) {
+        if (previewPdfUrl) window.URL.revokeObjectURL(previewPdfUrl);
+        setPreviewPdfUrl(window.URL.createObjectURL(blob));
+        return;
+      }
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = getFilenameFromDisposition(response.headers["content-disposition"], `${memberInfo?.name ?? ""}_계획서.pdf`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+    } catch {
+      alert("계획서 PDF를 만들지 못했어요.");
+    }
+  };
+
   const handlePreviewPdf = async (path: string) => {
     if (!path) return;
     try {
@@ -462,8 +488,7 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
                   className={`bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] group w-full text-left p-4 md:p-5 rounded-2xl md:rounded-3xl flex items-center gap-4 transition-shadow ${done ? "hover:shadow-[0_8px_24px_rgb(0_0_0/0.06)]" : "cursor-default"}`}
                 >
                   <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center shrink-0 ${done ? "bg-[#34C759]/10" : "bg-black/[0.04]"}`}>
-                    <span className={`text-lg font-bold leading-none ${done ? "text-[#248A3D]" : "text-[#AEAEB2]"}`}>{report.month}</span>
-                    <span className="text-[10px] font-semibold text-[#8E8E93] mt-0.5">월</span>
+                    <span className={`text-base font-bold leading-none tracking-[-0.02em] whitespace-nowrap ${done ? "text-[#248A3D]" : "text-[#AEAEB2]"}`}>{report.month}월</span>
                   </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-[11px] font-semibold text-[#8E8E93] mb-0.5">{kind}</p>
@@ -491,10 +516,36 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
               <div className="flex justify-between items-start mb-6 md:mb-8">
                 <div>
                   <p className="text-xs font-semibold text-[#8E8E93]">{memberInfo.name} · {selectedReport.month}월 {reportKind(Number(selectedReport.month))}</p>
-                  <h3 className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em] mt-0.5">{selectedReport.title || selectedReport.memo || "제목 없음"}</h3>
+                  <h3 className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em] mt-0.5">{selectedReport.title || selectedReport.memo || (!isPersonalView && selectedTeam?.projectTitle) || "제목 없음"}</h3>
                 </div>
                 <button onClick={() => setSelectedReport(null)} aria-label="닫기" className="w-8 h-8 rounded-full bg-black/[0.05] text-[#6E6E73] flex items-center justify-center hover:bg-black/[0.08] shrink-0"><X className="w-4 h-4" /></button>
               </div>
+              {isWebPlan(selectedReport) ? (
+                // ✨ [2026-09-30] 웹으로 작성한 계획서 — 파일 칸 대신 계획서 내용을 그대로 보여주고 PDF로 미리보기/다운로드
+                <>
+                  <PlanContentView plan={selectedReport} />
+                  <div className="grid grid-cols-2 gap-2 mb-2">
+                    <button onClick={() => openPlanPdf(true)} className="h-11 rounded-2xl bg-[#0071E3]/10 text-[#0071E3] text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-[#0071E3]/15">
+                      <Eye className="w-4 h-4" /> PDF 미리보기
+                    </button>
+                    <button onClick={() => openPlanPdf(false)} className="h-11 rounded-2xl bg-[#0071E3] text-white text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-[#0077ED]">
+                      <Download className="w-4 h-4" /> PDF 다운로드
+                    </button>
+                  </div>
+                  {selectedReport.planFilePath && (
+                    <div className="mb-2">
+                      <DownloadSlot
+                        label="계획서 원본 파일"
+                        path={selectedReport.planFilePath}
+                        onDownload={() => handleDownload(selectedReport.planFilePath)}
+                        onPreview={/\.pdf$/i.test(selectedReport.planFilePath) ? () => handlePreviewPdf(selectedReport.planFilePath) : undefined}
+                      />
+                    </div>
+                  )}
+                  <div className="mb-4" />
+                </>
+              ) : (
+                <>
               <div className="mb-5">
                 <p className="flex items-center gap-1.5 mb-2 ml-1 text-xs font-semibold text-[#6E6E73]"><MessageCircle className="w-3.5 h-3.5" /> 활동 요약</p>
                 <div className="w-full p-4 bg-[#F5F5F7] rounded-2xl text-[#1D1D1F] text-sm whitespace-pre-wrap leading-relaxed">{selectedReport.memo || "작성된 요약이 없어요."}</div>
@@ -515,6 +566,8 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
                   )}
                 </div>
               </div>
+                </>
+              )}
               <button onClick={() => setSelectedReport(null)} className="w-full h-12 bg-black/[0.05] text-[#1D1D1F] rounded-2xl font-semibold text-sm hover:bg-black/[0.08] transition-colors">닫기</button>
             </motion.div>
           </div>
@@ -571,3 +624,100 @@ const DownloadSlot = ({ label, path, onDownload, onPreview }: any) => (
     </div>
   </div>
 );
+
+// ✨ [2026-09-30] 웹으로 작성한 계획서인지 — 개요/목표/로드맵 중 하나라도 있으면 웹 계획서
+const isWebPlan = (r: any) =>
+  (Number(r?.month) === 3 || Number(r?.month) === 9) &&
+  Boolean((r?.planOverview && String(r.planOverview).trim()) || r?.planGoals?.length || r?.planRoadmapItems?.length);
+
+// 커뮤니티에서 보는 계획서 내용 — 계획서 작성 화면과 같은 항목 순서
+const PlanContentView = ({ plan }: { plan: any }) => {
+  const goals: string[] = (plan.planGoals || []).filter((g: string) => g && g.trim());
+  const roadmap: any[] = plan.planRoadmapItems || [];
+  const roles: any[] = (plan.planRoles || []).filter((r: any) => r.name || r.role || r.duties);
+  const links: any[] = (plan.planLinks || []).filter((l: any) => l.url);
+  const times = roadmap.flatMap((r) => [new Date(r.startDate).getTime(), new Date(r.endDate).getTime()]).filter((t) => !isNaN(t));
+  const min = times.length ? Math.min(...times) : 0;
+  const span = times.length ? Math.max(Math.max(...times) - min, 86400000) : 1;
+  const Label = ({ children }: { children: React.ReactNode }) => (
+    <p className="text-xs font-semibold text-[#6E6E73] ml-1 mb-2">{children}</p>
+  );
+  return (
+    <div className="space-y-5 mb-6">
+      {plan.planOverview && (
+        <div>
+          <Label>배경 및 목표 개요</Label>
+          <div className="p-4 bg-[#F5F5F7] rounded-2xl text-sm text-[#1D1D1F] whitespace-pre-wrap leading-relaxed">{plan.planOverview}</div>
+        </div>
+      )}
+      {goals.length > 0 && (
+        <div>
+          <Label>핵심 목표</Label>
+          <ol className="space-y-1.5">
+            {goals.map((g, i) => (
+              <li key={i} className="flex items-start gap-2.5 p-3 bg-[#F5F5F7] rounded-xl">
+                <span className="w-5 h-5 rounded-full bg-[#0071E3]/10 text-[#0071E3] text-[11px] font-bold flex items-center justify-center shrink-0 mt-px">{i + 1}</span>
+                <span className="text-sm text-[#1D1D1F]">{g}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+      {roadmap.length > 0 && (
+        <div>
+          <Label>로드맵</Label>
+          <div className="space-y-3 p-4 bg-[#F5F5F7] rounded-2xl">
+            {roadmap.map((r, i) => {
+              const st = new Date(r.startDate).getTime();
+              const en = new Date(r.endDate).getTime();
+              return (
+                <div key={i}>
+                  <div className="flex items-center justify-between gap-2 mb-1">
+                    <span className="text-[13px] font-semibold text-[#1D1D1F] truncate">{r.title}</span>
+                    <span className="text-[11px] text-[#8E8E93] shrink-0">{r.startDate} ~ {r.endDate}</span>
+                  </div>
+                  <div className="relative h-2 bg-black/[0.06] rounded-full overflow-hidden">
+                    <div className="absolute top-0 h-full bg-[#0071E3] rounded-full" style={{ left: `${isNaN(st) ? 0 : ((st - min) / span) * 100}%`, width: `${isNaN(st) || isNaN(en) ? 100 : Math.max(((en - st) / span) * 100, 3)}%` }} />
+                  </div>
+                  {r.detail && <p className="text-xs text-[#6E6E73] mt-1.5 whitespace-pre-wrap">{r.detail}</p>}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+      {roles.length > 0 && (
+        <div>
+          <Label>역할 및 담당</Label>
+          <div className="divide-y divide-black/[0.05] bg-[#F5F5F7] rounded-2xl">
+            {roles.map((r, i) => (
+              <div key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                <span className="font-semibold text-[#1D1D1F] w-20 shrink-0 truncate">{r.name}</span>
+                <span className="text-[#0071E3] font-semibold shrink-0">{r.role}</span>
+                <span className="text-[#6E6E73] truncate">{r.duties}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+      {links.length > 0 && (
+        <div>
+          <Label>관련 링크</Label>
+          <div className="flex flex-wrap gap-2">
+            {links.map((l, i) => (
+              <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3.5 h-9 bg-[#F5F5F7] rounded-full text-sm font-semibold text-[#1D1D1F] hover:bg-[#0071E3]/10 hover:text-[#0071E3]">
+                {l.label || "링크"} <ExternalLink className="w-3 h-3 opacity-60" />
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
+      {plan.planNotes && (
+        <div>
+          <Label>기타 참고사항</Label>
+          <div className="p-4 bg-[#F5F5F7] rounded-2xl text-sm text-[#1D1D1F] whitespace-pre-wrap leading-relaxed">{plan.planNotes}</div>
+        </div>
+      )}
+    </div>
+  );
+};

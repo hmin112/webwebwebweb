@@ -14,6 +14,7 @@ import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
 import { FeeTab } from "./tabs/FeeTab";
 import { FileDropZone } from "../../components/ui/FileDropZone";
+import { MiniCalendar } from "../../components/ui/MiniCalendar";
 
 // --- 1. 타입 정의 ---
 type SortCriteria = "ID_DESC" | "ID_ASC" | "NAME_ASC";
@@ -251,7 +252,21 @@ export const AdminPage = () => {
       return { label, value, short: value.slice(5).replace("-", ".") };
     });
   }, []);
-  const logDateInputRef = useRef<HTMLInputElement>(null);
+  // 다른 날짜 달력 팝업 — 버튼을 다시 누르거나 바깥을 누르면 닫힌다
+  const [logCalendarOpen, setLogCalendarOpen] = useState(false);
+  const logCalendarRef = useRef<HTMLDivElement>(null);
+  const logDates = useMemo(
+    () => new Set(accessLogs.map((log) => log.timestamp.split("T")[0] || log.timestamp.split(" ")[0])),
+    [accessLogs]
+  );
+  useEffect(() => {
+    if (!logCalendarOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (logCalendarRef.current && !logCalendarRef.current.contains(e.target as Node)) setLogCalendarOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [logCalendarOpen]);
   const isCustomDate = selectedDate !== "ALL" && !recentDateChips.some((c) => c.value === selectedDate);
 
   // ✨ [2026-09-30] 페이지 번호는 5개씩 묶어서 보여준다 (1–5, 6–10 …) + 원하는 페이지로 바로 이동
@@ -648,7 +663,7 @@ export const AdminPage = () => {
             {/* ✨ [2026-09-30] 날짜·시간 필터 — 스크롤 없이 한 줄에 들어가게. 날짜는 전체/오늘/어제/그저께 + "다른 날짜" 달력,
                 시간 선택 색도 날짜와 같은 색으로 통일 */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
-              <div className="flex items-center gap-2 md:gap-3 bg-white p-2.5 md:p-3 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+              <div className="flex items-center gap-2 md:gap-3 bg-white p-2.5 md:p-3 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl shrink-0"><Calendar size={15} /><span className="text-[10px] font-black">날짜</span></div>
                 <div className="flex flex-wrap gap-1.5 min-w-0">
                   <button onClick={() => setSelectedDate("ALL")} className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedDate === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400 hover:text-slate-600"}`}>전체보기</button>
@@ -657,23 +672,24 @@ export const AdminPage = () => {
                       {c.label} <span className="opacity-60 font-medium">{c.short}</span>
                     </button>
                   ))}
-                  <div className="relative">
+                  <div className="relative" ref={logCalendarRef}>
                     <button
-                      onClick={() => { const el = logDateInputRef.current as any; if (el?.showPicker) el.showPicker(); else el?.click(); }}
-                      className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${isCustomDate ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400 hover:text-slate-600"}`}
+                      onClick={() => setLogCalendarOpen((v) => !v)}
+                      aria-expanded={logCalendarOpen}
+                      className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${isCustomDate || logCalendarOpen ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400 hover:text-slate-600"}`}
                     >
                       <Calendar size={12} /> {isCustomDate ? selectedDate.slice(5).replace("-", ".") : "다른 날짜"}
                     </button>
-                    <input
-                      ref={logDateInputRef}
-                      type="date"
-                      aria-label="날짜 선택"
-                      max={recentDateChips[0].value}
-                      value={isCustomDate ? selectedDate : ""}
-                      onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
-                      className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
-                      tabIndex={-1}
-                    />
+                    {logCalendarOpen && (
+                      <div className="absolute left-0 sm:left-auto sm:right-0 top-full mt-2 z-50">
+                        <MiniCalendar
+                          value={isCustomDate ? selectedDate : null}
+                          max={recentDateChips[0].value}
+                          marked={logDates}
+                          onSelect={(d) => { setSelectedDate(d); setLogCalendarOpen(false); }}
+                        />
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>

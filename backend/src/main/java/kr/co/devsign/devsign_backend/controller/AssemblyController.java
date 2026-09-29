@@ -164,6 +164,12 @@ public class AssemblyController {
         }
     }
 
+    // ✨ [2026-09-30] 웹 계획서 PDF (커뮤니티에서 내려받기)
+    @GetMapping("/plan/pdf")
+    public ResponseEntity<byte[]> planPdf(@RequestParam Long reportId) {
+        return assemblyService.planPdf(reportId);
+    }
+
     @GetMapping("/plan/template")
     public ResponseEntity<byte[]> downloadPlanTemplate(@RequestParam(defaultValue = "false") boolean team) {
         byte[] docx = planTemplateGenerator.generate(team);
