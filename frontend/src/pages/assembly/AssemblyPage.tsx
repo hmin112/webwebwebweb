@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserCircle, Users, LayoutDashboard, ChevronRight,
-  Menu as MenuIcon, X, CalendarRange, Layers, CheckSquare, ClipboardCheck, MonitorPlay
+  Menu as MenuIcon, X, CalendarRange, Layers, CheckSquare, ClipboardCheck, MonitorPlay, BookOpen
 } from "lucide-react";
 
 // 분리된 탭 컴포넌트 임포트
@@ -16,6 +16,7 @@ import { AttendanceAdminTab } from "./tabs/AttendanceAdminTab";
 import { AssemblyBannerAdminTab } from "./tabs/AssemblyBannerAdminTab";
 import { AssemblyPlanPage } from "../profile/tabs/AssemblyPlanPage";
 import { TeamPlanPage } from "../profile/tabs/TeamPlanPage";
+import { GuideTab } from "./tabs/GuideTab";
 
 export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   isAdmin: boolean,
@@ -52,6 +53,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
     ...(userStatus === "ATTENDING" ? [{ id: "team", name: "팀 프로젝트", icon: <Layers size={18} /> }] : []),
     // ✨ 출석 대상 여부는 백엔드가 업로드된 엑셀 명단으로 판단하므로 ATTENDING 게이팅 없이 항상 노출
     { id: "attendance", name: "출석", icon: <CheckSquare size={18} /> },
+    // ✨ [2026-09-29] 부원용 기능 사용법 (관리자 기능 제외)
+    { id: "guide", name: "사용법", icon: <BookOpen size={18} /> },
   ];
 
   const adminMenus = [
@@ -183,6 +186,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
           )}
 
           {activeTab === "attendance" && <AttendanceMemberTab key="attendance" loginId={loginId} />}
+
+          {activeTab === "guide" && <GuideTab key="guide" />}
 
           {activeTab === "admin-period" && <AdminPeriodTab key="admin-period" />}
 
