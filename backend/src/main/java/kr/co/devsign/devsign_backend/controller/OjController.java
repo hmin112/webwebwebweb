@@ -44,6 +44,13 @@ public class OjController {
         return ojService.getProblemDetail(loginId, displayId);
     }
 
+    // ✨ [2026-09-29] 문제별 부원 풀이 현황 — "N명이 맞췄어요" 표시용
+    @GetMapping("/problems/{displayId}/stats")
+    public Map<String, Object> problemStats(Authentication authentication, @PathVariable String displayId, @RequestParam String loginId) {
+        AuthGuard.requireSelf(authentication, loginId);
+        return ojService.getProblemStats(loginId, displayId);
+    }
+
     @GetMapping("/languages")
     public Map<String, Object> languages(Authentication authentication, @RequestParam String loginId) {
         AuthGuard.requireSelf(authentication, loginId);

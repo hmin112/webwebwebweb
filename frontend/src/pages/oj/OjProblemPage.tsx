@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, Cpu, Play, Pencil, Check, X, Plus, Code2, Users, User, Lock } from "lucide-react";
+import { ArrowLeft, Clock, Cpu, Play, Pencil, Check, X, Plus, Code2, Users, User, Lock, ChevronDown, Trophy } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { api } from "../../api/axios";
 
@@ -90,6 +90,10 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
   const [allHistory, setAllHistory] = useState<OjSubmission[] | null>(null);
   const [viewing, setViewing] = useState<OjSubmission | null>(null);
   const [viewLoading, setViewLoading] = useState(false);
+  // ✨ [2026-09-29] 제출 현황 팝오버 ("목록으로" 줄 오른쪽 끝) + 맞힌 부원 수
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const historyPopoverRef = useRef<HTMLDivElement | null>(null);
+  const [stats, setStats] = useState<{ triedMembers: number; solvedMembers: number } | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [editingStatement, setEditingStatement] = useState(false);
@@ -141,6 +145,32 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
     }
   };
 
+  const fetchStats = async () => {
+    if (!loginId || !problemId) return;
+    try {
+      const res = await api.get(`/oj/problems/${problemId}/stats`, { params: { loginId } });
+      setStats(res.data);
+    } catch {
+      setStats(null);
+    }
+  };
+
+  useEffect(() => {
+    fetchStats();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loginId, problemId]);
+
+  // 팝오버 바깥을 누르면 닫기 — 코드 보기 창이 떠 있는 동안에는 유지
+  useEffect(() => {
+    if (!historyOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (viewing) return;
+      if (historyPopoverRef.current && !historyPopoverRef.current.contains(e.target as Node)) setHistoryOpen(false);
+    };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [historyOpen, viewing]);
+
   const fetchAllHistory = async () => {
     if (!loginId || !problemId) return;
     try {
@@ -188,6 +218,7 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
           if (pollRef.current) clearInterval(pollRef.current);
           fetchHistory();
           if (historyScopeRef.current === "all") fetchAllHistory();
+          fetchStats();
         }
       } catch {
         if (pollRef.current) clearInterval(pollRef.current);
@@ -273,13 +304,117 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
   return (
     <div className="max-w-6xl mx-auto px-4 pt-28 pb-20">
       <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.35 }}>
-        <button
-          onClick={() => navigate("/oj")}
-          className="flex items-center gap-1.5 text-[13px] font-medium text-slate-400 hover:text-slate-600 mb-5 transition-colors"
-        >
-          <ArrowLeft size={15} />
-          목록으로
-        </button>
+        <div className="flex items-center justify-between gap-3 mb-5">
+          <button
+            onClick={() => navigate("/oj")}
+            className="flex items-center gap-1.5 text-[13px] font-medium text-slate-400 hover:text-slate-600 transition-colors"
+          >
+            <ArrowLeft size={15} />
+            목록으로
+          </button>
+
+          <div className="relative" ref={historyPopoverRef}>
+            <button
+              onClick={() => setHistoryOpen((v) => !v)}
+              className={`flex items-center gap-2 h-9 pl-3 pr-2.5 rounded-xl border text-[12px] font-semibold transition-colors ${
+                historyOpen ? "bg-slate-900 text-white border-slate-900" : "bg-white text-slate-700 border-slate-200 hover:border-slate-300"
+              }`}
+            >
+              <Trophy size={13} className={historyOpen ? "text-amber-300" : "text-amber-500"} />
+              <span>
+                {stats === null
+                  ? "제출 현황"
+                  : stats.solvedMembers > 0
+                    ? `${stats.solvedMembers}명이 맞췄어요`
+                    : stats.triedMembers > 0
+                      ? "아직 맞힌 부원이 없어요"
+                      : "첫 도전자가 되어보세요"}
+              </span>
+              {stats && stats.triedMembers > 0 && (
+                <span className={`hidden sm:inline font-medium ${historyOpen ? "text-slate-400" : "text-slate-400"}`}>· {stats.triedMembers}명 도전</span>
+              )}
+              <ChevronDown size={14} className={`transition-transform ${historyOpen ? "rotate-180" : ""}`} />
+            </button>
+
+            {historyOpen && (
+              <motion.div
+                initial={{ opacity: 0, y: -4, scale: 0.98 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                transition={{ duration: 0.15 }}
+                className="absolute right-0 top-full mt-2 z-40 w-[min(420px,calc(100vw-2rem))] bg-white rounded-2xl border border-black/[0.06] shadow-[0_12px_40px_rgba(0,0,0,0.14)] p-4 origin-top-right"
+              >
+                <div className="flex items-center gap-1 mb-3 p-1 bg-slate-100 rounded-xl w-fit">
+                  {([["mine", "내 제출", <User size={12} key="u" />], ["all", "모든 부원 제출", <Users size={12} key="a" />]] as const).map(([key, label, icon]) => (
+                    <button
+                      key={key}
+                      onClick={() => switchScope(key)}
+                      className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${
+                        historyScope === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
+                      }`}
+                    >
+                      {icon} {label}
+                    </button>
+                  ))}
+                </div>
+                {(() => {
+                  const rows = historyScope === "mine" ? history : allHistory;
+                  if (rows === null) return <p className="text-[12px] text-slate-400 py-2">불러오는 중...</p>;
+                  const lockedHint =
+                    historyScope === "all" && rows.some((r) => !r.mine && r.codeVisible === false) ? (
+                      <p className="flex items-center gap-1 text-[11px] text-slate-400 mb-2">
+                        <Lock size={11} /> 결과는 누구나 볼 수 있고, 코드는 이 문제를 맞히면 열려요
+                      </p>
+                    ) : null;
+                  if (rows.length === 0) {
+                    return (
+                      <p className="text-[12px] text-slate-400 py-2">
+                        {historyScope === "mine" ? "아직 제출한 기록이 없어요" : "아직 이 문제를 제출한 부원이 없어요"}
+                      </p>
+                    );
+                  }
+                  return (
+                    <>
+                    {lockedHint}
+                    <div className="space-y-0.5 max-h-[min(420px,60vh)] overflow-y-auto -mx-2">
+                      {rows.map((h) => {
+                        const style = RESULT_STYLE[h.result] ?? { label: "-", color: "#8E8E93" };
+                        return (
+                          <button
+                            key={h.id}
+                            onClick={() => openSubmission(h)}
+                            className="w-full flex items-center justify-between gap-2 text-[12px] py-1.5 px-2 rounded-lg hover:bg-slate-50 text-left"
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              {historyScope === "all" && (
+                                <span className={`font-semibold truncate ${h.mine ? "text-indigo-600" : "text-slate-700"}`}>
+                                  {shortStudentId(h.memberStudentId)} {h.memberName}
+                                </span>
+                              )}
+                              <span className="text-slate-400 shrink-0">{h.language}</span>
+                              <span className="text-slate-300 shrink-0 hidden sm:inline">{formatSubmitTime(h.create_time)}</span>
+                            </span>
+                            <span className="flex items-center gap-2 shrink-0">
+                              {typeof h.statistic_info?.score === "number" && (
+                                <span className="text-slate-500 font-medium">{h.statistic_info.score}점</span>
+                              )}
+                              <span className="font-medium" style={{ color: style.color }}>{style.label}</span>
+                              {historyScope === "all" && !h.mine && h.codeVisible === false ? (
+                                <Lock size={12} className="text-slate-300" />
+                              ) : (
+                                <Code2 size={12} className="text-slate-300" />
+                              )}
+                            </span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                    </>
+                  );
+                })()}
+              </motion.div>
+            )}
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* 왼쪽: 문제 설명 */}
@@ -407,76 +542,6 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
               ))
             )}
 
-            <div className="mt-7 pt-6 border-t border-slate-100">
-              <div className="flex items-center gap-1 mb-3 p-1 bg-slate-100 rounded-xl w-fit">
-                {([["mine", "내 제출", <User size={12} key="u" />], ["all", "모든 부원 제출", <Users size={12} key="a" />]] as const).map(([key, label, icon]) => (
-                  <button
-                    key={key}
-                    onClick={() => switchScope(key)}
-                    className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-[12px] font-semibold transition-colors ${
-                      historyScope === key ? "bg-white text-slate-900 shadow-sm" : "text-slate-400 hover:text-slate-600"
-                    }`}
-                  >
-                    {icon} {label}
-                  </button>
-                ))}
-              </div>
-              {(() => {
-                const rows = historyScope === "mine" ? history : allHistory;
-                if (rows === null) return <p className="text-[12px] text-slate-400 py-2">불러오는 중...</p>;
-                const lockedHint =
-                  historyScope === "all" && rows.some((r) => !r.mine && r.codeVisible === false) ? (
-                    <p className="flex items-center gap-1 text-[11px] text-slate-400 mb-2">
-                      <Lock size={11} /> 결과는 누구나 볼 수 있고, 코드는 이 문제를 맞히면 열려요
-                    </p>
-                  ) : null;
-                if (rows.length === 0) {
-                  return (
-                    <p className="text-[12px] text-slate-400 py-2">
-                      {historyScope === "mine" ? "아직 제출한 기록이 없어요" : "아직 이 문제를 제출한 부원이 없어요"}
-                    </p>
-                  );
-                }
-                return (
-                  <>
-                  {lockedHint}
-                  <div className="space-y-0.5 max-h-[320px] overflow-y-auto -mx-2">
-                    {rows.map((h) => {
-                      const style = RESULT_STYLE[h.result] ?? { label: "-", color: "#8E8E93" };
-                      return (
-                        <button
-                          key={h.id}
-                          onClick={() => openSubmission(h)}
-                          className="w-full flex items-center justify-between gap-2 text-[12px] py-1.5 px-2 rounded-lg hover:bg-slate-50 text-left"
-                        >
-                          <span className="flex items-center gap-2 min-w-0">
-                            {historyScope === "all" && (
-                              <span className={`font-semibold truncate ${h.mine ? "text-indigo-600" : "text-slate-700"}`}>
-                                {shortStudentId(h.memberStudentId)} {h.memberName}
-                              </span>
-                            )}
-                            <span className="text-slate-400 shrink-0">{h.language}</span>
-                            <span className="text-slate-300 shrink-0 hidden sm:inline">{formatSubmitTime(h.create_time)}</span>
-                          </span>
-                          <span className="flex items-center gap-2 shrink-0">
-                            {typeof h.statistic_info?.score === "number" && (
-                              <span className="text-slate-500 font-medium">{h.statistic_info.score}점</span>
-                            )}
-                            <span className="font-medium" style={{ color: style.color }}>{style.label}</span>
-                            {historyScope === "all" && !h.mine && h.codeVisible === false ? (
-                              <Lock size={12} className="text-slate-300" />
-                            ) : (
-                              <Code2 size={12} className="text-slate-300" />
-                            )}
-                          </span>
-                        </button>
-                      );
-                    })}
-                  </div>
-                  </>
-                );
-              })()}
-            </div>
           </div>
         </div>
 

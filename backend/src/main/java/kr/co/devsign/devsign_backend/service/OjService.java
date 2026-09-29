@@ -94,6 +94,27 @@ public class OjService {
         return data;
     }
 
+    // 이 문제에 제출한 부원 수 / 정답을 받은 부원 수 (부원 계정 dv_만, 같은 사람의 여러 제출은 한 번만 셈)
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getProblemStats(String loginId, String problemDisplayId) {
+        Map<String, Object> data = ojClient.getMemberSubmissionList(resolveAppkey(loginId), problemDisplayId, 2000);
+        Set<String> tried = new HashSet<>();
+        Set<String> solved = new HashSet<>();
+        if (data.get("results") instanceof List<?> list) {
+            for (Object item : list) {
+                if (!(item instanceof Map<?, ?> row)) continue;
+                String username = String.valueOf(row.get("username"));
+                if (!username.startsWith(MEMBER_PREFIX)) continue;
+                tried.add(username);
+                if (row.get("result") instanceof Number n && n.intValue() == 0) solved.add(username);
+            }
+        }
+        Map<String, Object> stats = new HashMap<>();
+        stats.put("triedMembers", tried.size());
+        stats.put("solvedMembers", solved.size());
+        return stats;
+    }
+
     private record SolvedProblems(Set<String> pkSet, Set<String> displayIdSet) {}
 
     // 보는 사람이 정답(status 0)을 받은 문제 — ACM/OI 규칙 모두. OI는 만점일 때 status 0이 된다.
