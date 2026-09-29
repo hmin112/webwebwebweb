@@ -15,6 +15,11 @@
   html {
     scroll-behavior: smooth;
     background: #f5f5f7;
+    /* ✨ [2026-09-30] 스크롤바 자리를 항상 유지 — 페이지가 짧아(OJ·관리) 스크롤바가 사라지거나, 총회처럼 처음엔 짧았다가
+       길어지면 화면 폭이 바뀌어 고정된 상단 바의 로고·프로필이 좌우로 움직였다. (scrollbar-gutter는 고정 요소엔 안 먹힘)
+       가로 넘침 숨김은 body 대신 여기서 — body에 두면 body가 스크롤 상자가 되어 sticky가 깨진다. */
+    overflow-x: hidden;
+    overflow-y: scroll;
     /* ✨ [2026-09-30] 맨 위·맨 아래에서 더 당길 때 생기는 고무줄(바운스) 스크롤을 끈다 — 바운스 중에 상단 바의
        흰 알약들이 따로 그려지면서 위에서 하얀색이 내려오는 것처럼 보이던 문제 */
     overscroll-behavior-y: none;
@@ -28,7 +33,7 @@
     min-width: 320px;
     min-height: 100vh;
     margin: 0;
-    overflow-x: hidden;
+    overflow-x: clip;
     background:
       radial-gradient(circle at 10% -10%, rgb(82 167 255 / 0.10), transparent 30rem),
       #f5f5f7;
@@ -115,8 +120,11 @@
   }
 
   /* ✨ [2026-09-30] 상단 바 선택 알약 — 세 조각(원·막대·원)을 transform으로만 옮겨 GPU에서 부드럽게 움직인다.
-     메인 스레드가 새 페이지를 그리느라 바빠도 끊기지 않는다. 모양은 위 .glass-lens와 같다(흰 단색 + 얇은 테두리). */
+     메인 스레드가 새 페이지를 그리느라 바빠도 끊기지 않는다.
+     테두리는 조각마다 box-shadow로 그리면 좁은 알약(홈)에서 안쪽 원의 테두리가 비쳐 원이 두 개 겹쳐 보였다 —
+     회색 조각층을 아래에 0.5px 크게 깔고 흰 조각층을 위에 올려, 바깥 윤곽에만 테두리가 남게 한다. */
   .nav-pill {
+    filter: drop-shadow(0 1px 1.5px rgb(0 0 0 / 0.06));
     transition: opacity 200ms ease;
   }
 
@@ -130,24 +138,22 @@
   }
 
   .nav-pill.is-ready > span {
-    /* 목표를 지나치지 않는 감속 곡선 — 지나쳤다 돌아오면 좁은 메뉴(홈)로 올 때 양 끝 원이 순간 엇갈려 초승달처럼 보였다 */
+    /* 목표를 지나치지 않는 감속 곡선 — 지나쳤다 돌아오면 좁은 메뉴(홈)로 올 때 양 끝 원이 순간 엇갈린다 */
     transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .nav-pill-cap {
     border-radius: 9999px;
-    box-shadow:
-      0 0 0 0.5px rgb(0 0 0 / 0.08),
-      0 1px 2px rgb(0 0 0 / 0.05);
   }
 
-  /* 가운데 막대: 기준 폭 100px을 scaleX로 늘이고 줄인다. 위·아래 테두리만 그려서 양 끝 원과 이음매 없이 붙는다 */
+  /* 테두리 층은 불투명한 옅은 회색 — 반투명이면 조각이 겹치는 곳만 진해진다 */
+  .nav-pill > .nav-pill-edge {
+    background: #e2e2e6;
+  }
+
+  /* 가운데 막대: 기준 폭 100px을 scaleX로 늘이고 줄인다 */
   .nav-pill-mid {
     width: 100px;
-    box-shadow:
-      0 -0.5px 0 rgb(0 0 0 / 0.08),
-      0 0.5px 0 rgb(0 0 0 / 0.08),
-      0 1.5px 1px -0.5px rgb(0 0 0 / 0.04);
   }
 
   /* 로그인처럼 강조가 필요한 버튼 — 애플 블루 단색 */

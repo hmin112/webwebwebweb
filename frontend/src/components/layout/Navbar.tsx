@@ -132,7 +132,25 @@ export const Navbar = ({
           }
         }
       }
+      // ✨ [2026-09-30] 맨 아래까지 내렸으면 마지막 섹션(자주 묻는 질문) — 페이지 끝에 있어 제목이 기준선(150px)까지
+      // 올라오지 못해서, 끝까지 내려도 "동아리소개"로 잡히던 문제
+      const scroller = document.documentElement;
+      if (window.innerHeight + window.scrollY >= scroller.scrollHeight - 4) {
+        const last = [...sections].reverse().find((section) => document.getElementById(section.id));
+        if (last) currentSection = last.navId;
+      }
+
       setActiveTab(currentSection);
+
+      // ✨ [2026-09-30] 주소의 #섹션을 지금 보고 있는 섹션으로 맞춘다 — 다른 페이지에서 "/#faq"로 들어온 뒤 위로 올라가도
+      // 주소가 #faq로 남아 있어서 새로고침하면 전부 자주 묻는 질문으로 가버렸다. 라우터를 거치지 않고(replaceState)
+      // 주소만 바꾸므로 화면이 다시 그려지거나 스크롤이 튀지 않는다. 홈(맨 위)은 해시 없이 "/".
+      if (window.location.pathname === "/") {
+        const wantHash = currentSection === "home" ? "" : `#${currentSection === "event" ? "events" : currentSection}`;
+        if (window.location.hash !== wantHash) {
+          window.history.replaceState(window.history.state, "", `/${window.location.search}${wantHash}`);
+        }
+      }
     };
 
     // 스크롤 이벤트마다 계산하지 않고 프레임당 한 번만 (requestAnimationFrame)
@@ -301,15 +319,24 @@ export const Navbar = ({
                 className={`nav-pill pointer-events-none absolute left-0 top-0 ${indicatorReady ? "is-ready" : ""}`}
                 style={{ height: indicator.h, opacity: indicator.visible ? 1 : 0 }}
               >
-                <span className="nav-pill-cap" style={{ width: indicator.h, height: indicator.h, transform: `translate3d(${indicator.x}px,-1px,0)` }} />
-                <span className="nav-pill-cap" style={{ width: indicator.h, height: indicator.h, transform: `translate3d(${indicator.x + indicator.w - indicator.h}px,-1px,0)` }} />
-                <span
-                  className="nav-pill-mid"
-                  style={{
-                    height: indicator.h,
-                    transform: `translate3d(${indicator.x + indicator.h / 2}px,-1px,0) scaleX(${Math.max(indicator.w - indicator.h, 0.5) / 100})`,
-                  }}
-                />
+                {/* 아래층: 테두리용 회색 조각(0.5px씩 크게) → 위층: 흰 조각. 겹치는 안쪽 선은 흰 조각이 덮어 보이지 않는다 */}
+                {(["edge", "fill"] as const).map((layer) => {
+                  const g = layer === "edge" ? 0.5 : 0; // 테두리 두께
+                  const d = indicator.h + g * 2;
+                  const y = -1 - g;
+                  return [
+                    <span key={`${layer}-l`} className={`nav-pill-cap nav-pill-${layer}`} style={{ width: d, height: d, transform: `translate3d(${indicator.x - g}px,${y}px,0)` }} />,
+                    <span key={`${layer}-r`} className={`nav-pill-cap nav-pill-${layer}`} style={{ width: d, height: d, transform: `translate3d(${indicator.x + indicator.w - indicator.h - g}px,${y}px,0)` }} />,
+                    <span
+                      key={`${layer}-m`}
+                      className={`nav-pill-mid nav-pill-${layer}`}
+                      style={{
+                        height: d,
+                        transform: `translate3d(${indicator.x + indicator.h / 2}px,${y}px,0) scaleX(${Math.max(indicator.w - indicator.h, 0.5) / 100})`,
+                      }}
+                    />,
+                  ];
+                })}
               </span>
             )}
             {visibleLinks.map((link) => {
