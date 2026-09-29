@@ -662,7 +662,8 @@ export const AdminPage = () => {
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 md:space-y-8">
             {/* ✨ [2026-09-30] 날짜·시간 필터 — 스크롤 없이 한 줄에 들어가게. 날짜는 전체/오늘/어제/그저께 + "다른 날짜" 달력,
                 시간 선택 색도 날짜와 같은 색으로 통일 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+            {/* relative z-20 — 달력 팝업이 아래 로그 카드(유리 효과로 각자 층을 만듦)에 가려지지 않게 */}
+            <div className="relative z-20 grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
               <div className="flex items-center gap-2 md:gap-3 bg-white p-2.5 md:p-3 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm">
                 <div className="flex items-center gap-1.5 px-3 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl shrink-0"><Calendar size={15} /><span className="text-[10px] font-black">날짜</span></div>
                 <div className="flex flex-wrap gap-1.5 min-w-0">
