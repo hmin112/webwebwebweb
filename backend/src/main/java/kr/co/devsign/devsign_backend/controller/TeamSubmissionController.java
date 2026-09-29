@@ -6,6 +6,7 @@ import kr.co.devsign.devsign_backend.dto.team.SaveTeamPlanRequest;
 import kr.co.devsign.devsign_backend.dto.team.SubmitTeamFilesCommand;
 import kr.co.devsign.devsign_backend.dto.team.TeamSubmissionResponse;
 import kr.co.devsign.devsign_backend.service.TeamSubmissionService;
+import kr.co.devsign.devsign_backend.config.AuthGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -34,6 +35,7 @@ public class TeamSubmissionController {
 
     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SubmitFilesResponse> submitFiles(
+            Authentication authentication,
             @RequestParam String loginId,
             @RequestParam Long teamId,
             @RequestParam String submissionId,
@@ -45,6 +47,7 @@ public class TeamSubmissionController {
             @RequestParam(required = false) MultipartFile pdf,
             @RequestParam(required = false) MultipartFile other
     ) {
+        AuthGuard.requireSelf(authentication, loginId);
         try {
             SubmitTeamFilesCommand command = new SubmitTeamFilesCommand(
                     loginId, teamId, submissionId, year, semester, month, memo, presentation, pdf, other
@@ -59,7 +62,8 @@ public class TeamSubmissionController {
     }
 
     @PostMapping("/plan/save")
-    public ResponseEntity<?> savePlanDraft(@RequestBody SaveTeamPlanRequest request) {
+    public ResponseEntity<?> savePlanDraft(Authentication authentication, @RequestBody SaveTeamPlanRequest request) {
+        AuthGuard.requireSelf(authentication, request.loginId());
         try {
             return ResponseEntity.ok(teamSubmissionService.savePlanDraft(request));
         } catch (IllegalStateException e) {
@@ -68,7 +72,8 @@ public class TeamSubmissionController {
     }
 
     @PostMapping("/plan/submit")
-    public ResponseEntity<?> submitPlan(@RequestBody SaveTeamPlanRequest request) {
+    public ResponseEntity<?> submitPlan(Authentication authentication, @RequestBody SaveTeamPlanRequest request) {
+        AuthGuard.requireSelf(authentication, request.loginId());
         try {
             return ResponseEntity.ok(teamSubmissionService.submitPlan(request));
         } catch (IllegalStateException e) {

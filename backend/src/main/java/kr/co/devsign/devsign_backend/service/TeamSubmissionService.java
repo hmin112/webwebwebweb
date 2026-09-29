@@ -235,6 +235,13 @@ public class TeamSubmissionService {
         TeamSubmission sub = null;
         if (submissionId != null && !submissionId.equals("0") && !submissionId.startsWith("temp")) {
             sub = submissionRepository.findById(Long.parseLong(submissionId)).orElse(null);
+            // ✨ [2026-09-29] 다른 팀의 자료 id로 덮어쓰지 못하게 막는다
+            if (sub != null && !teamId.equals(sub.getTeam().getId())) {
+                throw new IllegalStateException("이 팀의 자료가 아닙니다.");
+            }
+            if (sub != null && (sub.getYear() != year || sub.getSemester() != semester || sub.getMonth() != month)) {
+                sub = null;
+            }
         }
         if (sub == null) {
             sub = submissionRepository.findByTeam_IdAndYearAndSemesterOrderByMonthAsc(teamId, year, semester).stream()

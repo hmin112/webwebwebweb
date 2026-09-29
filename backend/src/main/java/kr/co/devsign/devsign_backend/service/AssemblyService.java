@@ -239,6 +239,14 @@ public class AssemblyService {
 
         if (reportId != null && !reportId.equals("0") && !reportId.startsWith("temp")) {
             report = reportRepository.findById(Long.parseLong(reportId)).orElse(null);
+            // ✨ [2026-09-29] 다른 부원의 리포트 id로는 절대 수정하지 못하게 막고,
+            // 본인 것이라도 다른 학기/달의 id가 섞여 오면 무시하고 아래에서 다시 찾는다
+            if (report != null && !loginId.equals(report.getLoginId())) {
+                throw new IllegalStateException("본인 자료만 수정할 수 있습니다.");
+            }
+            if (report != null && (report.getYear() != year || report.getSemester() != semester || report.getMonth() != month)) {
+                report = null;
+            }
         }
 
         if (report == null) {

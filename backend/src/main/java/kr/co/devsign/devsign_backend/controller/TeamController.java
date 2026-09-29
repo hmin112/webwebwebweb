@@ -7,7 +7,9 @@ import kr.co.devsign.devsign_backend.dto.team.MyTeamStatusResponse;
 import kr.co.devsign.devsign_backend.dto.team.TeamResponse;
 import kr.co.devsign.devsign_backend.dto.team.UpdateTeamTitleRequest;
 import kr.co.devsign.devsign_backend.service.TeamService;
+import kr.co.devsign.devsign_backend.config.AuthGuard;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.Authentication;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -21,7 +23,8 @@ public class TeamController {
     private final TeamService teamService;
 
     @PostMapping
-    public ResponseEntity<?> createTeam(@RequestBody CreateTeamRequest request) {
+    public ResponseEntity<?> createTeam(Authentication authentication, @RequestBody CreateTeamRequest request) {
+        AuthGuard.requireSelf(authentication, request.loginId());
         try {
             return ResponseEntity.ok(teamService.createTeam(request));
         } catch (RuntimeException e) {
@@ -48,7 +51,8 @@ public class TeamController {
     }
 
     @PostMapping("/{teamId}/invite")
-    public ResponseEntity<?> inviteMember(@PathVariable Long teamId, @RequestBody InviteMemberRequest request) {
+    public ResponseEntity<?> inviteMember(Authentication authentication, @PathVariable Long teamId, @RequestBody InviteMemberRequest request) {
+        AuthGuard.requireSelf(authentication, request.requesterLoginId());
         try {
             return ResponseEntity.ok(teamService.inviteMember(teamId, request));
         } catch (RuntimeException e) {
@@ -57,7 +61,8 @@ public class TeamController {
     }
 
     @PostMapping("/{teamId}/title")
-    public ResponseEntity<?> updateTitle(@PathVariable Long teamId, @RequestBody UpdateTeamTitleRequest request) {
+    public ResponseEntity<?> updateTitle(Authentication authentication, @PathVariable Long teamId, @RequestBody UpdateTeamTitleRequest request) {
+        AuthGuard.requireSelf(authentication, request.requesterLoginId());
         try {
             return ResponseEntity.ok(teamService.updateTitle(teamId, request));
         } catch (RuntimeException e) {
@@ -66,7 +71,8 @@ public class TeamController {
     }
 
     @PostMapping("/invitations/{teamMemberId}/accept")
-    public ResponseEntity<?> acceptInvitation(@PathVariable Long teamMemberId, @RequestParam String loginId) {
+    public ResponseEntity<?> acceptInvitation(Authentication authentication, @PathVariable Long teamMemberId, @RequestParam String loginId) {
+        AuthGuard.requireSelf(authentication, loginId);
         try {
             return ResponseEntity.ok(teamService.acceptInvitation(teamMemberId, loginId));
         } catch (RuntimeException e) {
@@ -75,7 +81,8 @@ public class TeamController {
     }
 
     @PostMapping("/invitations/{teamMemberId}/decline")
-    public ResponseEntity<?> declineInvitation(@PathVariable Long teamMemberId, @RequestParam String loginId) {
+    public ResponseEntity<?> declineInvitation(Authentication authentication, @PathVariable Long teamMemberId, @RequestParam String loginId) {
+        AuthGuard.requireSelf(authentication, loginId);
         try {
             teamService.declineInvitation(teamMemberId, loginId);
             return ResponseEntity.ok(StatusResponse.success());
@@ -86,10 +93,12 @@ public class TeamController {
 
     @DeleteMapping("/{teamId}/members/{targetLoginId}")
     public ResponseEntity<?> removeMember(
+            Authentication authentication,
             @PathVariable Long teamId,
             @PathVariable String targetLoginId,
             @RequestParam String requesterLoginId
     ) {
+        AuthGuard.requireSelf(authentication, requesterLoginId);
         try {
             teamService.removeMember(teamId, targetLoginId, requesterLoginId);
             return ResponseEntity.ok(StatusResponse.success());
@@ -99,7 +108,8 @@ public class TeamController {
     }
 
     @DeleteMapping("/{teamId}")
-    public ResponseEntity<?> disbandTeam(@PathVariable Long teamId, @RequestParam String requesterLoginId) {
+    public ResponseEntity<?> disbandTeam(Authentication authentication, @PathVariable Long teamId, @RequestParam String requesterLoginId) {
+        AuthGuard.requireSelf(authentication, requesterLoginId);
         try {
             teamService.disbandTeam(teamId, requesterLoginId);
             return ResponseEntity.ok(StatusResponse.success());

@@ -15,6 +15,7 @@ import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import kr.co.devsign.devsign_backend.config.AuthGuard;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -53,20 +54,23 @@ public class AssemblyController {
     }
 
     @PostMapping("/project-title")
-    public ResponseEntity<StatusResponse> saveProjectTitle(@RequestBody SaveProjectTitleRequest params) {
+    public ResponseEntity<StatusResponse> saveProjectTitle(Authentication authentication, @RequestBody SaveProjectTitleRequest params) {
+        AuthGuard.requireSelf(authentication, params.loginId());
         assemblyService.saveProjectTitle(params);
         return ResponseEntity.ok(StatusResponse.success());
     }
 
     // ✨ [2026-09-07 추가] 마이페이지 학기별 깃/노션 등 관련 링크 — 프로젝트 명과 별개로 독립 저장
     @PostMapping("/project-links")
-    public ResponseEntity<StatusResponse> saveProjectLinks(@RequestBody SaveProjectLinksRequest params) {
+    public ResponseEntity<StatusResponse> saveProjectLinks(Authentication authentication, @RequestBody SaveProjectLinksRequest params) {
+        AuthGuard.requireSelf(authentication, params.loginId());
         assemblyService.saveProjectLinks(params);
         return ResponseEntity.ok(StatusResponse.success());
     }
 
     @PostMapping(value = "/submit", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     public ResponseEntity<SubmitFilesResponse> submitFiles(
+            Authentication authentication,
             @RequestParam String loginId,
             @RequestParam String reportId,
             @RequestParam int year,
@@ -77,6 +81,7 @@ public class AssemblyController {
             @RequestParam(required = false) MultipartFile pdf,
             @RequestParam(required = false) MultipartFile other
     ) {
+        AuthGuard.requireSelf(authentication, loginId);
         try {
             SubmitFilesCommand command = new SubmitFilesCommand(
                     loginId,
@@ -98,13 +103,21 @@ public class AssemblyController {
 
     // ✨ [2026-09-02 추가] 계획서(PLAN) 웹 작성 — 임시저장(자동저장 포함)과 제출확정을 분리
     @PostMapping("/plan/save")
-    public ResponseEntity<AssemblyReportResponse> savePlanDraft(@RequestBody SavePlanRequest request) {
+    public ResponseEntity<AssemblyReportResponse> savePlanDraft(Authentication authentication, @RequestBody SavePlanRequest request) {
+        AuthGuard.requireSelf(authentication, request.loginId());
         return ResponseEntity.ok(assemblyService.savePlanDraft(request));
     }
 
     @PostMapping("/plan/submit")
-    public ResponseEntity<AssemblyReportResponse> submitPlan(@RequestBody SavePlanRequest request) {
+    public ResponseEntity<AssemblyReportResponse> submitPlan(Authentication authentication, @RequestBody SavePlanRequest request) {
+        AuthGuard.requireSelf(authentication, request.loginId());
         return ResponseEntity.ok(assemblyService.submitPlan(request));
+    }
+
+    // 다른 부원의 리포트 id를 넣어 보낸 경우(AssemblyService.findOrCreateReport) — 403으로 돌려준다
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<StatusResponse> handleForbidden(IllegalStateException e) {
+        return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
     }
 
     // ✨ [2026-09-29 추가] 계획서 파일 업로드(원본 첨부 + 양식 자동 추출) / 첨부 삭제 / 빈 양식 내려받기
@@ -123,6 +136,8 @@ public class AssemblyController {
         }
         try {
             return ResponseEntity.ok(assemblyService.uploadPlanFile(loginId, reportId, year, semester, month, file));
+        } catch (IllegalStateException e) {
+            throw e;
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
         } catch (Exception e) {

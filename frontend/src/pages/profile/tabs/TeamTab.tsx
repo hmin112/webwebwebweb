@@ -64,7 +64,8 @@ export const TeamTab = ({
   const [isLoading, setIsLoading] = useState(true);
   const [newTeamName, setNewTeamName] = useState("");
   const [newProjectTitle, setNewProjectTitle] = useState("");
-  const [isCreating, setIsCreating] = useState(false);
+  const [isCreating, setIsCreating] = useState(false); // 팀 생성 요청이 진행 중인지
+  const [showCreateForm, setShowCreateForm] = useState(false); // 팀 이름/프로젝트 명 입력 폼 열림 여부
   const createTeamLockRef = useRef(false);
 
   const [isInviteOpen, setIsInviteOpen] = useState(false);
@@ -316,7 +317,7 @@ export const TeamTab = ({
       });
       setNewTeamName("");
       setNewProjectTitle("");
-      setIsCreating(false);
+      setShowCreateForm(false);
       setIsCreatingNewTeam(false);
       await fetchStatus();
       // 방금 만든 팀을 바로 보여준다
@@ -523,7 +524,7 @@ export const TeamTab = ({
                 </button>
               ))}
               <button
-                onClick={() => { setIsCreatingNewTeam(true); setIsCreating(true); }}
+                onClick={() => { setIsCreatingNewTeam(true); setShowCreateForm(true); }}
                 className="px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 transition-all shrink-0"
               >
                 <PlusCircle size={13} className="inline mr-1 -mt-0.5" /> 새 팀
@@ -539,8 +540,8 @@ export const TeamTab = ({
                   ? <>새로운 팀을 하나 더 만들 수 있어요.<br />여러 팀에 동시에 참여할 수 있습니다.</>
                   : <>아직 소속된 팀이 없습니다.<br />팀을 만들어 팀원들과 총회자료를 함께 제출해보세요.</>}
               </p>
-              {!isCreating ? (
-                <button onClick={() => setIsCreating(true)} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 text-sm transition-all active:scale-95">
+              {!showCreateForm ? (
+                <button onClick={() => setShowCreateForm(true)} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 text-sm transition-all active:scale-95">
                   <PlusCircle size={18} /> 새 팀 만들기
                 </button>
               ) : (
@@ -561,11 +562,11 @@ export const TeamTab = ({
                   />
                   <button disabled={isCreating} onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-md transition-all active:scale-95 disabled:opacity-60">{isCreating ? "생성 중..." : "팀 생성"}</button>
                   {teams.length > 0 && (
-                    <button onClick={() => { setIsCreatingNewTeam(false); setIsCreating(false); }} className="w-full px-5 py-3 rounded-2xl bg-slate-50 text-slate-400 font-black text-sm">취소</button>
+                    <button onClick={() => { setIsCreatingNewTeam(false); setShowCreateForm(false); }} className="w-full px-5 py-3 rounded-2xl bg-slate-50 text-slate-400 font-black text-sm">취소</button>
                   )}
                 </div>
               )}
-              {teams.length > 0 && !isCreating && (
+              {teams.length > 0 && !showCreateForm && (
                 <button onClick={() => setIsCreatingNewTeam(false)} className="block mx-auto mt-3 text-slate-400 font-bold text-xs hover:text-slate-600">
                   내 팀으로 돌아가기
                 </button>
