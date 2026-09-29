@@ -2,9 +2,7 @@ import { api } from "../../../api/axios";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, Code2, Sparkles, Users2, Pencil, Check, Link as LinkIcon, Type,
-  Cpu, Database, Globe, Terminal, Boxes,
-  Layers, Monitor, Smartphone, Zap, Braces,
+  ArrowRight, Users2, Pencil, Check, Link as LinkIcon, Type,
   Trophy, CalendarDays, Pause, Play, ChevronLeft, ChevronRight
 } from "lucide-react";
 
@@ -122,22 +120,6 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
     }
   };
 
-  // 💡 배경 플로팅 아이콘 (원본 보존)
-  const floatingIcons = [
-    { icon: <Code2 size={48} />, top: "12%", left: "8%", delay: 0 },
-    { icon: <Cpu size={64} />, top: "55%", left: "88%", delay: 2 },
-    { icon: <Database size={40} />, top: "75%", left: "15%", delay: 4 },
-    { icon: <Globe size={56} />, top: "22%", left: "80%", delay: 1 },
-    { icon: <Terminal size={32} />, top: "8%", left: "45%", delay: 3 },
-    { icon: <Boxes size={48} />, top: "68%", left: "4%", delay: 5 },
-    { icon: <Sparkles size={32} />, top: "35%", left: "92%", delay: 1.5 },
-    { icon: <Layers size={42} />, top: "85%", left: "40%", delay: 2.5 },
-    { icon: <Zap size={36} />, top: "45%", left: "12%", delay: 0.5 },
-    { icon: <Braces size={52} />, top: "18%", left: "25%", delay: 4.5 },
-    { icon: <Monitor size={44} />, top: "78%", left: "70%", delay: 3.5 },
-    { icon: <Smartphone size={38} />, top: "40%", left: "78%", delay: 2.2 },
-  ];
-
   const handleApply = () => {
     if (isEditingLink) return;
     window.open(applyLink, "_blank");
@@ -159,34 +141,10 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
   // 바로 아래 지원 프로그램 신청 섹션(회색 배경)과 사이에 흰 띠가 끼어 있는 것처럼 보였음.
   // 아래쪽 패딩을 없애서 배너가 다음 섹션과 바로 붙도록 수정
   return (
-    <section id="home" className="relative pt-16 lg:pt-20 overflow-hidden bg-gradient-to-b from-[#f8faff] to-white">
+    // ✨ [2026-09-29] 상단 바 높이(모바일 64px / 데스크탑 72px)와 딱 맞춰서 배너가 바로 붙게 — 예전엔 lg:pt-20(80px)이라
+    // 8px 틈으로 예전 떠다니는 아이콘 배경이 비쳤다. 아이콘 배경과 뒤쪽 흐린 원도 제거.
+    <section id="home" className="relative pt-16 lg:pt-[72px] overflow-hidden">
       
-      {/* 배경 플로팅 아이콘 레이어 (원본 보존) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {floatingIcons.map((item, index) => (
-          <motion.div
-            key={index}
-            className="absolute text-indigo-300/50"
-            style={{ top: item.top, left: item.left }}
-            animate={{
-              y: [0, -40, 0], 
-              x: [0, 20, 0], 
-              rotate: [0, 15, 0], 
-              opacity: [0.4, 0.7, 0.4] 
-            }}
-            transition={{
-              duration: 10 + index,
-              repeat: Infinity,
-              ease: "easeInOut",
-              delay: item.delay
-            }}
-          >
-            {item.icon}
-          </motion.div>
-        ))}
-      </div>
-
-      <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-indigo-50/50 rounded-full blur-3xl -z-10 translate-x-1/2 -translate-y-1/2" />
 
       {/* 🏆 명예의 전당 쇼케이스: 조선대 홈페이지 메인 배너 참고 — 화면 전체 폭 사진 위에 정보를 바로 얹고, 하단 중앙에 점 인디케이터 + 일시정지 버튼. 상단 여백 없이 navbar 바로 아래에 배치.
           모집 문구/지원 링크 줄도 같은 슬라이드 안에 넣어 흐린 사진 배경이 그 밑까지 자연스럽게 이어지도록 함 */}
@@ -267,12 +225,12 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                           {currentHofAwards.flatMap((award: any) => award.participants || []).length > 0 && (
                             <div className="flex items-center gap-2 flex-wrap">
                               {currentHofAwards.flatMap((award: any) => award.participants || []).map((p: any) => (
-                                <div key={p.loginId} className="flex items-center gap-1.5 bg-white/15 backdrop-blur-sm rounded-full pl-1 pr-2.5 py-1 border border-white/20">
-                                  <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
+                                <div key={p.loginId} className="hero-glass flex items-center gap-1.5 rounded-full pl-1 pr-2.5 py-1">
+                                  <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-white/20 shrink-0">
                                     {p.profileImage ? (
                                       <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
                                     ) : (
-                                      <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
+                                      <div className="w-full h-full flex items-center justify-center text-white font-bold text-[8px]">
                                         {p.name?.[0] || "?"}
                                       </div>
                                     )}
@@ -307,7 +265,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                         <button
                           onClick={() => setIsHofPaused((prev) => !prev)}
                           aria-label={isHofPaused ? "자동 전환 재생" : "자동 전환 일시정지"}
-                          className="w-6 h-6 md:w-7 md:h-7 rounded-full bg-white/15 backdrop-blur-sm border border-white/30 text-white flex items-center justify-center hover:bg-white/25 transition-colors"
+                          className="hero-glass w-6 h-6 md:w-7 md:h-7 rounded-full text-white flex items-center justify-center"
                         >
                           {isHofPaused ? <Play className="w-3 h-3 md:w-3.5 md:h-3.5" /> : <Pause className="w-3 h-3 md:w-3.5 md:h-3.5" />}
                         </button>

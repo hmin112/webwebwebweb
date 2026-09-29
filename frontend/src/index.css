@@ -170,6 +170,22 @@
     backdrop-filter: saturate(175%) blur(24px);
   }
 
+  /* ✨ [2026-09-29] 어두운 사진 위(첫 화면 명예의 전당 배너)의 프로필 알약·멈춤 버튼 — 위 규칙의 불투명한 흰 유리를
+     덮어써서 색 없는 투명 유리로. 위 규칙과 선택자 우선순위가 같아서 반드시 그 뒤에 둔다. */
+  .apple-app .hero-glass {
+    border: 1px solid rgb(255 255 255 / 0.28) !important;
+    background-color: rgb(255 255 255 / 0.10) !important;
+    background-image: none !important;
+    box-shadow: none !important;
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+    transition: background-color 180ms ease;
+  }
+
+  .apple-app button.hero-glass:hover {
+    background-color: rgb(255 255 255 / 0.18) !important;
+  }
+
   .apple-app main .bg-slate-50,
   .apple-app main [class*="from-[#f8faff]"] {
     background-color: transparent !important;

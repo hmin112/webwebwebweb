@@ -318,18 +318,15 @@ export const Navbar = ({
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-3">
               {!isLoggedIn ? (
-                // ✨ [2026-09-29] 리퀴드 글라스 — 회원가입은 흰 유리 알약, 로그인은 파란 유리 알약
+                // ✨ [2026-09-29] 회원가입은 글자만, 로그인은 파란 알약
                 <div className="flex items-center gap-2">
-                  <motion.button
+                  <button
                     type="button"
                     onClick={() => handleNavigate("signup")}
-                    whileHover={{ y: -1 }}
-                    whileTap={{ scale: 0.96 }}
-                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
-                    className="relative glass-lens h-10 px-4 rounded-full text-sm font-semibold tracking-[-0.01em] text-[#1D1D1F]"
+                    className="h-10 px-3 text-sm font-medium tracking-[-0.01em] text-[#1D1D1F]/70 hover:text-[#1D1D1F] transition-colors"
                   >
-                    <span className="relative z-[1]">회원가입</span>
-                  </motion.button>
+                    회원가입
+                  </button>
                   <motion.button
                     type="button"
                     onClick={() => handleNavigate("login")}
