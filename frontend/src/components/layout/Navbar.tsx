@@ -201,27 +201,28 @@ export const Navbar = ({
           </button>
 
           {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
-          <div className="hidden lg:flex items-center gap-4 xl:gap-7">
+          {/* ✨ [2026-09-29] 애플 스타일 — 보조 회색(#6E6E73) 글자, 마우스를 올리면 기본 글자색(#1D1D1F) +
+              아주 옅은 캡슐, 선택된 메뉴는 옅은 회색 캡슐이 스프링으로 미끄러져 따라간다 (macOS 세그먼트 컨트롤 느낌) */}
+          <div className="hidden lg:flex items-center gap-0.5 xl:gap-1">
             {visibleLinks.map((link) => {
-              const isActive = activeTab === link.id; 
+              const isActive = activeTab === link.id;
               return (
                 <button
                   key={link.id}
                   onClick={() => handleNavigate(link.id)}
-                  className={`relative py-2 font-semibold transition-colors text-[12px] xl:text-[14px] whitespace-nowrap group ${
-                    isActive ? "text-slate-900" : "text-slate-500 hover:text-slate-900"
+                  aria-current={isActive ? "page" : undefined}
+                  className={`relative px-3 xl:px-3.5 py-1.5 rounded-full font-medium tracking-[-0.01em] text-[12px] xl:text-[14px] whitespace-nowrap transition-colors duration-200 ${
+                    isActive ? "text-[#1D1D1F]" : "text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-black/[0.04]"
                   }`}
                 >
-                  {link.name}
-                  {isActive ? (
+                  {isActive && (
                     <motion.span
                       layoutId="active-navigation-indicator"
-                      className="absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full bg-slate-900"
-                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                      className="absolute inset-0 rounded-full bg-black/[0.06] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]"
+                      transition={{ type: "spring", stiffness: 500, damping: 38 }}
                     />
-                  ) : (
-                    <span className="absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full bg-slate-900/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-center" />
                   )}
+                  <span className="relative">{link.name}</span>
                 </button>
               );
             })}
@@ -324,8 +325,9 @@ export const Navbar = ({
                   <button 
                     key={link.id} 
                     onClick={() => handleNavigate(link.id)} 
-                    className={`text-left py-3 px-4 text-[15px] font-semibold rounded-2xl transition-all ${
-                      isActive ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
+                    aria-current={isActive ? "page" : undefined}
+                    className={`text-left py-3 px-4 text-[15px] font-medium tracking-[-0.01em] rounded-2xl transition-colors duration-200 ${
+                      isActive ? "bg-black/[0.06] text-[#1D1D1F] font-semibold" : "text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-black/[0.04]"
                     }`}
                   >
                     {link.name}
