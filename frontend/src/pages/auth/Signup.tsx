@@ -53,7 +53,7 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
   const [isTimerActive, setIsTimerActive] = useState(false);
 
   useEffect(() => {
-    let timer: NodeJS.Timeout;
+    let timer: ReturnType<typeof setInterval> | undefined;
     if (isTimerActive && timeLeft > 0) {
       timer = setInterval(() => setTimeLeft((prev) => prev - 1), 1000);
     } else if (timeLeft === 0) {

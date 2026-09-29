@@ -1,8 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { motion, AnimatePresence } from "framer-motion";
+import { AnimatePresence } from "framer-motion";
 import {
-  UserCircle, Users, LayoutDashboard, ChevronRight,
-  Menu as MenuIcon, X, CalendarRange, Layers, CheckSquare, ClipboardCheck, MonitorPlay, BookOpen
+  UserCircle, Users, LayoutDashboard, ChevronRight, CalendarRange, Layers, CheckSquare, ClipboardCheck, MonitorPlay, BookOpen
 } from "lucide-react";
 
 // 분리된 탭 컴포넌트 임포트
@@ -17,6 +16,7 @@ import { AssemblyBannerAdminTab } from "./tabs/AssemblyBannerAdminTab";
 import { AssemblyPlanPage } from "../profile/tabs/AssemblyPlanPage";
 import { TeamPlanPage } from "../profile/tabs/TeamPlanPage";
 import { GuideTab } from "./tabs/GuideTab";
+import { AdminGuideTab } from "./tabs/AdminGuideTab";
 
 export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   isAdmin: boolean,
@@ -26,7 +26,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   user?: any
 }) => {
   const [activeTab, setActiveTab] = useState(userStatus === "ATTENDING" ? "mypage" : "community");
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false); // 기존 로직 유지를 위해 남겨둠
+  const [, setIsMobileMenuOpen] = useState(false); // 기존 로직 유지를 위해 남겨둠
 
   const [selectedLoginId, setSelectedLoginId] = useState<string | null>(null);
   // ✨ 회원 상세를 어느 탭에서 열었는지 기억해뒀다가, 뒤로가기 시 그 탭으로 복귀시키기 위함
@@ -61,6 +61,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
     { id: "admin-period", name: "제출 / 자료", icon: <CalendarRange size={18} /> },
     { id: "admin-attendance", name: "출석 설정", icon: <ClipboardCheck size={18} /> },
     { id: "admin-banner", name: "총회 배너", icon: <MonitorPlay size={18} /> },
+    // ✨ [2026-09-30] 관리자 전용 사용법
+    { id: "admin-guide", name: "관리자 사용법", icon: <BookOpen size={18} /> },
   ];
 
   // 모바일 탭 출력을 위한 통합 메뉴
@@ -89,20 +91,21 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col lg:flex-row pt-20 font-sans selection:bg-indigo-100 selection:text-indigo-700">
+    // ✨ [2026-09-30] 애플 스타일 틀 — 상단 바 높이(64/72px)에 맞춘 여백, 옅은 회색 배경, 내용은 가운데 정렬(max-w-5xl)
+    <div className="min-h-screen bg-[#F5F5F7] flex flex-col lg:flex-row pt-16 lg:pt-[72px] font-sans selection:bg-[#0071E3]/15">
 
       {/* 📱 모바일 전용: 알약 모양 상단 탭 (Sticky) */}
-      <div className="lg:hidden sticky top-20 z-40 bg-white/80 backdrop-blur-md border-b border-slate-100 px-4 py-3 overflow-x-auto no-scrollbar flex gap-2">
+      <div className="lg:hidden sticky top-16 z-40 bg-[#F5F5F7]/85 backdrop-blur-xl border-b border-black/[0.06] px-4 py-2.5 overflow-x-auto no-scrollbar flex gap-1.5">
         {allMenus.map((menu) => {
           const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor") || (menu.id === "team" && activeTab === "team-plan-editor");
           return (
             <button
               key={menu.id}
               onClick={() => handleTabChange(menu.id)}
-              className={`flex items-center gap-2 px-4 py-2 rounded-full whitespace-nowrap transition-all text-xs font-black ${
+              className={`flex items-center gap-1.5 px-3.5 py-2 rounded-full whitespace-nowrap transition-colors text-[13px] font-semibold [&_svg]:w-4 [&_svg]:h-4 ${
                 isActive
-                  ? "bg-indigo-600 text-white shadow-md shadow-indigo-100"
-                  : "bg-slate-100 text-slate-500"
+                  ? "bg-[#1D1D1F] text-white"
+                  : "bg-[#fff] text-[#1D1D1F]/70 border border-black/[0.06]"
               }`}
             >
               {menu.icon}
@@ -113,16 +116,16 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
       </div>
 
       {/* 💻 데스크탑 사이드바 (기존 유지) */}
-      <aside className="hidden lg:flex w-72 bg-white border-r border-slate-200 sticky top-20 h-[calc(100vh-80px)] p-6 flex flex-col shrink-0">
-        <div className="mb-10 px-4">
-          <div className="flex items-center gap-2 text-indigo-600 mb-2">
-            <LayoutDashboard size={18} />
-            <span className="text-[10px] font-black uppercase tracking-[0.2em]">총회 시스템</span>
+      <aside className="hidden lg:flex w-64 bg-[#FBFBFD] border-r border-black/[0.06] sticky top-[72px] h-[calc(100vh-72px)] px-4 py-6 flex-col shrink-0">
+        <div className="mb-6 px-3">
+          <div className="flex items-center gap-1.5 text-[#8E8E93] mb-1">
+            <LayoutDashboard size={14} />
+            <span className="text-[11px] font-semibold tracking-wide">총회 시스템</span>
           </div>
-          <h2 className="text-2xl font-black text-slate-900 tracking-tight">DEVSIGN</h2>
+          <h2 className="text-xl font-bold text-[#1D1D1F] tracking-[-0.02em]">DEVSIGN</h2>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto">
+        <nav className="flex-1 space-y-0.5 overflow-y-auto">
           {userMenus.map((menu) => (
             <SidebarLink
               key={menu.id}
@@ -133,8 +136,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
             />
           ))}
           {isAdmin && (
-            <div className="pt-8 mt-8 border-t border-slate-100">
-              <p className="px-4 text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">관리자 메뉴</p>
+            <div className="pt-5 mt-5 border-t border-black/[0.06]">
+              <p className="px-3 text-[11px] font-semibold text-[#8E8E93] mb-2">관리자</p>
               {adminMenus.map((menu) => (
                 <SidebarLink key={menu.id} active={activeTab === menu.id} onClick={() => handleTabChange(menu.id)} icon={menu.icon} name={menu.name} isAdmin />
               ))}
@@ -145,7 +148,8 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
 
       {/* 🚀 메인 컨텐츠 */}
       {/* ✨ 모바일에서 상단 탭 여유를 위해 패딩 살짝 조정 */}
-      <main ref={mainRef} className="flex-1 p-5 md:p-12 overflow-y-auto">
+      <main ref={mainRef} className="flex-1 min-w-0 px-4 py-6 md:px-10 md:py-10 overflow-y-auto">
+        <div className="mx-auto w-full max-w-5xl">
         <AnimatePresence mode="wait">
           {activeTab === "mypage" && <MyPageTab key="mypage" loginId={loginId} onOpenPlanEditor={handleOpenPlanEditor} />}
 
@@ -202,24 +206,24 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
           {activeTab === "admin-attendance" && <AttendanceAdminTab key="admin-attendance" />}
 
           {activeTab === "admin-banner" && <AssemblyBannerAdminTab key="admin-banner" />}
+
+          {activeTab === "admin-guide" && isAdmin && <AdminGuideTab key="admin-guide" />}
         </AnimatePresence>
+        </div>
       </main>
     </div>
   );
 };
 
-const SidebarLink = ({ active, onClick, icon, name, isAdmin }: any) => (
+const SidebarLink = ({ active, onClick, icon, name }: any) => (
   <button
     onClick={onClick}
-    className={`w-full flex items-center justify-between px-4 py-3.5 rounded-2xl transition-all group ${active
-        ? (isAdmin ? "bg-indigo-600 text-white shadow-lg shadow-indigo-100" : "bg-indigo-50 text-indigo-600")
-        : "text-slate-500 hover:bg-slate-50"
-      }`}
+    className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors text-left [&_svg]:w-[18px] [&_svg]:h-[18px] ${
+      active ? "bg-[#0071E3]/10 text-[#0071E3]" : "text-[#1D1D1F]/80 hover:bg-black/[0.04]"
+    }`}
   >
-    <div className="flex items-center gap-3">
-      <div className={active ? "text-current" : "text-slate-400 group-hover:text-indigo-600"}>{icon}</div>
-      <span className="font-bold text-[15px]">{name}</span>
-    </div>
-    {active && <ChevronRight size={16} />}
+    <span className={active ? "text-[#0071E3]" : "text-[#8E8E93]"}>{icon}</span>
+    <span className="font-semibold text-[14px] tracking-[-0.01em] flex-1">{name}</span>
+    {active && <ChevronRight size={14} className="opacity-60" />}
   </button>
 );

@@ -1,7 +1,7 @@
 import { api } from "../../api/axios";
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { User, Lock, ArrowRight, ArrowLeft, ShieldAlert } from "lucide-react";
+import { User, Lock, ArrowRight, ArrowLeft } from "lucide-react";
 import { Button } from "../../components/ui/button";
 
 // onLoginSuccess의 타입을 boolean에서 any(객체)로 변경하여 상세 데이터를 받을 수 있게 합니다.

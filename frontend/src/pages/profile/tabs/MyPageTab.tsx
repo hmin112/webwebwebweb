@@ -2,12 +2,10 @@ import { api } from "../../../api/axios";
 import { useState, useMemo, useEffect, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileText, Check, Clock, X,
-  Download, Presentation, CalendarDays, ChevronDown,
-  MessageCircle, Upload, FileArchive, Loader2,
-  Lock, Link2, Plus
+  FileText, X, Download, Presentation, MessageCircle, Upload, FileArchive, Loader2, Lock, Link2, Plus
 } from "lucide-react";
 import { FileDropZone } from "../../../components/ui/FileDropZone";
+import { CARD, MonthCard, PageHeader, SectionTitle, TermSelect, reportKind, submitStateOf } from "../../assembly/assemblyUi";
 
 // 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 별도 페이지(AssemblyPlanPage)에서 웹으로 작성.
 const isPlanMonth = (month: number) => month === 3 || month === 9;
@@ -279,202 +277,183 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
     }
   };
 
+  // ✨ [2026-09-30] 애플 스타일로 재배치 — 머리말(학기 선택) → 요약 카드(프로젝트 명 + 제출 진행) → 달 카드 2열 → 관련 링크.
+  // 달 카드는 PLAN/PROGRESS/RESULT 배지 대신 "계획서 / 진행 보고 / 결과 보고"로 표시 (assemblyUi.MonthCard).
+  const submittedCount = displayReports.filter((r) => isSubmittedStatus(r.status)).length;
+  const openReport = (report: any) => {
+    if (isPlanMonth(report.month)) {
+      onOpenPlanEditor?.(report);
+      return;
+    }
+    setSelectedReport(report);
+    setSubmissionMemo(report.memo || "");
+    setUploadedFiles({ presentation: null, pdf: null, other: null });
+  };
+
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-20">
+      <PageHeader
+        title="마이 페이지"
+        desc="이번 학기 내 총회 자료를 달마다 제출하고 관리해요."
+        right={<TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />}
+      />
 
-      {/* ✨ 모바일에서 나란히 배치되는 헤더 */}
-      <div className="flex flex-row justify-between items-center mb-8 gap-2 md:gap-4">
-        <div className="relative flex-1 h-12 md:h-16 min-w-0">
-          <div className="flex items-center gap-2 md:gap-4 bg-white px-3 md:px-6 h-full rounded-xl md:rounded-[1.5rem] border border-slate-100 shadow-sm">
-            <CalendarDays className="text-indigo-600 shrink-0" size={16} />
-            <select
-              value={`${selectedTerm.year}-${selectedTerm.semester}`}
-              onChange={(e) => {
-                const [y, s] = e.target.value.split("-").map(Number);
-                setSelectedTerm({ year: y, semester: s });
-              }}
-              className="appearance-none bg-transparent border-none outline-none font-bold text-slate-900 text-xs md:text-lg pr-4 md:pr-8 cursor-pointer h-full w-full"
-            >
-              {semesterOptions.map((option, idx) => (
-                <option key={idx} value={`${option.year}-${option.semester}`}>{option.year}년도 {option.semester}학기</option>
+      {/* 요약 카드 — 프로젝트 명(계획서에서 입력) + 제출 진행 */}
+      <div className={`${CARD} rounded-3xl p-5 md:p-7 mb-8 md:mb-10`}>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
+          <div className="min-w-0">
+            <p className="text-xs font-semibold text-[#8E8E93] mb-1">{selectedTerm.year}년 {selectedTerm.semester}학기 프로젝트</p>
+            <p className={`text-xl md:text-2xl font-bold tracking-[-0.02em] truncate ${projectTitle ? "text-[#1D1D1F]" : "text-[#C7C7CC]"}`}>
+              {projectTitle || "아직 프로젝트 명이 없어요"}
+            </p>
+            <p className="text-xs text-[#8E8E93] mt-1">프로젝트 명은 {selectedTerm.semester === 1 ? "3" : "9"}월 계획서에서 입력·수정해요.</p>
+          </div>
+          <div className="md:w-64 shrink-0">
+            <div className="flex items-baseline justify-between mb-2">
+              <span className="text-xs font-semibold text-[#6E6E73]">제출 진행</span>
+              <span className="text-sm font-bold text-[#1D1D1F]">{submittedCount}<span className="text-[#AEAEB2] font-semibold"> / 4</span></span>
+            </div>
+            <div className="grid grid-cols-4 gap-1.5">
+              {displayReports.map((r) => {
+                const st = submitStateOf(r);
+                return (
+                  <div
+                    key={r.month}
+                    title={`${r.month}월 ${reportKind(r.month)}`}
+                    className={`h-2 rounded-full ${st === "done" ? "bg-[#34C759]" : st === "open" ? "bg-[#0071E3]/40" : "bg-black/[0.08]"}`}
+                  />
+                );
+              })}
+            </div>
+            <div className="grid grid-cols-4 gap-1.5 mt-1.5">
+              {displayReports.map((r) => (
+                <span key={r.month} className="text-[10px] text-center font-semibold text-[#AEAEB2]">{r.month}월</span>
               ))}
-            </select>
-            <ChevronDown className="absolute right-3 md:right-6 pointer-events-none text-slate-400" size={14} />
+            </div>
           </div>
         </div>
-
-        <CompactStatusCard 
-          title="제출 현황" 
-          value={`${reports.filter(r => isSubmittedStatus(r.status)).length} / 4`} 
-          icon={<FileText size={16} />} 
-          color="indigo" 
-        />
       </div>
 
-      {/* ✨ [2026-09-07 추가] 학기별 관련 링크(깃/노션 등) — 커뮤니티에서 부원 상세를 열면 그대로 노출됨 */}
-      <div className="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm mb-6 md:mb-8">
-        <div className="flex items-center justify-between mb-4 md:mb-6">
-          <div className="flex items-center gap-1.5 text-indigo-500">
-            <Link2 size={14} />
-            <p className="text-[10px] md:text-xs font-bold uppercase tracking-widest">관련 링크 ({selectedTerm.year}년 {selectedTerm.semester}학기)</p>
-          </div>
+      {/* 달 카드 */}
+      <SectionTitle>총회 자료</SectionTitle>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4 mb-10 md:mb-12">
+        {displayReports.map((report) => (
+          <MonthCard
+            key={report.id}
+            month={report.month}
+            title={report.memo}
+            state={submitStateOf(report)}
+            date={report.date}
+            startDate={report.startDate}
+            endDate={report.endDate}
+            onClick={() => openReport(report)}
+          />
+        ))}
+      </div>
+
+      {/* 관련 링크 — 커뮤니티에서 내 페이지를 연 사람에게 버튼으로 보여요 */}
+      <SectionTitle
+        right={
           <button
             onClick={handleSaveLinks}
             disabled={isLinksSaving}
-            className="text-[10px] md:text-xs font-bold text-indigo-600 hover:text-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="h-8 px-3.5 rounded-full bg-[#0071E3] text-white text-xs font-semibold hover:bg-[#0077ED] disabled:opacity-50 transition-colors"
           >
             {isLinksSaving ? "저장 중..." : "저장"}
           </button>
-        </div>
-        <div className="space-y-2 md:space-y-3">
+        }
+      >
+        관련 링크
+      </SectionTitle>
+      <div className={`${CARD} rounded-3xl p-4 md:p-5`}>
+        <p className="text-xs text-[#8E8E93] mb-3 px-1 flex items-center gap-1.5"><Link2 size={13} /> Git, Notion 등 — 커뮤니티의 내 페이지에 버튼으로 보여요.</p>
+        <div className="space-y-2">
           {projectLinks.map((link, idx) => (
             <div key={idx} className="flex items-center gap-2">
               <input
                 type="text"
                 value={link.label}
                 onChange={(e) => updateLinkField(idx, "label", e.target.value)}
-                placeholder="이름 (예: Git, Notion)"
-                className="w-24 md:w-40 shrink-0 px-3 py-2.5 bg-slate-50 rounded-lg md:rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm"
+                placeholder="이름"
+                className="w-24 md:w-36 shrink-0 h-10 px-3 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-semibold text-sm text-[#1D1D1F]"
               />
               <input
                 type="text"
                 value={link.url}
                 onChange={(e) => updateLinkField(idx, "url", e.target.value)}
                 placeholder="https://..."
-                className="flex-1 min-w-0 px-3 py-2.5 bg-slate-50 rounded-lg md:rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm"
+                className="flex-1 min-w-0 h-10 px-3 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 text-sm text-[#1D1D1F]"
               />
-              <button onClick={() => removeLinkRow(idx)} className="p-2 text-slate-300 hover:text-pink-500 shrink-0">
-                <X size={16} />
+              <button onClick={() => removeLinkRow(idx)} aria-label="링크 삭제" className="w-8 h-8 rounded-full flex items-center justify-center text-[#C7C7CC] hover:text-[#FF3B30] hover:bg-[#FF3B30]/[0.06] shrink-0 transition-colors">
+                <X size={15} />
               </button>
             </div>
           ))}
-          <button onClick={addLinkRow} className="flex items-center gap-1 text-[10px] md:text-xs font-bold text-slate-400 hover:text-indigo-600 transition-colors">
-            <Plus size={12} /> 링크 추가
-          </button>
         </div>
-      </div>
-
-      <div className="space-y-4 md:space-y-6">
-        <div className="flex flex-row items-center justify-between px-1 mb-4 md:mb-8 gap-2">
-          <h3 className="text-sm md:text-xl font-bold text-slate-900 uppercase tracking-wider shrink-0">총회자료 제출</h3>
-          <div className="max-w-[200px] md:max-w-md w-full flex justify-end">
-            <h2
-              className={`text-[11px] md:text-sm font-bold text-right truncate px-2 py-1 ${projectTitle ? "text-slate-600" : "text-slate-300"}`}
-              title="계획서의 '프로젝트 명'에서 수정할 수 있어요"
-            >
-              {projectTitle || "계획서에서 프로젝트 명을 입력해주세요"}
-            </h2>
-          </div>
-        </div>
-
-        {displayReports.map((report) => (
-          <motion.div
-            key={report.id}
-            whileHover={{ scale: 1.01, y: -2 }}
-            onClick={() => {
-              if (isPlanMonth(report.month)) {
-                onOpenPlanEditor?.(report);
-                return;
-              }
-              setSelectedReport(report);
-              setSubmissionMemo(report.memo || "");
-              setUploadedFiles({ presentation: null, pdf: null, other: null });
-            }}
-            className="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group transition-all cursor-pointer hover:shadow-lg"
-          >
-            <div className="flex items-center gap-3 md:gap-6">
-              <span className={`text-lg md:text-2xl font-bold shrink-0 ${isSubmittedStatus(report.status) ? "text-indigo-600" : "text-slate-400"}`}>{report.month}월</span>
-              <div className="h-8 md:h-10 w-px bg-slate-200"></div>
-              <div className="min-w-0">
-                <div className="flex items-center gap-2 mb-0.5 md:mb-1.5">
-                  <span className={`px-1.5 py-0.5 rounded-md text-[8px] md:text-[10px] font-bold uppercase shrink-0 ${isSubmittedStatus(report.status) ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{report.type}</span>
-                  <h4 className="font-bold text-slate-900 text-sm md:text-lg truncate">
-                    {(isSubmittedStatus(report.status) && report.memo) ? report.memo : `${report.month}월 프로젝트 보고서`}
-                  </h4>
-                </div>
-                <div className="flex items-center gap-2 md:gap-4 text-[9px] md:text-[11px] text-slate-400 font-bold uppercase truncate">
-                  {isSubmittedStatus(report.status) ? (
-                    <span className="flex items-center gap-1 text-indigo-500"><Check size={12} /> {report.date || "최근"} 제출됨</span>
-                  ) : report.isWithinPeriod ? (
-                    <span className="flex items-center gap-1 text-green-500 font-black"><Clock size={12} /> 현재 제출 가능</span>
-                  ) : report.isPast ? (
-                    <span className="flex items-center gap-1 text-pink-500 font-black"><X size={12} /> 제출 종료</span>
-                  ) : (
-                    <span className="flex items-center gap-1"><Clock size={12} /> {report.startDate || "미설정"}</span>
-                  )}
-                </div>
-              </div>
-            </div>
-            <span className={`text-[9px] md:text-[10px] font-bold px-2 md:px-4 py-1.5 md:py-2 rounded-full border shrink-0 ${isSubmittedStatus(report.status) ? "text-green-600 bg-green-50 border-green-100" : report.isWithinPeriod ? "text-indigo-600 bg-indigo-50 border-indigo-100" : "text-orange-600 bg-orange-50 border-orange-100"}`}>
-              {isSubmittedStatus(report.status) ? "완료" : report.isWithinPeriod ? "가능" : "불가"}
-            </span>
-          </motion.div>
-        ))}
+        <button onClick={addLinkRow} className="flex items-center gap-1 mt-3 px-1 text-xs font-semibold text-[#0071E3] hover:underline">
+          <Plus size={13} /> 링크 추가
+        </button>
       </div>
 
       <AnimatePresence>
         {selectedReport && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedReport(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
-              <div className="flex justify-between items-start mb-6 md:mb-8">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSelectedReport(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 12 }} transition={{ type: "spring", stiffness: 400, damping: 34 }} className="relative w-full max-w-lg bg-[#fff] rounded-[28px] p-5 md:p-7 shadow-[0_20px_60px_rgb(0_0_0/0.18)] overflow-y-auto max-h-[90vh]">
+              <div className="flex justify-between items-start mb-5">
                 <div>
-                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] md:text-[10px] font-bold rounded-md uppercase border border-indigo-100">{selectedReport.month}월 자료</span>
-                  <h3 className="text-xl md:text-3xl font-bold text-slate-900 mt-1 md:mt-2">
-                    {isSubmittedStatus(selectedReport.status) ? (selectedReport.isWithinPeriod ? "제출 내용 수정" : "제출 자료 확인") : "신규 자료 제출"}
+                  <p className="text-xs font-semibold text-[#8E8E93]">{selectedReport.month}월 {reportKind(selectedReport.month)}</p>
+                  <h3 className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em] mt-0.5">
+                    {isSubmittedStatus(selectedReport.status) ? (selectedReport.isWithinPeriod ? "제출 내용 수정" : "제출 자료 확인") : "자료 제출"}
                   </h3>
                 </div>
-                <button onClick={() => setSelectedReport(null)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"><X size={18} /></button>
+                <button onClick={() => setSelectedReport(null)} aria-label="닫기" className="w-8 h-8 rounded-full bg-black/[0.05] text-[#6E6E73] flex items-center justify-center hover:bg-black/[0.08] shrink-0"><X size={16} /></button>
               </div>
 
               {!selectedReport.isWithinPeriod && (
-                <div className="mb-6 p-3 md:p-4 bg-slate-900 rounded-xl md:rounded-2xl border border-slate-800 flex items-center gap-2 md:gap-3 text-white">
-                  <Lock size={16} className="text-indigo-400 shrink-0" />
-                  <div>
-                    <p className="text-xs font-bold">현재 제출 및 수정 가능 기간이 아닙니다.</p>
-                  </div>
+                <div className="mb-5 p-3 bg-black/[0.04] rounded-2xl flex items-center gap-2.5 text-[#6E6E73]">
+                  <Lock size={15} className="shrink-0" />
+                  <p className="text-xs font-semibold">지금은 제출·수정 기간이 아니에요. 읽기 전용이에요.</p>
                 </div>
               )}
 
-              <div className="mb-6 md:mb-8">
-                <div className="flex items-center gap-1.5 mb-2 ml-1"><MessageCircle size={14} className="text-indigo-500" /><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">활동 요약</p></div>
+              <div className="mb-5">
+                <p className="flex items-center gap-1.5 mb-2 ml-1 text-xs font-semibold text-[#6E6E73]"><MessageCircle size={13} /> 활동 요약</p>
                 <textarea
                   value={submissionMemo}
                   onChange={(e) => setSubmissionMemo(e.target.value)}
                   disabled={!selectedReport.isWithinPeriod}
-                  placeholder="활동 내용을 입력해주세요."
-                  className="w-full p-4 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm min-h-[80px] md:min-h-[100px] disabled:opacity-50 resize-none"
+                  placeholder="이번 달에 한 활동을 짧게 적어주세요."
+                  className="w-full p-3.5 rounded-2xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 text-sm text-[#1D1D1F] min-h-[90px] disabled:opacity-50 resize-none"
                 />
               </div>
 
-              <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
-                <p className="text-[10px] md:text-xs font-bold text-slate-400 ml-1 uppercase">제출 파일 관리</p>
-                <div className="grid grid-cols-1 gap-2 md:gap-3">
-                  <input type="file" accept=".ppt,.pptx" ref={fileRefs.presentation} className="hidden" onChange={handlePresentationFileChange} />
-                  <input type="file" accept=".pdf" ref={fileRefs.pdf} className="hidden" onChange={handlePdfFileChange} />
-                  <input type="file" ref={fileRefs.other} className="hidden" onChange={(e) => setUploadedFiles({ ...uploadedFiles, other: e.target.files![0] })} />
+              <p className="text-xs font-semibold text-[#6E6E73] ml-1 mb-2">파일 <span className="text-[#AEAEB2] font-medium">· 하나 이상 필요 · 끌어다 놓아도 돼요</span></p>
+              <div className="space-y-2 mb-6">
+                <input type="file" accept=".ppt,.pptx" ref={fileRefs.presentation} className="hidden" onChange={handlePresentationFileChange} />
+                <input type="file" accept=".pdf" ref={fileRefs.pdf} className="hidden" onChange={handlePdfFileChange} />
+                <input type="file" ref={fileRefs.other} className="hidden" onChange={(e) => setUploadedFiles({ ...uploadedFiles, other: e.target.files![0] })} />
 
-                  <FileDropZone inputRef={fileRefs.presentation} disabled={!selectedReport.isWithinPeriod} label="발표자료 파일을 놓으세요">
-                    <UploadSlot label="발표자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.presentationPath} fileName={uploadedFiles.presentation?.name} onDownload={() => handleDownload(selectedReport.presentationPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.presentation.current?.click()} />
-                  </FileDropZone>
-                  <FileDropZone inputRef={fileRefs.pdf} disabled={!selectedReport.isWithinPeriod} label="PDF 파일을 놓으세요">
-                    <UploadSlot label="PDF" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.pdfPath} fileName={uploadedFiles.pdf?.name} onDownload={() => handleDownload(selectedReport.pdfPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.pdf.current?.click()} />
-                  </FileDropZone>
-                  <FileDropZone inputRef={fileRefs.other} disabled={!selectedReport.isWithinPeriod} label="기타 자료 파일을 놓으세요">
-                    <UploadSlot label="기타 자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.otherPath} fileName={uploadedFiles.other?.name} onDownload={() => handleDownload(selectedReport.otherPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.other.current?.click()} />
-                  </FileDropZone>
-                </div>
+                <FileDropZone inputRef={fileRefs.presentation} disabled={!selectedReport.isWithinPeriod} label="발표자료 파일을 놓으세요">
+                  <UploadSlot label="발표자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.presentationPath} fileName={uploadedFiles.presentation?.name} onDownload={() => handleDownload(selectedReport.presentationPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.presentation.current?.click()} />
+                </FileDropZone>
+                <FileDropZone inputRef={fileRefs.pdf} disabled={!selectedReport.isWithinPeriod} label="PDF 파일을 놓으세요">
+                  <UploadSlot label="PDF" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.pdfPath} fileName={uploadedFiles.pdf?.name} onDownload={() => handleDownload(selectedReport.pdfPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.pdf.current?.click()} />
+                </FileDropZone>
+                <FileDropZone inputRef={fileRefs.other} disabled={!selectedReport.isWithinPeriod} label="기타 자료 파일을 놓으세요">
+                  <UploadSlot label="기타 자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.otherPath} fileName={uploadedFiles.other?.name} onDownload={() => handleDownload(selectedReport.otherPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.other.current?.click()} />
+                </FileDropZone>
               </div>
 
-              <div className="flex gap-3">
-                <button onClick={() => setSelectedReport(null)} className="flex-1 py-3.5 md:py-5 bg-slate-50 text-slate-500 rounded-xl md:rounded-2xl font-bold text-xs md:text-base hover:bg-slate-100 transition-all">닫기</button>
+              <div className="flex gap-2">
+                <button onClick={() => setSelectedReport(null)} className="flex-1 h-12 rounded-2xl bg-black/[0.05] text-[#1D1D1F] font-semibold text-sm hover:bg-black/[0.08] transition-colors">닫기</button>
                 {selectedReport.isWithinPeriod && (
                   <button
                     onClick={handleSubmit}
                     disabled={!canSubmit || isLoading}
-                    className={`flex-[2] py-3.5 md:py-5 rounded-xl md:rounded-2xl font-bold text-xs md:text-base transition-all flex items-center justify-center gap-2 ${canSubmit && !isLoading ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
+                    className={`flex-[2] h-12 rounded-2xl font-semibold text-sm transition-colors flex items-center justify-center gap-2 ${canSubmit && !isLoading ? "bg-[#0071E3] text-white hover:bg-[#0077ED]" : "bg-black/[0.05] text-[#AEAEB2] cursor-not-allowed"}`}
                   >
-                    {isLoading ? <Loader2 className="animate-spin" size={18} /> : (isSubmittedStatus(selectedReport.status) ? "수정 저장" : "제출 완료")}
+                    {isLoading ? <Loader2 className="animate-spin" size={18} /> : (isSubmittedStatus(selectedReport.status) ? "수정 저장" : "제출하기")}
                   </button>
                 )}
               </div>
@@ -486,40 +465,41 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   );
 };
 
-const UploadSlot = ({ label, fileName, onClick, disabled, existingPath, onDownload }: any) => (
-  <div className={`flex items-center justify-between p-3 md:p-5 rounded-xl md:rounded-2xl border transition-all ${fileName || existingPath ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"}`}>
-    <div className="flex items-center gap-2 md:gap-4 min-w-0">
-      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${fileName || existingPath ? "bg-indigo-600 text-white" : "bg-white text-slate-400 border"}`}>
-        {label === "발표자료" ? <Presentation size={16} /> : label === "PDF" ? <FileText size={16} /> : <FileArchive size={16} />}
-      </div>
-      <div className="text-left min-w-0">
-        <p className="text-[11px] md:text-sm font-bold text-slate-800">{label}</p>
-        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase truncate max-w-[100px] md:max-w-[150px]">{fileName || (existingPath ? "파일 있음" : disabled ? "자료 없음" : "끌어다 놓거나 선택")}</p>
-      </div>
-    </div>
-    <div className="flex items-center gap-1.5">
-      {existingPath && (
-        <button onClick={onDownload} className="p-1.5 md:p-2 bg-white text-indigo-600 rounded-lg shadow-sm border border-indigo-100 shrink-0">
-          <Download size={14} />
-        </button>
-      )}
-      {!disabled && (
-        <button onClick={onClick} className="p-1.5 md:p-2 bg-indigo-600 text-white rounded-lg shadow-sm shrink-0">
-          <Upload size={14} />
-        </button>
-      )}
-    </div>
-  </div>
-);
-
-const CompactStatusCard = ({ title, value, icon, color }: any) => {
-  const colorMap: any = { indigo: "text-indigo-600 bg-indigo-50 border-indigo-100" };
+const UploadSlot = ({ label, fileName, onClick, disabled, existingPath, onDownload }: any) => {
+  const has = Boolean(fileName || existingPath);
   return (
-    <div className="bg-white px-3 md:px-6 h-12 md:h-16 rounded-xl md:rounded-[1.5rem] border border-slate-100 shadow-sm flex items-center gap-2 md:gap-5 flex-1 min-w-0">
-      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center border shrink-0 ${colorMap[color]}`}>{icon}</div>
-      <div className="flex flex-col md:flex-row md:flex-1 md:items-center justify-center md:justify-between min-w-0">
-        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight truncate">{title}</p>
-        <p className="text-sm md:text-lg font-bold text-slate-900 tracking-tight leading-none md:leading-normal">{value}</p>
+    <div
+      onClick={disabled ? undefined : onClick}
+      className={`flex items-center justify-between gap-3 p-3 rounded-2xl border transition-colors ${disabled ? "" : "cursor-pointer"} ${
+        has ? "bg-[#0071E3]/[0.05] border-[#0071E3]/20" : "bg-[#F5F5F7] border-transparent hover:border-black/[0.08]"
+      }`}
+    >
+      <div className="flex items-center gap-3 min-w-0">
+        <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${has ? "bg-[#0071E3] text-white" : "bg-[#fff] text-[#8E8E93] border border-black/[0.06]"}`}>
+          {label === "발표자료" ? <Presentation size={16} /> : label === "PDF" ? <FileText size={16} /> : <FileArchive size={16} />}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-[#1D1D1F]">{label}</p>
+          <p className="text-[11px] text-[#8E8E93] truncate max-w-[180px] md:max-w-[240px]">
+            {fileName || (existingPath ? "올린 파일 있음" : disabled ? "자료 없음" : label === "발표자료" ? ".ppt, .pptx" : label === "PDF" ? ".pdf" : "형식 자유")}
+          </p>
+        </div>
+      </div>
+      <div className="flex items-center gap-1.5 shrink-0">
+        {existingPath && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onDownload(); }}
+            aria-label="내려받기"
+            className="w-8 h-8 rounded-full bg-[#fff] text-[#0071E3] border border-black/[0.06] flex items-center justify-center"
+          >
+            <Download size={14} />
+          </button>
+        )}
+        {!disabled && (
+          <span className="w-8 h-8 rounded-full bg-[#0071E3] text-white flex items-center justify-center">
+            <Upload size={14} />
+          </span>
+        )}
       </div>
     </div>
   );

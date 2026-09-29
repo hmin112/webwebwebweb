@@ -2,11 +2,10 @@ import { api } from "../../../api/axios";
 import { useState, useEffect, useMemo, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  Layers, Crown, UserPlus, X, LogOut, Trash2, Loader2,
-  Mail, Search, PlusCircle, Save, Edit2, Users, CalendarDays, ChevronDown,
-  FileText, Check, Clock, Presentation, Download, Upload, FileArchive, MessageCircle, Lock,
+  Layers, Crown, UserPlus, X, LogOut, Trash2, Loader2, Mail, Search, PlusCircle, Save, Edit2, Users, FileText, Presentation, Download, Upload, FileArchive, MessageCircle, Lock
 } from "lucide-react";
 import { FileDropZone } from "../../../components/ui/FileDropZone";
+import { MonthCard, PageHeader, TermSelect, reportKind, submitStateOf } from "../../assembly/assemblyUi";
 
 // ✨ CommunityTab과 동일한 학번 포맷 규칙 (8자리 학번 -> 2자리 연도 등)
 const formatStudentId = (id?: string) => {
@@ -451,56 +450,34 @@ export const TeamTab = ({
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-20">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8 md:mb-12">
-        <div>
-          <h1 className="text-2xl md:text-4xl font-[900] text-slate-900 tracking-tighter uppercase mb-1 md:mb-2">팀 프로젝트</h1>
-          <p className="text-slate-400 font-bold text-[11px] md:text-sm">
-            팀 공유 자료는 개인 마이페이지와 별개로 운영됩니다 — 팀원 누구나 아래 "팀 공유 자료"에서
-            함께 제출하고, 개인 마이페이지 제출은 그대로 각자 유지돼요.
-          </p>
-        </div>
-        <div className="relative h-12 md:h-14 w-full sm:w-auto">
-          <div className="flex items-center gap-2 md:gap-3 bg-white px-4 md:px-5 h-full rounded-xl md:rounded-2xl border border-slate-100 shadow-sm">
-            <CalendarDays className="text-indigo-600 shrink-0" size={16} />
-            <select
-              value={`${selectedTerm.year}-${selectedTerm.semester}`}
-              onChange={(e) => {
-                const [y, s] = e.target.value.split("-").map(Number);
-                setSelectedTerm({ year: y, semester: s });
-              }}
-              className="appearance-none bg-transparent border-none outline-none font-bold text-slate-900 text-xs md:text-sm pr-4 md:pr-6 cursor-pointer h-full"
-            >
-              {semesterOptions.map((option, idx) => (
-                <option key={idx} value={`${option.year}-${option.semester}`}>{option.year}년도 {option.semester}학기</option>
-              ))}
-            </select>
-            <ChevronDown className="absolute right-3 md:right-4 pointer-events-none text-slate-400" size={14} />
-          </div>
-        </div>
-      </div>
+      <PageHeader
+        title="팀 프로젝트"
+        desc="팀을 만들고 팀원과 함께 팀 자료를 제출해요. 개인 마이 페이지 제출과는 따로 관리돼요."
+        right={<TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />}
+      />
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
-          <Loader2 className="animate-spin text-indigo-600" size={32} />
-          <p className="text-slate-400 font-bold tracking-tight text-sm">팀 정보를 불러오는 중입니다...</p>
+          <Loader2 className="animate-spin text-[#0071E3]" size={32} />
+          <p className="text-[#8E8E93] font-bold tracking-tight text-sm">팀 정보를 불러오는 중입니다...</p>
         </div>
       ) : (
         <>
           {invitations.length > 0 && (
             <div className="mb-8 md:mb-10 space-y-3 md:space-y-4">
-              <h3 className="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
-                <Mail size={16} className="text-indigo-500" /> 받은 팀 초대
+              <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] flex items-center gap-2">
+                <Mail size={16} className="text-[#0071E3]" /> 받은 팀 초대
               </h3>
               {invitations.map((inv) => (
-                <div key={inv.teamMemberId} className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-indigo-100 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div key={inv.teamMemberId} className="bg-[#fff] p-4 md:p-6 rounded-3xl border border-[#0071E3]/20 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="min-w-0">
-                    <p className="font-black text-slate-900 text-sm md:text-base truncate">{inv.teamName}</p>
-                    <p className="text-[11px] md:text-xs text-slate-400 font-bold truncate">프로젝트: {inv.projectTitle}</p>
-                    <p className="text-xs md:text-sm text-slate-400 font-bold mt-1">{inv.leaderName} 님이 팀에 초대했습니다.</p>
+                    <p className="font-bold text-[#1D1D1F] text-sm md:text-base truncate">{inv.teamName}</p>
+                    <p className="text-[11px] md:text-xs text-[#8E8E93] font-bold truncate">프로젝트: {inv.projectTitle}</p>
+                    <p className="text-xs md:text-sm text-[#8E8E93] font-bold mt-1">{inv.leaderName} 님이 팀에 초대했습니다.</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
-                    <button onClick={() => handleDecline(inv.teamMemberId)} className="px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500 font-bold text-xs md:text-sm hover:bg-slate-100 transition-all">거절</button>
-                    <button onClick={() => handleAccept(inv.teamMemberId)} className="px-4 py-2.5 rounded-xl bg-indigo-600 text-white font-bold text-xs md:text-sm shadow-md hover:bg-indigo-700 transition-all">수락</button>
+                    <button onClick={() => handleDecline(inv.teamMemberId)} className="px-4 py-2.5 rounded-xl bg-[#F5F5F7] text-[#6E6E73] font-bold text-xs md:text-sm hover:bg-black/[0.06] transition-all">거절</button>
+                    <button onClick={() => handleAccept(inv.teamMemberId)} className="px-4 py-2.5 rounded-xl bg-[#0071E3] text-white font-bold text-xs md:text-sm shadow-md hover:bg-[#0077ED] transition-all">수락</button>
                   </div>
                 </div>
               ))}
@@ -514,10 +491,10 @@ export const TeamTab = ({
                 <button
                   key={t.teamId}
                   onClick={() => setSelectedTeamId(t.teamId)}
-                  className={`px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap transition-all border ${
+                  className={`px-4 py-2.5 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm whitespace-nowrap transition-all border ${
                     team?.teamId === t.teamId
-                      ? "bg-indigo-600 text-white border-indigo-600 shadow-sm"
-                      : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+                      ? "bg-[#1D1D1F] text-white border-[#1D1D1F]"
+                      : "bg-[#fff] text-[#6E6E73] border-black/[0.06] hover:bg-black/[0.04]"
                   }`}
                 >
                   {t.teamName}
@@ -526,7 +503,7 @@ export const TeamTab = ({
               ))}
               <button
                 onClick={() => { setIsCreatingNewTeam(true); setShowCreateForm(true); }}
-                className="px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap bg-white text-indigo-600 border border-indigo-100 hover:bg-indigo-50 transition-all shrink-0"
+                className="px-4 py-2.5 rounded-xl md:rounded-2xl font-bold text-xs md:text-sm whitespace-nowrap bg-[#fff] text-[#0071E3] border border-[#0071E3]/20 hover:bg-[#0071E3]/10 transition-all shrink-0"
               >
                 <PlusCircle size={13} className="inline mr-1 -mt-0.5" /> 새 팀
               </button>
@@ -534,15 +511,15 @@ export const TeamTab = ({
           )}
 
           {(!team || isCreatingNewTeam) ? (
-            <div className="bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200 p-8 md:p-16 text-center">
+            <div className="bg-[#fff] rounded-3xl border border-dashed border-black/[0.08] p-8 md:p-16 text-center">
               <Layers size={40} className="mx-auto text-slate-200 mb-4" />
-              <p className="text-slate-500 font-bold mb-6 text-sm md:text-base leading-relaxed">
+              <p className="text-[#6E6E73] font-bold mb-6 text-sm md:text-base leading-relaxed">
                 {teams.length > 0
                   ? <>새로운 팀을 하나 더 만들 수 있어요.<br />여러 팀에 동시에 참여할 수 있습니다.</>
                   : <>아직 소속된 팀이 없습니다.<br />팀을 만들어 팀원들과 총회자료를 함께 제출해보세요.</>}
               </p>
               {!showCreateForm ? (
-                <button onClick={() => setShowCreateForm(true)} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-indigo-600 text-white font-black shadow-lg shadow-indigo-100 text-sm transition-all active:scale-95">
+                <button onClick={() => setShowCreateForm(true)} className="inline-flex items-center gap-2 px-6 py-3.5 rounded-2xl bg-[#0071E3] text-white font-bold text-sm transition-all active:scale-95">
                   <PlusCircle size={18} /> 새 팀 만들기
                 </button>
               ) : (
@@ -552,33 +529,33 @@ export const TeamTab = ({
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
                     placeholder="팀 이름"
-                    className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                    className="w-full px-4 py-3.5 bg-[#F5F5F7] rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                   />
                   <input
                     value={newProjectTitle}
                     onChange={(e) => setNewProjectTitle(e.target.value)}
                     onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
                     placeholder="프로젝트 명"
-                    className="w-full px-4 py-3.5 bg-slate-50 rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                    className="w-full px-4 py-3.5 bg-[#F5F5F7] rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                   />
-                  <button disabled={isCreating} onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-indigo-600 text-white font-black text-sm shadow-md transition-all active:scale-95 disabled:opacity-60">{isCreating ? "생성 중..." : "팀 생성"}</button>
+                  <button disabled={isCreating} onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-[#0071E3] text-white font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-60">{isCreating ? "생성 중..." : "팀 생성"}</button>
                   {teams.length > 0 && (
-                    <button onClick={() => { setIsCreatingNewTeam(false); setShowCreateForm(false); }} className="w-full px-5 py-3 rounded-2xl bg-slate-50 text-slate-400 font-black text-sm">취소</button>
+                    <button onClick={() => { setIsCreatingNewTeam(false); setShowCreateForm(false); }} className="w-full px-5 py-3 rounded-2xl bg-[#F5F5F7] text-[#8E8E93] font-bold text-sm">취소</button>
                   )}
                 </div>
               )}
               {teams.length > 0 && !showCreateForm && (
-                <button onClick={() => setIsCreatingNewTeam(false)} className="block mx-auto mt-3 text-slate-400 font-bold text-xs hover:text-slate-600">
+                <button onClick={() => setIsCreatingNewTeam(false)} className="block mx-auto mt-3 text-[#8E8E93] font-bold text-xs hover:text-[#3A3A3C]">
                   내 팀으로 돌아가기
                 </button>
               )}
             </div>
           ) : (
-            <div className="bg-white rounded-2xl md:rounded-[3rem] p-6 md:p-12 border border-slate-100 shadow-sm">
+            <div className="bg-[#fff] rounded-3xl p-6 md:p-12 border border-black/[0.06] shadow-sm">
               <div className="flex items-start justify-between gap-4 mb-8 md:mb-10">
                 <div className="min-w-0 flex-1 space-y-4">
                   <div>
-                    <span className="text-[10px] md:text-xs font-black text-indigo-500 uppercase tracking-widest">Team Name</span>
+                    <span className="text-xs font-semibold text-[#8E8E93]">팀 이름</span>
                     {isEditingTeamName ? (
                       <div className="flex items-center gap-2 mt-2">
                         <input
@@ -586,15 +563,15 @@ export const TeamTab = ({
                           value={teamNameDraft}
                           onChange={(e) => setTeamNameDraft(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleSaveTeamName()}
-                          className="flex-1 bg-slate-50 px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-black text-lg md:text-2xl text-slate-900 min-w-0"
+                          className="flex-1 bg-[#F5F5F7] px-4 py-2.5 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-lg md:text-2xl text-[#1D1D1F] min-w-0"
                         />
-                        <button onClick={handleSaveTeamName} className="p-2.5 bg-indigo-600 text-white rounded-xl shadow-md shrink-0"><Save size={18} /></button>
+                        <button onClick={handleSaveTeamName} className="p-2.5 bg-[#0071E3] text-white rounded-xl shadow-md shrink-0"><Save size={18} /></button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 mt-1">
-                        <h2 className="text-xl md:text-3xl font-black text-slate-900 truncate">{team.teamName}</h2>
+                        <h2 className="text-xl md:text-3xl font-bold text-[#1D1D1F] truncate">{team.teamName}</h2>
                         {isLeader && (
-                          <button onClick={() => { setIsEditingTeamName(true); setTeamNameDraft(team.teamName); }} className="text-slate-300 hover:text-indigo-500 shrink-0 transition-colors">
+                          <button onClick={() => { setIsEditingTeamName(true); setTeamNameDraft(team.teamName); }} className="text-[#C7C7CC] hover:text-[#0071E3] shrink-0 transition-colors">
                             <Edit2 size={16} />
                           </button>
                         )}
@@ -603,7 +580,7 @@ export const TeamTab = ({
                   </div>
 
                   <div>
-                    <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Project Title</span>
+                    <span className="text-xs font-semibold text-[#8E8E93]">프로젝트</span>
                     {isEditingProjectTitle ? (
                       <div className="flex items-center gap-2 mt-2">
                         <input
@@ -611,15 +588,15 @@ export const TeamTab = ({
                           value={projectTitleDraft}
                           onChange={(e) => setProjectTitleDraft(e.target.value)}
                           onKeyDown={(e) => e.key === "Enter" && handleSaveProjectTitle()}
-                          className="flex-1 bg-slate-50 px-3.5 py-2 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm md:text-base text-slate-700 min-w-0"
+                          className="flex-1 bg-[#F5F5F7] px-3.5 py-2 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm md:text-base text-[#1D1D1F] min-w-0"
                         />
-                        <button onClick={handleSaveProjectTitle} className="p-2 bg-indigo-600 text-white rounded-xl shadow-md shrink-0"><Save size={15} /></button>
+                        <button onClick={handleSaveProjectTitle} className="p-2 bg-[#0071E3] text-white rounded-xl shadow-md shrink-0"><Save size={15} /></button>
                       </div>
                     ) : (
                       <div className="flex items-center gap-2 mt-1">
-                        <p className="text-sm md:text-base font-bold text-slate-500 truncate">{team.projectTitle}</p>
+                        <p className="text-sm md:text-base font-bold text-[#6E6E73] truncate">{team.projectTitle}</p>
                         {isLeader && (
-                          <button onClick={() => { setIsEditingProjectTitle(true); setProjectTitleDraft(team.projectTitle); }} className="text-slate-300 hover:text-indigo-500 shrink-0 transition-colors">
+                          <button onClick={() => { setIsEditingProjectTitle(true); setProjectTitleDraft(team.projectTitle); }} className="text-[#C7C7CC] hover:text-[#0071E3] shrink-0 transition-colors">
                             <Edit2 size={13} />
                           </button>
                         )}
@@ -628,20 +605,20 @@ export const TeamTab = ({
                   </div>
                 </div>
                 {isLeader ? (
-                  <button onClick={handleDisband} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-pink-50 text-pink-600 font-bold text-xs md:text-sm hover:bg-pink-100 transition-all">
+                  <button onClick={handleDisband} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#FF3B30]/[0.08] text-[#FF3B30] font-bold text-xs md:text-sm hover:bg-[#FF3B30]/[0.12] transition-all">
                     <Trash2 size={14} /> 팀 해체
                   </button>
                 ) : (
-                  <button onClick={handleLeaveTeam} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-slate-50 text-slate-500 font-bold text-xs md:text-sm hover:bg-slate-100 transition-all">
+                  <button onClick={handleLeaveTeam} className="shrink-0 flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-[#F5F5F7] text-[#6E6E73] font-bold text-xs md:text-sm hover:bg-black/[0.06] transition-all">
                     <LogOut size={14} /> 팀 나가기
                   </button>
                 )}
               </div>
 
               <div className="flex items-center justify-between mb-4">
-                <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">팀원 ({team.members.length})</p>
+                <p className="text-[10px] md:text-xs font-bold text-[#8E8E93] uppercase tracking-widest">팀원 ({team.members.length})</p>
                 {isLeader && (
-                  <button onClick={openInviteModal} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-indigo-50 text-indigo-600 font-bold text-xs hover:bg-indigo-100 transition-all">
+                  <button onClick={openInviteModal} className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-[#0071E3]/10 text-[#0071E3] font-bold text-xs hover:bg-[#0071E3]/15 transition-all">
                     <UserPlus size={14} /> 팀원 초대
                   </button>
                 )}
@@ -649,7 +626,7 @@ export const TeamTab = ({
 
               <div className="space-y-2 md:space-y-3">
                 {team.members.map((m: any) => (
-                  <div key={m.teamMemberId} className="flex items-center justify-between gap-3 p-3.5 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl border border-slate-100">
+                  <div key={m.teamMemberId} className="flex items-center justify-between gap-3 p-3.5 md:p-4 bg-[#F5F5F7] rounded-xl md:rounded-2xl border border-black/[0.06]">
                     <div className="flex items-center gap-3 min-w-0">
                       <img
                         src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
@@ -659,17 +636,17 @@ export const TeamTab = ({
                       />
                       <div className="min-w-0">
                         <div className="flex items-center gap-1.5">
-                          <span className="font-bold text-slate-800 text-sm truncate">{formatStudentId(m.studentId)} {m.name}</span>
-                          {m.isLeader && <Crown size={13} className="text-amber-500 shrink-0" />}
+                          <span className="font-bold text-[#1D1D1F] text-sm truncate">{formatStudentId(m.studentId)} {m.name}</span>
+                          {m.isLeader && <Crown size={13} className="text-[#FF9500] shrink-0" />}
                         </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-2 shrink-0">
-                      <span className={`text-[9px] md:text-[10px] font-black px-2 py-1 rounded-full ${m.status === "ACCEPTED" ? "bg-green-50 text-green-600" : "bg-orange-50 text-orange-500"}`}>
+                      <span className={`text-[9px] md:text-[10px] font-bold px-2 py-1 rounded-full ${m.status === "ACCEPTED" ? "bg-[#34C759]/10 text-[#248A3D]" : "bg-[#FF9500]/10 text-[#C93400]"}`}>
                         {m.status === "ACCEPTED" ? "수락됨" : "대기중"}
                       </span>
                       {isLeader && !m.isLeader && (
-                        <button onClick={() => handleRemoveMember(m.loginId)} className="p-1.5 text-slate-300 hover:text-pink-500 transition-colors">
+                        <button onClick={() => handleRemoveMember(m.loginId)} className="p-1.5 text-[#C7C7CC] hover:text-[#FF3B30] transition-colors">
                           <X size={16} />
                         </button>
                       )}
@@ -683,42 +660,22 @@ export const TeamTab = ({
           {/* ✨ [신규] 팀 공유 자료 — 개인 마이페이지와 완전히 별개의 제출 트랙, 팀원 누구나 제출/수정 가능 */}
           {team && (
             <div className="mt-10 md:mt-14">
-              <h3 className="text-sm md:text-base font-black text-slate-900 flex items-center gap-2 mb-4 md:mb-6">
-                <FileText size={16} className="text-indigo-500" /> 팀 공유 자료
+              <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] flex items-center gap-2 mb-4 md:mb-6">
+                <FileText size={16} className="text-[#0071E3]" /> 팀 공유 자료
               </h3>
-              <div className="space-y-3 md:space-y-4">
-                {displaySubmissions.map((s) => (
-                  <motion.div
-                    key={s.id}
-                    whileHover={{ scale: 1.01, y: -2 }}
-                    onClick={() => handleSubmissionCardClick(s)}
-                    className="bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between group transition-all cursor-pointer hover:shadow-lg"
-                  >
-                    <div className="flex items-center gap-3 md:gap-6">
-                      <span className={`text-lg md:text-2xl font-bold shrink-0 ${isSubmittedStatus(s.status) ? "text-indigo-600" : "text-slate-400"}`}>{s.month}월</span>
-                      <div className="h-8 md:h-10 w-px bg-slate-200"></div>
-                      <div className="min-w-0">
-                        <div className="flex items-center gap-2 mb-0.5 md:mb-1.5">
-                          <span className={`px-1.5 py-0.5 rounded-md text-[8px] md:text-[10px] font-bold uppercase shrink-0 ${isSubmittedStatus(s.status) ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{s.type}</span>
-                          <h4 className="font-bold text-slate-900 text-sm md:text-lg truncate">{s.month}월 팀 자료</h4>
-                        </div>
-                        <div className="flex items-center gap-2 md:gap-4 text-[9px] md:text-[11px] text-slate-400 font-bold uppercase truncate">
-                          {isSubmittedStatus(s.status) ? (
-                            <span className="flex items-center gap-1 text-indigo-500"><Check size={12} /> {s.date || "최근"} 제출됨{s.updatedBy ? ` · ${s.updatedBy}` : ""}</span>
-                          ) : s.isWithinPeriod ? (
-                            <span className="flex items-center gap-1 text-green-500 font-black"><Clock size={12} /> 현재 제출 가능</span>
-                          ) : s.isPast ? (
-                            <span className="flex items-center gap-1 text-pink-500 font-black"><X size={12} /> 제출 종료</span>
-                          ) : (
-                            <span className="flex items-center gap-1"><Clock size={12} /> {s.startDate || "미설정"}</span>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                    <span className={`text-[9px] md:text-[10px] font-bold px-2 md:px-4 py-1.5 md:py-2 rounded-full border shrink-0 ${isSubmittedStatus(s.status) ? "text-green-600 bg-green-50 border-green-100" : s.isWithinPeriod ? "text-indigo-600 bg-indigo-50 border-indigo-100" : "text-orange-600 bg-orange-50 border-orange-100"}`}>
-                      {isSubmittedStatus(s.status) ? "완료" : s.isWithinPeriod ? "가능" : "불가"}
-                    </span>
-                  </motion.div>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                {displaySubmissions.map((sub) => (
+                  <MonthCard
+                    key={sub.id}
+                    month={sub.month}
+                    title={sub.memo || `${sub.month}월 ${reportKind(sub.month)}`}
+                    state={submitStateOf(sub)}
+                    date={sub.date}
+                    startDate={sub.startDate}
+                    endDate={sub.endDate}
+                    extra={sub.updatedBy || undefined}
+                    onClick={() => handleSubmissionCardClick(sub)}
+                  />
                 ))}
               </div>
             </div>
@@ -727,39 +684,39 @@ export const TeamTab = ({
           {/* ✨ 다른 팀 둘러보기 — 초대 대기중인 인원은 백엔드에서부터 제외되어 내려온다 */}
           <div className="mt-10 md:mt-14">
             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
-              <h3 className="text-sm md:text-base font-black text-slate-900 flex items-center gap-2">
-                <Users size={16} className="text-indigo-500" /> 다른 팀 둘러보기 <span className="text-slate-300">({otherTeams.length})</span>
+              <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] flex items-center gap-2">
+                <Users size={16} className="text-[#0071E3]" /> 다른 팀 둘러보기 <span className="text-[#C7C7CC]">({otherTeams.length})</span>
               </h3>
               <div className="relative w-full sm:w-72">
-                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-300" size={14} />
+                <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C7C7CC]" size={14} />
                 <input
                   value={teamSearch}
                   onChange={(e) => setTeamSearch(e.target.value)}
                   placeholder="팀명, 프로젝트명 또는 팀원 이름 검색"
-                  className="w-full pl-9 pr-3 py-2.5 bg-white border border-slate-200 rounded-xl outline-none font-bold text-xs shadow-sm focus:ring-2 focus:ring-indigo-100 transition-all"
+                  className="w-full pl-9 pr-3 py-2.5 bg-[#fff] border border-black/[0.08] rounded-xl outline-none font-bold text-xs shadow-sm focus:ring-2 focus:ring-[#0071E3]/20 transition-all"
                 />
               </div>
             </div>
 
             {otherTeams.length === 0 ? (
-              <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200 p-8 md:p-12 text-center">
-                <p className="text-slate-300 font-bold text-sm">
+              <div className="bg-[#fff] rounded-3xl border border-dashed border-black/[0.08] p-8 md:p-12 text-center">
+                <p className="text-[#C7C7CC] font-bold text-sm">
                   {allTeams.length === 0 ? `${selectedTerm.year}년 ${selectedTerm.semester}학기에 만들어진 팀이 아직 없습니다.` : "검색 결과가 없습니다."}
                 </p>
               </div>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
                 {otherTeams.map((t) => (
-                  <div key={t.teamId} className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2rem] border border-slate-100 shadow-sm">
-                    <p className="font-black text-slate-900 text-sm md:text-base truncate">{t.teamName}</p>
-                    <p className="text-[11px] md:text-xs font-bold text-slate-400 truncate mb-3">프로젝트: {t.projectTitle}</p>
+                  <div key={t.teamId} className="bg-[#fff] p-4 md:p-6 rounded-3xl border border-black/[0.06] shadow-sm">
+                    <p className="font-bold text-[#1D1D1F] text-sm md:text-base truncate">{t.teamName}</p>
+                    <p className="text-[11px] md:text-xs font-bold text-[#8E8E93] truncate mb-3">프로젝트: {t.projectTitle}</p>
                     <div className="flex flex-wrap gap-2">
                       {t.members.map((m: any) => (
                         <button
                           type="button"
                           key={m.teamMemberId}
                           onClick={() => onNavigate && onNavigate("member-detail", m.loginId)}
-                          className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-slate-50 rounded-full border border-slate-100 hover:bg-indigo-50 hover:border-indigo-100 transition-colors"
+                          className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-[#F5F5F7] rounded-full border border-black/[0.06] hover:bg-[#0071E3]/10 hover:border-[#0071E3]/20 transition-colors"
                         >
                           <img
                             src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
@@ -767,8 +724,8 @@ export const TeamTab = ({
                             className="w-5 h-5 rounded-full object-cover shrink-0"
                             alt={m.name}
                           />
-                          <span className="text-[11px] font-bold text-slate-600">{formatStudentId(m.studentId)} {m.name}</span>
-                          {m.isLeader && <Crown size={11} className="text-amber-500 shrink-0" />}
+                          <span className="text-[11px] font-bold text-[#3A3A3C]">{formatStudentId(m.studentId)} {m.name}</span>
+                          {m.isLeader && <Crown size={11} className="text-[#FF9500] shrink-0" />}
                         </button>
                       ))}
                     </div>
@@ -783,28 +740,28 @@ export const TeamTab = ({
       <AnimatePresence>
         {isInviteOpen && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsInviteOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-white rounded-[2rem] md:rounded-[2.5rem] p-6 md:p-8 shadow-2xl max-h-[80vh] flex flex-col">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setIsInviteOpen(false)} />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-[#fff] rounded-[28px] p-6 md:p-8 shadow-2xl max-h-[80vh] flex flex-col">
               <div className="flex items-center justify-between mb-4 md:mb-6">
-                <h3 className="text-lg md:text-xl font-black text-slate-900">팀원 초대</h3>
-                <button onClick={() => setIsInviteOpen(false)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 transition-colors"><X size={16} /></button>
+                <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F]">팀원 초대</h3>
+                <button onClick={() => setIsInviteOpen(false)} className="p-2 bg-[#F5F5F7] text-[#8E8E93] rounded-xl hover:bg-black/[0.06] transition-colors"><X size={16} /></button>
               </div>
               <div className="relative mb-4">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-300" size={16} />
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-[#C7C7CC]" size={16} />
                 <input
                   autoFocus
                   value={inviteSearch}
                   onChange={(e) => setInviteSearch(e.target.value)}
                   placeholder="이름 또는 학번 검색"
-                  className="w-full pl-10 pr-4 py-3 bg-slate-50 rounded-xl outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm"
+                  className="w-full pl-10 pr-4 py-3 bg-[#F5F5F7] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                 />
               </div>
               <div className="flex-1 overflow-y-auto space-y-2">
                 {filteredMembers.length === 0 && (
-                  <p className="text-center text-slate-300 font-bold text-sm py-10">검색 결과가 없습니다.</p>
+                  <p className="text-center text-[#C7C7CC] font-bold text-sm py-10">검색 결과가 없습니다.</p>
                 )}
                 {filteredMembers.map((m) => (
-                  <div key={m.loginId} className="flex items-center justify-between gap-3 p-3 rounded-xl hover:bg-slate-50 transition-colors">
+                  <div key={m.loginId} className="flex items-center justify-between gap-3 p-3 rounded-xl hover:bg-black/[0.04] transition-colors">
                     <div className="flex items-center gap-2.5 min-w-0">
                       <img
                         src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
@@ -813,11 +770,11 @@ export const TeamTab = ({
                         alt={m.name}
                       />
                       <div className="min-w-0">
-                        <p className="font-bold text-slate-800 text-sm truncate">{m.name}</p>
-                        <p className="text-[10px] text-slate-400 font-bold">{m.studentId}학번</p>
+                        <p className="font-bold text-[#1D1D1F] text-sm truncate">{m.name}</p>
+                        <p className="text-[10px] text-[#8E8E93] font-bold">{m.studentId}학번</p>
                       </div>
                     </div>
-                    <button onClick={() => handleInvite(m.loginId)} className="px-3 py-1.5 rounded-lg bg-indigo-600 text-white font-bold text-xs shrink-0 transition-all active:scale-95">초대</button>
+                    <button onClick={() => handleInvite(m.loginId)} className="px-3 py-1.5 rounded-lg bg-[#0071E3] text-white font-bold text-xs shrink-0 transition-all active:scale-95">초대</button>
                   </div>
                 ))}
               </div>
@@ -830,16 +787,16 @@ export const TeamTab = ({
       <AnimatePresence>
         {selectedSubmission && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedSubmission(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSelectedSubmission(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-[#fff] rounded-[28px] p-6 md:p-10 shadow-2xl overflow-y-auto max-h-[90vh]">
               <div className="flex justify-between items-start mb-6 md:mb-8">
                 <div>
-                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] md:text-[10px] font-bold rounded-md uppercase border border-indigo-100">{selectedSubmission.month}월 팀 자료</span>
-                  <h3 className="text-xl md:text-3xl font-bold text-slate-900 mt-1 md:mt-2">
+                  <span className="px-2 py-0.5 bg-[#0071E3]/10 text-[#0071E3] text-[9px] md:text-[10px] font-bold rounded-md uppercase border border-[#0071E3]/20">{selectedSubmission.month}월 팀 자료</span>
+                  <h3 className="text-xl md:text-3xl font-bold text-[#1D1D1F] mt-1 md:mt-2">
                     {isSubmittedStatus(selectedSubmission.status) ? (selectedSubmission.isWithinPeriod ? "제출 내용 수정" : "제출 자료 확인") : "팀 자료 제출"}
                   </h3>
                 </div>
-                <button onClick={() => setSelectedSubmission(null)} className="p-2 bg-slate-50 text-slate-400 rounded-xl hover:bg-slate-100 shrink-0"><X size={18} /></button>
+                <button onClick={() => setSelectedSubmission(null)} className="p-2 bg-[#F5F5F7] text-[#8E8E93] rounded-xl hover:bg-black/[0.06] shrink-0"><X size={18} /></button>
               </div>
 
               {!selectedSubmission.isWithinPeriod && (
@@ -851,21 +808,21 @@ export const TeamTab = ({
                 </div>
               )}
 
-              <p className="text-[11px] md:text-xs text-slate-400 font-bold mb-6 md:mb-8 -mt-2">팀원 누구나 이 자료를 올리거나 수정할 수 있어요.</p>
+              <p className="text-[11px] md:text-xs text-[#8E8E93] font-bold mb-6 md:mb-8 -mt-2">팀원 누구나 이 자료를 올리거나 수정할 수 있어요.</p>
 
               <div className="mb-6 md:mb-8">
-                <div className="flex items-center gap-1.5 mb-2 ml-1"><MessageCircle size={14} className="text-indigo-500" /><p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">활동 요약</p></div>
+                <div className="flex items-center gap-1.5 mb-2 ml-1"><MessageCircle size={14} className="text-[#0071E3]" /><p className="text-[10px] md:text-xs font-bold text-[#8E8E93] uppercase tracking-widest">활동 요약</p></div>
                 <textarea
                   value={submissionMemo}
                   onChange={(e) => setSubmissionMemo(e.target.value)}
                   disabled={!selectedSubmission.isWithinPeriod}
                   placeholder="활동 내용을 입력해주세요."
-                  className="w-full p-4 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm min-h-[80px] md:min-h-[100px] disabled:opacity-50 resize-none"
+                  className="w-full p-4 bg-[#F5F5F7] rounded-xl border-none outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-xs md:text-sm min-h-[80px] md:min-h-[100px] disabled:opacity-50 resize-none"
                 />
               </div>
 
               <div className="space-y-3 md:space-y-4 mb-6 md:mb-8">
-                <p className="text-[10px] md:text-xs font-bold text-slate-400 ml-1 uppercase">제출 파일 관리</p>
+                <p className="text-[10px] md:text-xs font-bold text-[#8E8E93] ml-1 uppercase">제출 파일 관리</p>
                 <div className="grid grid-cols-1 gap-2 md:gap-3">
                   <input type="file" accept=".ppt,.pptx" ref={fileRefs.presentation} className="hidden" onChange={handlePresentationFileChange} />
                   <input type="file" accept=".pdf" ref={fileRefs.pdf} className="hidden" onChange={handlePdfFileChange} />
@@ -884,12 +841,12 @@ export const TeamTab = ({
               </div>
 
               <div className="flex gap-3">
-                <button onClick={() => setSelectedSubmission(null)} className="flex-1 py-3.5 md:py-5 bg-slate-50 text-slate-500 rounded-xl md:rounded-2xl font-bold text-xs md:text-base hover:bg-slate-100 transition-all">닫기</button>
+                <button onClick={() => setSelectedSubmission(null)} className="flex-1 py-3.5 md:py-5 bg-[#F5F5F7] text-[#6E6E73] rounded-xl md:rounded-2xl font-bold text-xs md:text-base hover:bg-black/[0.06] transition-all">닫기</button>
                 {selectedSubmission.isWithinPeriod && (
                   <button
                     onClick={handleSubmitTeamFiles}
                     disabled={!canSubmitFile || isSubmittingFile}
-                    className={`flex-[2] py-3.5 md:py-5 rounded-xl md:rounded-2xl font-bold text-xs md:text-base transition-all flex items-center justify-center gap-2 ${canSubmitFile && !isSubmittingFile ? "bg-indigo-600 text-white shadow-xl" : "bg-slate-100 text-slate-400 cursor-not-allowed"}`}
+                    className={`flex-[2] py-3.5 md:py-5 rounded-xl md:rounded-2xl font-bold text-xs md:text-base transition-all flex items-center justify-center gap-2 ${canSubmitFile && !isSubmittingFile ? "bg-[#0071E3] text-white shadow-xl" : "bg-black/[0.05] text-[#8E8E93] cursor-not-allowed"}`}
                   >
                     {isSubmittingFile ? <Loader2 className="animate-spin" size={18} /> : (isSubmittedStatus(selectedSubmission.status) ? "수정 저장" : "제출 완료")}
                   </button>
@@ -904,24 +861,24 @@ export const TeamTab = ({
 };
 
 const UploadSlot = ({ label, fileName, onClick, disabled, existingPath, onDownload }: any) => (
-  <div className={`flex items-center justify-between p-3 md:p-5 rounded-xl md:rounded-2xl border transition-all ${fileName || existingPath ? "bg-indigo-50 border-indigo-100" : "bg-slate-50 border-slate-100"}`}>
+  <div className={`flex items-center justify-between p-3 md:p-5 rounded-xl md:rounded-2xl border transition-all ${fileName || existingPath ? "bg-[#0071E3]/10 border-[#0071E3]/20" : "bg-[#F5F5F7] border-black/[0.06]"}`}>
     <div className="flex items-center gap-2 md:gap-4 min-w-0">
-      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${fileName || existingPath ? "bg-indigo-600 text-white" : "bg-white text-slate-400 border"}`}>
+      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${fileName || existingPath ? "bg-[#0071E3] text-white" : "bg-[#fff] text-[#8E8E93] border"}`}>
         {label === "발표자료" ? <Presentation size={16} /> : label === "PDF" ? <FileText size={16} /> : <FileArchive size={16} />}
       </div>
       <div className="text-left min-w-0">
-        <p className="text-[11px] md:text-sm font-bold text-slate-800">{label}</p>
-        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase truncate max-w-[100px] md:max-w-[150px]">{fileName || (existingPath ? "파일 있음" : disabled ? "자료 없음" : "끌어다 놓거나 선택")}</p>
+        <p className="text-[11px] md:text-sm font-bold text-[#1D1D1F]">{label}</p>
+        <p className="text-[8px] md:text-[10px] font-bold text-[#8E8E93] uppercase truncate max-w-[100px] md:max-w-[150px]">{fileName || (existingPath ? "파일 있음" : disabled ? "자료 없음" : "끌어다 놓거나 선택")}</p>
       </div>
     </div>
     <div className="flex items-center gap-1.5">
       {existingPath && (
-        <button onClick={onDownload} className="p-1.5 md:p-2 bg-white text-indigo-600 rounded-lg shadow-sm border border-indigo-100 shrink-0">
+        <button onClick={onDownload} className="p-1.5 md:p-2 bg-[#fff] text-[#0071E3] rounded-lg shadow-sm border border-[#0071E3]/20 shrink-0">
           <Download size={14} />
         </button>
       )}
       {!disabled && (
-        <button onClick={onClick} className="p-1.5 md:p-2 bg-indigo-600 text-white rounded-lg shadow-sm shrink-0">
+        <button onClick={onClick} className="p-1.5 md:p-2 bg-[#0071E3] text-white rounded-lg shadow-sm shrink-0">
           <Upload size={14} />
         </button>
       )}

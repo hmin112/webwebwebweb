@@ -1,8 +1,9 @@
 import { api } from "../../../api/axios";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { reportKind } from "../../assembly/assemblyUi";
 import {
-  ArrowLeft, FileText, Check, Clock, X,
+  ArrowLeft, FileText, X,
   Download, Presentation, CalendarDays, MessageCircle,
   FileArchive, ExternalLink, Loader2, ChevronDown, Eye,
   Layers, Crown, Link2, User,
@@ -285,42 +286,40 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   return (
     <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="pb-16 md:pb-20">
 
-      {/* 🔙 헤더 영역 (이름 + 학번) */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 md:mb-12 gap-4 md:gap-6">
-        <div className="flex items-center gap-3 md:gap-6">
-          <button onClick={onBack} className="p-3 md:p-4 bg-white border border-slate-100 rounded-xl md:rounded-2xl text-slate-400 hover:text-indigo-600 transition-all group shrink-0">
-            <ArrowLeft className="w-5 h-5 md:w-5 md:h-5 group-hover:-translate-x-1 transition-transform" />
+      {/* ✨ [2026-09-30] 애플 스타일 머리말 — 뒤로 가기 + 이름/학번 + 현재 프로젝트, 오른쪽에 학기 선택 */}
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 md:mb-8 gap-4">
+        <div className="flex items-center gap-3 md:gap-4 min-w-0">
+          <button onClick={onBack} aria-label="뒤로" className="w-10 h-10 rounded-full bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] text-[#1D1D1F] flex items-center justify-center hover:bg-[#F5F5F7] transition-colors shrink-0">
+            <ArrowLeft className="w-[18px] h-[18px]" />
           </button>
           <div className="min-w-0">
-            <div className="flex items-center gap-2 md:gap-3 mb-0.5 md:mb-1">
-              <h1 className="text-xl md:text-3xl font-[900] text-slate-900 tracking-tight truncate">{memberInfo.name}</h1>
-              <span className="px-2 py-0.5 md:px-3 md:py-1 bg-indigo-50 text-indigo-600 text-[8px] md:text-[10px] font-black rounded-md md:rounded-lg uppercase border border-indigo-100/50 shrink-0">
+            <div className="flex items-center gap-2">
+              <h1 className="text-[26px] md:text-[32px] font-bold text-[#1D1D1F] tracking-[-0.02em] truncate">{memberInfo.name}</h1>
+              <span className="px-2 py-0.5 bg-black/[0.05] text-[#6E6E73] text-[11px] font-semibold rounded-md shrink-0">
                 {memberInfo.displayStudentId}
               </span>
             </div>
-            <p className="text-slate-400 font-bold flex items-center gap-1.5 md:gap-2 text-[11px] md:text-sm truncate">
-              <ExternalLink className="text-indigo-400 w-3 h-3 md:w-3.5 md:h-3.5" />
+            <p className="text-[#6E6E73] text-sm truncate mt-0.5">
               {isPersonalView
                 ? (memberInfo.projectTitle || "개인 프로젝트 미등록")
-                : (selectedTeam?.projectTitle || "프로젝트 제목 미등록")}
+                : (selectedTeam?.projectTitle || "프로젝트 명 미등록")}
             </p>
           </div>
         </div>
 
-        {/* 학기 선택 버튼 */}
         <div className="relative w-full md:w-auto" ref={termMenuRef}>
-          <button onClick={() => setIsTermMenuOpen(!isTermMenuOpen)} className="w-full md:w-auto flex items-center justify-between md:justify-start gap-4 bg-white px-4 py-3 md:px-6 md:py-4 rounded-xl md:rounded-[1.5rem] border border-slate-100 shadow-sm transition-all active:scale-95">
-            <div className="flex items-center gap-2 md:gap-4">
-              <CalendarDays className="text-indigo-600 w-4 h-4 md:w-[18px] md:h-[18px]" />
-              <span className="font-black text-slate-900 text-xs md:text-sm">{selectedTerm.year}년도 {selectedTerm.semester}학기</span>
-            </div>
-            <ChevronDown className="w-4 h-4 md:w-4 md:h-4 text-slate-400" />
+          <button onClick={() => setIsTermMenuOpen(!isTermMenuOpen)} className="bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] w-full md:w-auto flex items-center justify-between gap-3 h-10 px-4 rounded-full">
+            <span className="flex items-center gap-2">
+              <CalendarDays className="text-[#8E8E93] w-4 h-4" />
+              <span className="font-semibold text-[#1D1D1F] text-sm">{selectedTerm.year}년 {selectedTerm.semester}학기</span>
+            </span>
+            <ChevronDown className="w-4 h-4 text-[#8E8E93]" />
           </button>
           <AnimatePresence>
             {isTermMenuOpen && (
-              <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 10 }} className="absolute right-0 mt-2 md:mt-3 w-full md:w-56 bg-white border border-slate-100 rounded-xl md:rounded-[1.5rem] shadow-2xl z-50 p-1.5 md:p-2 overflow-hidden">
+              <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 6 }} className="absolute right-0 mt-2 w-full md:w-52 bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] rounded-2xl shadow-[0_12px_32px_rgb(0_0_0/0.12)] z-50 p-1.5">
                 {termOptions.map((option) => (
-                  <button key={`${option.year}-${option.semester}`} onClick={() => { setSelectedTerm({ year: option.year, semester: option.semester }); setIsTermMenuOpen(false); }} className={`w-full text-left px-4 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-xs md:text-sm font-bold ${selectedTerm.semester === option.semester ? "bg-indigo-50 text-indigo-600" : "text-slate-600 hover:bg-slate-50"}`}>
+                  <button key={`${option.year}-${option.semester}`} onClick={() => { setSelectedTerm({ year: option.year, semester: option.semester }); setIsTermMenuOpen(false); }} className={`w-full text-left px-3.5 py-2.5 rounded-xl text-sm font-semibold ${selectedTerm.year === option.year && selectedTerm.semester === option.semester ? "bg-[#0071E3]/10 text-[#0071E3]" : "text-[#1D1D1F] hover:bg-black/[0.04]"}`}>
                     {option.label}
                   </button>
                 ))}
@@ -332,11 +331,8 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
 
       {/* ✨ [2026-09-07 추가] 이번 학기 관련 링크(깃/노션 등) — 마이페이지에서 등록한 것을 읽기 전용으로 노출 */}
       {isPersonalView && projectLinks.length > 0 && (
-        <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
-          <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
-            <Link2 size={14} />
-            <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">관련 링크</p>
-          </div>
+        <div className="mb-6 bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-5 rounded-3xl">
+          <p className="flex items-center gap-1.5 mb-3 text-xs font-semibold text-[#6E6E73]"><Link2 size={13} /> 관련 링크</p>
           <div className="flex flex-wrap gap-2">
             {projectLinks.map((link, idx) => (
               <a
@@ -344,10 +340,10 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="flex items-center gap-1.5 pl-3 pr-3.5 py-2 bg-slate-50 hover:bg-indigo-50 rounded-full border border-slate-100 hover:border-indigo-200 transition-colors group"
+                className="flex items-center gap-1.5 pl-3.5 pr-3 h-9 bg-[#F5F5F7] hover:bg-[#0071E3]/10 rounded-full transition-colors group"
               >
-                <span className="text-xs md:text-sm font-black text-slate-700 group-hover:text-indigo-600">{link.label}</span>
-                <ExternalLink size={12} className="text-slate-300 group-hover:text-indigo-400" />
+                <span className="text-sm font-semibold text-[#1D1D1F] group-hover:text-[#0071E3]">{link.label}</span>
+                <ExternalLink size={12} className="text-[#AEAEB2] group-hover:text-[#0071E3]" />
               </a>
             ))}
           </div>
@@ -359,8 +355,8 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         <div className="flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
           <button
             onClick={() => setSelectedProjectKey("personal")}
-            className={`px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap transition-all border ${
-              isPersonalView ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+            className={`h-9 px-4 rounded-full font-semibold text-[13px] whitespace-nowrap transition-colors border ${
+              isPersonalView ? "bg-[#1D1D1F] text-white border-[#1D1D1F]" : "bg-[#fff] text-[#1D1D1F]/70 border-black/[0.06] hover:text-[#1D1D1F]"
             }`}
           >
             <User size={12} className="inline mr-1.5 -mt-0.5" /> 개인 프로젝트
@@ -369,8 +365,8 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
             <button
               key={t.teamId}
               onClick={() => setSelectedProjectKey(t.teamId)}
-              className={`px-4 py-2.5 rounded-xl md:rounded-2xl font-black text-xs md:text-sm whitespace-nowrap transition-all border ${
-                selectedProjectKey === t.teamId ? "bg-indigo-600 text-white border-indigo-600 shadow-sm" : "bg-white text-slate-500 border-slate-100 hover:bg-slate-50"
+              className={`h-9 px-4 rounded-full font-semibold text-[13px] whitespace-nowrap transition-colors border ${
+                selectedProjectKey === t.teamId ? "bg-[#1D1D1F] text-white border-[#1D1D1F]" : "bg-[#fff] text-[#1D1D1F]/70 border-black/[0.06] hover:text-[#1D1D1F]"
               }`}
             >
               <Layers size={12} className="inline mr-1.5 -mt-0.5" /> {t.teamName}
@@ -380,44 +376,44 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       </div>
 
       {/* 선택된 프로젝트 정보 카드 */}
-      <div className="mb-8 md:mb-12 bg-white p-5 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-1.5 mb-3 md:mb-4 text-indigo-500">
-          {isPersonalView ? <User size={14} /> : <Layers size={14} />}
-          <p className="text-[10px] md:text-xs font-black uppercase tracking-widest">
+      <div className="mb-8 md:mb-10 bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-5 md:p-6 rounded-3xl">
+        <div className="flex items-center gap-1.5 mb-2 text-[#6E6E73]">
+          {isPersonalView ? <User size={13} /> : <Layers size={13} />}
+          <p className="text-xs font-semibold">
             {isPersonalView ? "개인 프로젝트" : "팀 프로젝트"}
           </p>
         </div>
 
         {isPersonalView ? (
           <>
-            <h4 className="font-black text-slate-900 text-base md:text-xl mb-1">
+            <h4 className="font-bold text-[#1D1D1F] text-lg md:text-xl tracking-[-0.01em] mb-1">
               {memberInfo.projectTitle || "등록된 개인 프로젝트가 없습니다"}
             </h4>
-            <p className="text-slate-400 font-bold text-xs md:text-sm">
-              {memberInfo.name} 님이 개인으로 진행한 프로젝트입니다.
+            <p className="text-[#8E8E93] text-sm">
+              {memberInfo.name} 님이 개인으로 진행한 프로젝트예요.
             </p>
           </>
         ) : selectedTeam ? (
           <>
             {/* 팀명 + 프로젝트 명 */}
             <div className="flex items-center gap-2 mb-1 flex-wrap">
-              <h4 className="font-black text-slate-900 text-base md:text-xl">{selectedTeam.teamName}</h4>
-              <span className="px-2 py-0.5 rounded-md bg-indigo-50 text-indigo-600 text-[9px] md:text-[10px] font-black uppercase">
+              <h4 className="font-bold text-[#1D1D1F] text-lg md:text-xl tracking-[-0.01em]">{selectedTeam.teamName}</h4>
+              <span className="px-2 py-0.5 rounded-md bg-black/[0.05] text-[#6E6E73] text-[11px] font-semibold">
                 팀원 {(selectedTeam.members || []).length}명
               </span>
             </div>
-            <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-5">
+            <p className="text-[#6E6E73] text-sm mb-4">
               {selectedTeam.projectTitle || "프로젝트 명 미등록"}
             </p>
 
             {/* 팀원 — 프로필 사진 + 팀장 표시 */}
-            <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest mb-2.5">팀원</p>
+            <p className="text-xs font-semibold text-[#8E8E93] mb-2">팀원</p>
             <div className="flex flex-wrap gap-2">
               {(selectedTeam.members || []).map((m: any) => (
                 <div
                   key={m.teamMemberId}
                   className={`flex items-center gap-2 pl-1 pr-3 py-1.5 rounded-full border ${
-                    m.isLeader ? "bg-amber-50 border-amber-200" : "bg-slate-50 border-slate-100"
+                    m.isLeader ? "bg-[#FF9500]/[0.08] border-[#FF9500]/25" : "bg-[#F5F5F7] border-transparent"
                   }`}
                 >
                   <img
@@ -427,11 +423,11 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
                     alt={m.name}
                   />
                   <div className="flex flex-col leading-tight">
-                    <span className="text-[11px] md:text-xs font-black text-slate-700 flex items-center gap-1">
+                    <span className="text-[13px] font-semibold text-[#1D1D1F] flex items-center gap-1">
                       {formatShortStudentId(m.studentId)} {m.name}
                       {m.isLeader && <Crown size={11} className="text-amber-500 shrink-0" />}
                     </span>
-                    <span className={`text-[9px] font-bold ${m.isLeader ? "text-amber-600" : "text-slate-400"}`}>
+                    <span className={`text-[10px] font-semibold ${m.isLeader ? "text-[#C93400]" : "text-[#8E8E93]"}`}>
                       {m.isLeader ? "팀장" : "팀원"}
                     </span>
                   </div>
@@ -442,41 +438,47 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         ) : null}
       </div>
 
-      {/* 📋 리포트 타임라인 목록 */}
-      <div className="space-y-4 md:space-y-6">
-        <h3 className="text-sm md:text-xl font-black text-slate-900 uppercase tracking-wider px-1 md:px-2 mb-4 md:mb-8">
-          {isPersonalView ? "개인 프로젝트 타임라인" : `${selectedTeam?.teamName ?? "팀"} 타임라인`}
+      {/* 📋 리포트 타임라인 — ✨ [2026-09-30] PLAN/PROGRESS/RESULT 배지 없이 "계획서·진행 보고·결과 보고"로, 미제출은 "계획서 미제출" */}
+      <div className="mb-10">
+        <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] mb-3 md:mb-4 px-1">
+          {isPersonalView ? "개인 프로젝트 기록" : `${selectedTeam?.teamName ?? "팀"} 기록`}
         </h3>
         {timelineItems.length === 0 ? (
-          <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[2.5rem] border border-dashed border-slate-200 text-slate-400 font-bold text-xs md:text-base">
-            {isPersonalView ? "해당 학기에 생성된 리포트가 없습니다." : "이 팀이 제출한 자료가 없습니다."}
+          <div className="text-center py-14 bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] rounded-3xl text-[#8E8E93] text-sm">
+            {isPersonalView ? "이 학기에 만든 자료가 없어요." : "이 팀이 제출한 자료가 없어요."}
           </div>
         ) : (
-          timelineItems.map((report: any) => (
-            <motion.div
-              key={report.id}
-              whileHover={isSubmittedStatus(report.status) ? { scale: 1.01, y: -2 } : {}}
-              onClick={() => isSubmittedStatus(report.status) && setSelectedReport(report)}
-              className={`bg-white p-4 md:p-8 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center justify-between transition-all group ${isSubmittedStatus(report.status) ? "hover:shadow-xl cursor-pointer" : "opacity-40 cursor-not-allowed"}`}
-            >
-              <div className="flex items-center gap-3 md:gap-6 min-w-0">
-                <span className={`text-lg md:text-2xl font-[900] tracking-tight shrink-0 ${isSubmittedStatus(report.status) ? "text-indigo-600" : "text-slate-400"}`}>{report.month}월</span>
-                <div className="h-8 md:h-10 w-px bg-slate-200 shrink-0"></div>
-                <div className="min-w-0">
-                  <div className="flex items-center gap-1.5 md:gap-3 mb-0.5 md:mb-1.5">
-                    <span className={`px-1.5 py-0.5 rounded-md text-[8px] md:text-[10px] font-black uppercase shrink-0 ${isSubmittedStatus(report.status) ? "bg-pink-50 text-pink-600" : "bg-slate-50 text-slate-400"}`}>{report.type}</span>
-                    <h4 className="font-bold text-slate-900 text-sm md:text-lg truncate">
-                      {report.title || (isSubmittedStatus(report.status) ? `${report.month}월 제출 자료` : `${report.month}월 자료 미제출`)}
-                    </h4>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            {timelineItems.map((report: any) => {
+              const done = isSubmittedStatus(report.status);
+              const kind = reportKind(Number(report.month));
+              return (
+                <motion.button
+                  type="button"
+                  key={report.id}
+                  whileHover={done ? { y: -2 } : {}}
+                  onClick={() => done && setSelectedReport(report)}
+                  disabled={!done}
+                  className={`bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] group w-full text-left p-4 md:p-5 rounded-2xl md:rounded-3xl flex items-center gap-4 transition-shadow ${done ? "hover:shadow-[0_8px_24px_rgb(0_0_0/0.06)]" : "cursor-default"}`}
+                >
+                  <div className={`w-14 h-14 rounded-2xl flex flex-col items-center justify-center shrink-0 ${done ? "bg-[#34C759]/10" : "bg-black/[0.04]"}`}>
+                    <span className={`text-lg font-bold leading-none ${done ? "text-[#248A3D]" : "text-[#AEAEB2]"}`}>{report.month}</span>
+                    <span className="text-[10px] font-semibold text-[#8E8E93] mt-0.5">월</span>
                   </div>
-                  <div className="text-[9px] md:text-[11px] text-slate-400 font-black flex items-center gap-1.5 uppercase truncate">
-                    {isSubmittedStatus(report.status) ? <><Check className="text-indigo-500 w-3 h-3 md:w-3.5 md:h-3.5" /> {report.date} 제출됨</> : <><Clock className="w-3 h-3 md:w-3.5 md:h-3.5" /> 기록이 없습니다</>}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[11px] font-semibold text-[#8E8E93] mb-0.5">{kind}</p>
+                    <p className={`text-[15px] font-semibold truncate tracking-[-0.01em] ${done ? "text-[#1D1D1F]" : "text-[#AEAEB2]"}`}>
+                      {done ? (report.title || report.memo || `${kind} 제출`) : `${kind} 미제출`}
+                    </p>
+                    <p className="text-[12px] text-[#8E8E93] mt-0.5 truncate">
+                      {done ? `${report.date || "최근"} 제출` : "아직 기록이 없어요"}
+                    </p>
                   </div>
-                </div>
-              </div>
-              {isSubmittedStatus(report.status) && <div className="p-2.5 md:p-4 bg-slate-50 text-slate-300 rounded-xl md:rounded-2xl group-hover:bg-indigo-600 group-hover:text-white transition-all shrink-0"><Download className="w-4 h-4 md:w-5 md:h-5" /></div>}
-            </motion.div>
-          ))
+                  {done && <Download className="w-4 h-4 text-[#C7C7CC] group-hover:text-[#0071E3] shrink-0 transition-colors" />}
+                </motion.button>
+              );
+            })}
+          </div>
         )}
       </div>
 
@@ -484,25 +486,22 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       <AnimatePresence>
         {selectedReport && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setSelectedReport(null)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-xl bg-white rounded-2xl md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-hidden max-h-[90vh] overflow-y-auto">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setSelectedReport(null)} />
+            <motion.div initial={{ opacity: 0, scale: 0.96, y: 12 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.96, y: 12 }} transition={{ type: "spring", stiffness: 400, damping: 34 }} className="relative w-full max-w-lg bg-[#fff] rounded-[28px] p-5 md:p-7 shadow-[0_20px_60px_rgb(0_0_0/0.18)] max-h-[90vh] overflow-y-auto">
               <div className="flex justify-between items-start mb-6 md:mb-8">
                 <div>
-                  <span className="px-2 py-0.5 bg-indigo-50 text-indigo-600 text-[8px] md:text-[10px] font-black rounded-md uppercase border border-indigo-100">{memberInfo.name} 부원 · {selectedReport.month}월 자료</span>
-                  <h3 className="text-xl md:text-3xl font-[900] text-slate-900 tracking-tighter mt-1 md:mt-2">{selectedReport.title || "제목 없음"}</h3>
+                  <p className="text-xs font-semibold text-[#8E8E93]">{memberInfo.name} · {selectedReport.month}월 {reportKind(Number(selectedReport.month))}</p>
+                  <h3 className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em] mt-0.5">{selectedReport.title || selectedReport.memo || "제목 없음"}</h3>
                 </div>
-                <button onClick={() => setSelectedReport(null)} className="p-2 md:p-3 bg-slate-50 text-slate-400 rounded-xl md:rounded-2xl hover:bg-slate-100 transition-all shrink-0"><X className="w-4 h-4 md:w-5 md:h-5" /></button>
+                <button onClick={() => setSelectedReport(null)} aria-label="닫기" className="w-8 h-8 rounded-full bg-black/[0.05] text-[#6E6E73] flex items-center justify-center hover:bg-black/[0.08] shrink-0"><X className="w-4 h-4" /></button>
               </div>
-              <div className="mb-6 md:mb-8">
-                <div className="flex items-center gap-1.5 md:gap-2 mb-2 md:mb-3 ml-0.5 md:ml-1">
-                  <MessageCircle className="text-indigo-500 w-3.5 h-3.5 md:w-4 md:h-4" />
-                  <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">활동 요약 내용</p>
-                </div>
-                <div className="w-full p-4 md:p-6 bg-slate-50 rounded-2xl md:rounded-3xl font-bold text-slate-700 text-xs md:text-sm border border-slate-100/50 whitespace-pre-wrap leading-relaxed">{selectedReport.memo || "작성된 요약 내용이 없습니다."}</div>
+              <div className="mb-5">
+                <p className="flex items-center gap-1.5 mb-2 ml-1 text-xs font-semibold text-[#6E6E73]"><MessageCircle className="w-3.5 h-3.5" /> 활동 요약</p>
+                <div className="w-full p-4 bg-[#F5F5F7] rounded-2xl text-[#1D1D1F] text-sm whitespace-pre-wrap leading-relaxed">{selectedReport.memo || "작성된 요약이 없어요."}</div>
               </div>
-              <div className="space-y-3 md:space-y-4 mb-8 md:mb-10">
-                <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest ml-0.5 md:ml-1">첨부 파일</p>
-                <div className="grid grid-cols-1 gap-2.5 md:gap-3">
+              <div className="mb-6">
+                <p className="text-xs font-semibold text-[#6E6E73] ml-1 mb-2">첨부 파일</p>
+                <div className="grid grid-cols-1 gap-2">
                   <DownloadSlot label="발표자료 (PPT)" path={selectedReport.presentationPath} onDownload={() => handleDownload(selectedReport.presentationPath)} />
                   <DownloadSlot label="PDF 보고서" path={selectedReport.pdfPath} onDownload={() => handleDownload(selectedReport.pdfPath)} onPreview={() => handlePreviewPdf(selectedReport.pdfPath)} />
                   <DownloadSlot label="기타 부속 자료" path={selectedReport.otherPath} onDownload={() => handleDownload(selectedReport.otherPath)} />
@@ -516,7 +515,7 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
                   )}
                 </div>
               </div>
-              <button onClick={() => setSelectedReport(null)} className="w-full py-4 md:py-5 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-sm md:text-base shadow-xl hover:bg-black transition-all">닫기</button>
+              <button onClick={() => setSelectedReport(null)} className="w-full h-12 bg-black/[0.05] text-[#1D1D1F] rounded-2xl font-semibold text-sm hover:bg-black/[0.08] transition-colors">닫기</button>
             </motion.div>
           </div>
         )}
@@ -548,25 +547,25 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
 
 // 📥 하위 컴포넌트: 파일 슬롯 (모바일 최적화)
 const DownloadSlot = ({ label, path, onDownload, onPreview }: any) => (
-  <div className={`flex items-center justify-between p-3.5 md:p-5 rounded-xl md:rounded-2xl border transition-all ${path ? "bg-white border-slate-100 hover:border-indigo-200 group" : "bg-slate-50 border-transparent opacity-30 cursor-not-allowed"}`}>
-    <div className="flex items-center gap-3 md:gap-4 min-w-0">
-      <div className={`w-8 h-8 md:w-10 md:h-10 rounded-lg md:rounded-xl flex items-center justify-center shrink-0 ${path ? "bg-indigo-50 text-indigo-600" : "bg-slate-100 text-slate-300"}`}>
-        {label.includes("PPT") ? <Presentation className="w-4 h-4 md:w-5 md:h-5" /> : label.includes("PDF") ? <FileText className="w-4 h-4 md:w-5 md:h-5" /> : <FileArchive className="w-4 h-4 md:w-5 md:h-5" />}
+  <div className={`flex items-center justify-between gap-3 p-3 rounded-2xl ${path ? "bg-[#F5F5F7]" : "bg-[#F5F5F7]/60 opacity-50"}`}>
+    <div className="flex items-center gap-3 min-w-0">
+      <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${path ? "bg-[#fff] text-[#0071E3] border border-black/[0.06]" : "bg-[#fff] text-[#C7C7CC] border border-black/[0.04]"}`}>
+        {label.includes("PPT") ? <Presentation className="w-4 h-4" /> : label.includes("PDF") ? <FileText className="w-4 h-4" /> : <FileArchive className="w-4 h-4" />}
       </div>
       <div className="text-left min-w-0">
-        <p className="text-[12px] md:text-sm font-black text-slate-800 truncate">{label}</p>
-        <p className="text-[9px] md:text-[10px] font-bold text-slate-400 uppercase tracking-tight">{path ? "확인 및 다운로드" : "첨부 파일 없음"}</p>
+        <p className="text-sm font-semibold text-[#1D1D1F] truncate">{label}</p>
+        <p className="text-[11px] text-[#8E8E93]">{path ? "눌러서 내려받기" : "첨부 파일 없음"}</p>
       </div>
     </div>
-    <div className="flex items-center gap-1.5 md:gap-2 shrink-0">
+    <div className="flex items-center gap-1.5 shrink-0">
       {path && onPreview && (
-        <button onClick={onPreview} className="p-2 md:p-3 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl hover:bg-indigo-600 hover:text-white transition-all flex items-center gap-1.5 text-[10px] md:text-xs font-black">
-          <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" /> <span className="hidden sm:inline">미리보기</span>
+        <button onClick={onPreview} className="h-8 px-3 rounded-full bg-[#fff] text-[#0071E3] border border-black/[0.06] flex items-center gap-1 text-xs font-semibold hover:bg-[#0071E3]/5">
+          <Eye className="w-3.5 h-3.5" /> 미리보기
         </button>
       )}
       {path && (
-        <button onClick={onDownload} className="p-2 md:p-3 bg-slate-50 text-slate-400 rounded-lg md:rounded-xl hover:bg-indigo-600 hover:text-white transition-all">
-          <Download className="w-4 h-4 md:w-4.5 md:h-4.5" />
+        <button onClick={onDownload} aria-label="내려받기" className="w-8 h-8 rounded-full bg-[#0071E3] text-white flex items-center justify-center hover:bg-[#0077ED]">
+          <Download className="w-3.5 h-3.5" />
         </button>
       )}
     </div>

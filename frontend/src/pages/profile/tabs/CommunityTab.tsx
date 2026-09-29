@@ -5,6 +5,7 @@ import {
   Loader2, AlertCircle, Users, ShieldCheck
 } from "lucide-react";
 import { api } from "../../../api/axios";
+import { CARD, PageHeader } from "../../assembly/assemblyUi";
 
 // onNavigate의 인자 타입을 string(loginId)으로 처리할 수 있도록 설정
 export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: string, identifier?: string) => void }) => {
@@ -56,6 +57,20 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
   const isOtherMember = (member: any) => {
     return statusKey(member) === "OTHER";
   };
+
+  // ✨ [2026-09-30] 상태별 바로가기 알약
+  const GROUPS: { id: string; label: string; test: (m: any) => boolean }[] = [
+    { id: "all", label: "전체", test: () => true },
+    { id: "admin", label: "관리자", test: (m) => isAdminMember(m) },
+    { id: "freshman", label: "신입생", test: (m) => isFreshmanMember(m) && !isAdminMember(m) },
+    { id: "attending", label: "재학", test: (m) => isAttendingMember(m) && !isAdminMember(m) },
+    { id: "leave", label: "휴학", test: (m) => isLeaveMember(m) && !isAdminMember(m) },
+    { id: "lab", label: "LAB · 대학원", test: (m) => isLabMember(m) && !isAdminMember(m) },
+    { id: "graduate", label: "졸업", test: (m) => isGraduateMember(m) && !isAdminMember(m) },
+    { id: "other", label: "기타", test: (m) => isOtherMember(m) && !isAdminMember(m) },
+  ];
+  const [groupFilter, setGroupFilter] = useState("all");
+  const showGroup = (id: string) => groupFilter === "all" || groupFilter === id;
 
   // 현재 조회할 기준 학기 설정 — 2~7월=1학기, 8월~다음해 1월=2학기 (MyPageTab과 동일 규칙)
   // 이전엔 { year: 2026, semester: 1 }로 고정되어 있어서 2학기가 되어도 계속 1학기 자료가 보이던 버그가 있었음
@@ -115,7 +130,7 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
               return {
                 ...m,
                 year: yearValue,
-                projectName: projectRes.data.projectTitle || "등록된 프로젝트가 없습니다.",
+                projectName: projectRes.data.projectTitle || "",
                 avatar: m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`
               };
             } catch (err) {
@@ -187,61 +202,62 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
     if (filteredMembers.length === 0) return null;
 
     return (
-      <div className="mb-10 md:mb-20">
-        <div className="flex items-center gap-2 mb-6 md:mb-10 px-1 md:px-2">
-          <Icon className={`${colorClass} w-5 h-5 md:w-6 md:h-6`} />
-          <h3 className={`text-lg md:text-2xl font-[900] uppercase tracking-tighter ${colorClass}`}>
-            {title} <span className="ml-0.5 md:ml-1 text-sm md:text-xl opacity-70">({filteredMembers.length})</span>
-          </h3>
+      <section className="mb-10 md:mb-14">
+        <div className="flex items-center gap-2 mb-4 px-1">
+          <Icon className={`${colorClass} w-[18px] h-[18px]`} />
+          <h2 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em]">{title}</h2>
+          <span className="text-sm font-semibold text-[#AEAEB2]">{filteredMembers.length}</span>
         </div>
 
         {groupedByYear.map((group) => (
-          <div key={group.year} className="mb-6 md:mb-10 last:mb-0">
-            <div className="flex items-center gap-3 md:gap-4 mb-4 md:mb-6 px-1 md:px-2">
-              <span className="text-xs md:text-sm font-black text-slate-400 shrink-0 whitespace-nowrap">{group.year}학번</span>
-              <div className="h-px bg-slate-100 flex-1" />
+          <div key={group.year} className="mb-5 last:mb-0">
+            <div className="flex items-center gap-3 mb-2.5 px-1">
+              <span className="text-xs font-semibold text-[#8E8E93] shrink-0">{group.year}학번</span>
+              <div className="h-px bg-black/[0.06] flex-1" />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2.5 md:gap-3">
               {group.list.map((member) => (
-                <motion.div
+                <motion.button
+                  type="button"
                   key={member.id}
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ y: -2 }}
+                  transition={{ type: "spring", stiffness: 400, damping: 30 }}
                   onClick={() => onNavigate("member-detail", member.loginId)}
-                  className="bg-white p-4 md:p-6 rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm flex items-center gap-3 md:gap-5 cursor-pointer hover:border-indigo-200 hover:shadow-xl transition-all group"
+                  className={`${CARD} group w-full text-left p-3.5 md:p-4 rounded-2xl flex items-center gap-3 hover:shadow-[0_8px_24px_rgb(0_0_0/0.06)] transition-shadow`}
                 >
                   <img
                     src={member.avatar}
-                    className="w-12 h-12 md:w-16 md:h-16 rounded-full object-cover border-2 border-slate-50 shrink-0 shadow-sm"
-                    alt={member.name}
-                    onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=random&color=6366f1`; }}
+                    className="w-11 h-11 md:w-12 md:h-12 rounded-full object-cover shrink-0 ring-1 ring-black/[0.06]"
+                    alt=""
+                    onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(member.name)}&background=F2F2F7&color=1D1D1F`; }}
                   />
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1.5 md:gap-2 mb-0.5 md:mb-1">
-                      <span className="text-base md:text-lg font-black text-slate-900">{member.name}</span>
-                      <span className="text-[8px] md:text-[10px] font-black text-indigo-500 uppercase bg-indigo-50 px-1.5 py-0.5 md:px-2.5 md:py-1 rounded-md md:rounded-lg border border-indigo-100/50">
+                    <div className="flex items-center gap-1.5 mb-0.5">
+                      <span className="text-[15px] font-semibold text-[#1D1D1F] truncate tracking-[-0.01em]">{member.name}</span>
+                      <span className="text-[10px] font-semibold text-[#6E6E73] bg-black/[0.05] px-1.5 py-0.5 rounded-md shrink-0">
                         {member.year}학번
                       </span>
                     </div>
-                    <p className="text-[11px] md:text-xs font-bold text-slate-400 truncate group-hover:text-slate-600 transition-colors">
-                      {member.projectName}
+                    <p className={`text-[13px] truncate ${member.projectName ? "text-[#6E6E73]" : "text-[#C7C7CC]"}`}>
+                      {member.projectName || "프로젝트 미등록"}
                     </p>
                   </div>
-                  <ChevronRight className="text-slate-200 group-hover:text-indigo-600 group-hover:translate-x-1 transition-all shrink-0 w-4 h-4 md:w-5 md:h-5" />
-                </motion.div>
+                  <ChevronRight className="text-[#C7C7CC] group-hover:text-[#8E8E93] transition-colors shrink-0 w-4 h-4" />
+                </motion.button>
               ))}
             </div>
           </div>
         ))}
-      </div>
+      </section>
     );
   };
 
   if (isLoading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
-        <Loader2 className="animate-spin text-indigo-600" size={32} />
-        <p className="text-slate-400 font-bold tracking-tight text-sm">프로젝트 정보를 동기화하고 있습니다...</p>
+        <Loader2 className="animate-spin text-[#8E8E93]" size={28} />
+        <p className="text-[#8E8E93] text-sm">부원 정보를 불러오는 중이에요...</p>
       </div>
     );
   }
@@ -257,72 +273,92 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
   }
 
   return (
-    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 md:mb-16 gap-4 md:gap-6 px-1 md:px-0">
-        <div>
-          <h1 className="text-2xl md:text-4xl font-[900] text-slate-900 tracking-tighter uppercase mb-1 md:mb-2">커뮤니티</h1>
-          <p className="text-slate-400 font-bold text-[11px] md:text-sm">DEVSIGN 부원들의 실시간 프로젝트 현황입니다.</p>
-        </div>
-        <div className="relative w-full md:w-96">
-          <Search className="absolute left-4 md:left-5 top-1/2 -translate-y-1/2 text-slate-300 w-4 h-4 md:w-5 md:h-5" />
-          <input
-            type="text"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="부원 또는 프로젝트 검색"
-            className="w-full pl-11 md:pl-14 pr-4 md:pr-6 py-3.5 md:py-5 bg-white border border-slate-200 rounded-xl md:rounded-[1.5rem] outline-none font-bold text-xs md:text-sm shadow-sm focus:ring-4 focus:ring-indigo-50 transition-all"
-          />
-        </div>
+    <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-16">
+      <PageHeader
+        title="커뮤니티"
+        desc="DEVSIGN 부원들의 이번 학기 프로젝트예요. 부원을 누르면 자세히 볼 수 있어요."
+        right={
+          <label className={`${CARD} relative flex items-center w-full sm:w-72 h-10 rounded-full pl-10 pr-4`}>
+            <Search className="absolute left-3.5 text-[#8E8E93] w-4 h-4" />
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="이름 또는 프로젝트 검색"
+              className="w-full bg-transparent outline-none text-sm text-[#1D1D1F] placeholder:text-[#AEAEB2] !border-0 !shadow-none"
+            />
+          </label>
+        }
+      />
+
+      {/* 상태별 바로가기 */}
+      <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar mb-8 -mx-1 px-1">
+        {GROUPS.map((g) => {
+          const count = g.id === "all" ? members.length : members.filter(g.test).length;
+          if (g.id !== "all" && count === 0) return null;
+          const active = groupFilter === g.id;
+          return (
+            <button
+              key={g.id}
+              onClick={() => setGroupFilter(g.id)}
+              className={`shrink-0 h-8 px-3.5 rounded-full text-[13px] font-semibold transition-colors ${
+                active ? "bg-[#1D1D1F] text-white" : "bg-[#fff] text-[#1D1D1F]/70 border border-black/[0.06] hover:text-[#1D1D1F]"
+              }`}
+            >
+              {g.label} <span className={active ? "text-white/60" : "text-[#AEAEB2]"}>{count}</span>
+            </button>
+          );
+        })}
       </div>
 
-      <MemberSection
+      {showGroup("admin") && (<MemberSection
         title="관리자"
         icon={ShieldCheck}
-        colorClass="text-indigo-600"
+        colorClass="text-[#0071E3]"
         filterFn={(m) => isAdminMember(m)}
-      />
-      <MemberSection
+      />)}
+      {showGroup("freshman") && (<MemberSection
         title="신입생 부원"
         status="신입생"
         icon={UserPlus}
-        colorClass="text-cyan-600"
+        colorClass="text-[#32ADE6]"
         filterFn={(m) => isFreshmanMember(m) && !isAdminMember(m)}
-      />
-      <MemberSection
+      />)}
+      {showGroup("attending") && (<MemberSection
         title="재학 중인 부원"
         status="재학생"
         icon={School}
-        colorClass="text-green-600"
+        colorClass="text-[#34C759]"
         filterFn={(m) => isAttendingMember(m) && !isAdminMember(m)}
-      />
-      <MemberSection
+      />)}
+      {showGroup("leave") && (<MemberSection
         title="휴학 중인 부원"
         status="휴학생"
         icon={Coffee}
-        colorClass="text-amber-600"
+        colorClass="text-[#FF9500]"
         filterFn={(m) => isLeaveMember(m) && !isAdminMember(m)}
-      />
-      <MemberSection
+      />)}
+      {showGroup("lab") && (<MemberSection
         title="LAB / 대학원 부원"
         status="LAB"
         icon={BookOpen}
-        colorClass="text-indigo-600"
+        colorClass="text-[#AF52DE]"
         filterFn={(m) => isLabMember(m) && !isAdminMember(m)}
-      />
-      <MemberSection
+      />)}
+      {showGroup("graduate") && (<MemberSection
         title="졸업한 부원"
         status="졸업생"
         icon={GraduationCap}
-        colorClass="text-slate-400"
+        colorClass="text-[#8E8E93]"
         filterFn={(m) => isGraduateMember(m) && !isAdminMember(m)}
-      />
-      <MemberSection
+      />)}
+      {showGroup("other") && (<MemberSection
         title="기타 상태 부원"
         status="기타"
         icon={Users}
-        colorClass="text-slate-500"
+        colorClass="text-[#8E8E93]"
         filterFn={(m) => isOtherMember(m) && !isAdminMember(m)}
-      />
+      />)}
 
       {members.length === 0 && (
         <div className="text-center py-16 md:py-20 bg-white rounded-2xl md:rounded-[3rem] border border-dashed border-slate-200 mx-1 md:mx-0">
