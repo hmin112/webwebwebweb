@@ -2,7 +2,6 @@ import { api } from "../../api/axios";
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LogOut, ChevronRight } from "lucide-react";
-import { Button } from "../ui/button";
 import { useLocation, useNavigate } from "react-router-dom"; // ✨ 라우터 훅 추가
 
 // ✨ [수정] 서버 아이콘을 하드코딩하면 디스코드에서 아이콘을 바꿀 때마다 깨지므로,
@@ -319,21 +318,29 @@ export const Navbar = ({
           <div className="flex items-center gap-3 shrink-0">
             <div className="hidden sm:flex items-center gap-3">
               {!isLoggedIn ? (
-                <>
-                  <Button 
-                    variant="ghost" 
-                    className="font-semibold text-slate-600 hover:text-slate-900 text-sm"
+                // ✨ [2026-09-29] 리퀴드 글라스 — 회원가입은 흰 유리 알약, 로그인은 파란 유리 알약
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    type="button"
                     onClick={() => handleNavigate("signup")}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="relative glass-lens h-10 px-4 rounded-full text-sm font-semibold tracking-[-0.01em] text-[#1D1D1F]"
                   >
-                    회원가입
-                  </Button>
-                  <Button 
-                    className="apple-button px-6 text-sm"
+                    <span className="relative z-[1]">회원가입</span>
+                  </motion.button>
+                  <motion.button
+                    type="button"
                     onClick={() => handleNavigate("login")}
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.96 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="relative glass-lens-blue h-10 px-5 rounded-full text-sm font-semibold tracking-[-0.01em]"
                   >
-                    로그인
-                  </Button>
-                </>
+                    <span className="relative z-[1]">로그인</span>
+                  </motion.button>
+                </div>
               ) : (
                 // ✨ [2026-09-29] 리퀴드 글라스 프로필 — 메뉴의 유리 알약과 같은 재질. 프로필은 떠 있는 알약(사진+이름),
                 // 로그아웃은 옆의 동그란 유리 버튼. 마우스를 올리면 살짝 떠오르고, 누르면 살짝 눌린다.
@@ -419,7 +426,7 @@ export const Navbar = ({
               role="dialog"
               aria-modal="true"
               aria-label="모바일 메뉴"
-              className="liquid-glass fixed top-2 right-2 bottom-2 w-[86%] max-w-[340px] z-[110] lg:hidden flex flex-col p-5 pt-14 gap-1.5 rounded-[28px] shadow-apple-lg"
+              className="liquid-glass fixed top-2 right-2 bottom-2 w-[86%] max-w-[340px] z-[110] lg:hidden flex flex-col p-5 pt-14 gap-1.5 rounded-[28px] shadow-[0_12px_40px_rgb(0_0_0/0.08)]"
             >
               {visibleLinks.map((link) => {
                 const isActive = activeTab === link.id;
@@ -440,18 +447,20 @@ export const Navbar = ({
               <div className="mt-auto border-t pt-4 space-y-2.5">
                 {!isLoggedIn ? (
                   <>
-                    <Button 
-                      className="w-full py-4 bg-slate-50 text-slate-600 rounded-xl font-bold text-sm" 
+                    <button
+                      type="button"
+                      className="relative glass-lens w-full py-3.5 rounded-2xl font-semibold text-[15px] text-[#1D1D1F] active:scale-[0.98] transition-transform"
                       onClick={() => handleNavigate("signup")}
                     >
-                      회원가입
-                    </Button>
-                    <Button 
-                      className="w-full py-4 bg-indigo-600 text-white rounded-xl font-bold text-sm" 
+                      <span className="relative z-[1]">회원가입</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="relative glass-lens-blue w-full py-3.5 rounded-2xl font-semibold text-[15px] active:scale-[0.98] transition-transform"
                       onClick={() => handleNavigate("login")}
                     >
-                      로그인
-                    </Button>
+                      <span className="relative z-[1]">로그인</span>
+                    </button>
                   </>
                 ) : (
                   <div className="space-y-2.5">
