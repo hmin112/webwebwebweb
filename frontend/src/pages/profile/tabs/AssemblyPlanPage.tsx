@@ -26,13 +26,6 @@ const MAX_GOALS = 10;
 
 const isSubmittedStatus = (status?: string) => status === "SUBMITTED" || status === "제출완료";
 
-const formatStudentId = (id?: string) => {
-  if (!id) return "??";
-  const strId = String(id).trim();
-  if (strId.length === 8) return strId.substring(2, 4);
-  return strId;
-};
-
 const emptyRow = (keys: string[]): Row => Object.fromEntries(keys.map((k) => [k, ""]));
 
 // 총회 "계획서"(3월/9월) 전용 웹 작성 페이지. 상단 왼쪽 사이드바(총회 탭 메뉴)는 그대로 둔 채
@@ -62,7 +55,6 @@ export const AssemblyPlanPage = ({
   const [planFilePath, setPlanFilePath] = useState<string | null>(report.planFilePath || null);
   const [submitting, setSubmitting] = useState(false);
   const submitLockRef = useRef(false);
-  const [teamMembers, setTeamMembers] = useState<any[] | null>(null); // null=로딩중, []=팀 없음(개인), [...]=팀원 목록
 
   const stateRef = useRef(state);
   stateRef.current = state;
@@ -70,30 +62,8 @@ export const AssemblyPlanPage = ({
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reportIdRef = useRef<string>(report.id?.toString() || "0");
 
-  // 이번 학기 팀 프로젝트 소속 여부 + 팀원 프로필 조회 (역할 섹션 표시/자동 채우기용)
-  useEffect(() => {
-    if (!loginId) return;
-    api.get("/teams/my", { params: { loginId, year: report.year, semester: report.semester } })
-      .then((res) => {
-        // ✨ [2026-09-21] 여러 팀 소속 가능 — 역할 자동 채우기는 첫 번째 팀 기준(이후 직접 수정 가능)
-        const team = res.data?.teams?.[0];
-        const accepted = team?.members?.filter((m: any) => m.status === "ACCEPTED") ?? [];
-        setTeamMembers(accepted);
-      })
-      .catch(() => setTeamMembers([]));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  // 팀 정보가 로드됐고, 아직 저장된 역할 데이터가 없으면 팀원 목록으로 한 번 자동 채움
-  useEffect(() => {
-    if (!teamMembers || teamMembers.length === 0) return;
-    if (stateRef.current.planRoles.length > 0) return;
-    setState((p) => ({
-      ...p,
-      planRoles: teamMembers.map((m: any) => ({ loginId: m.loginId, name: m.name, role: "", duties: "" })),
-    }));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [teamMembers]);
+  // ✨ [2026-09-29] 개인 계획서는 팀과 완전히 별개 — 예전엔 첫 번째 팀의 팀원을 "역할 및 담당"에
+  // 자동으로 채웠는데, 팀 프로젝트가 개인 계획서에 섞여 들어가는 버그라 제거했다. 팀 역할은 팀 계획서에서.
 
   const buildPayload = (s: PlanState) => ({
     loginId,
@@ -172,7 +142,7 @@ export const AssemblyPlanPage = ({
     state.planGoals.filter((g) => g.trim()).length >= MIN_GOALS &&
     state.planRoadmapItems.length > 0 &&
     roadmapValid;
-  const showRoleSection = (teamMembers && teamMembers.length > 0) || state.planRoles.length > 0;
+  const showRoleSection = state.planRoles.length > 0;
 
   // --- 계획서 파일 업로드 (원본 첨부 + 양식 자동 추출) ---
   const buildFileParams = () => ({
@@ -187,7 +157,7 @@ export const AssemblyPlanPage = ({
     if (result.submission?.id) reportIdRef.current = result.submission.id.toString();
     setPlanFilePath(result.submission?.planFilePath || null);
     if (!result.templateRecognized) return { filledCount: 0, applied: false };
-    const { next, filledCount } = mergeExtractedPlan(stateRef.current, result.extracted, teamMembers ?? [], MIN_GOALS);
+    const { next, filledCount } = mergeExtractedPlan(stateRef.current, result.extracted, [], MIN_GOALS);
     if (filledCount === 0) return { filledCount: 0, applied: true };
     if (
       hasPlanContent(stateRef.current) &&
@@ -223,7 +193,6 @@ export const AssemblyPlanPage = ({
     setState((p) => ({ ...p, planRoles: p.planRoles.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)) }));
   const removeRole = (i: number) => setState((p) => ({ ...p, planRoles: p.planRoles.filter((_, idx) => idx !== i) }));
   const addExternalMember = () => setState((p) => ({ ...p, planRoles: [...p.planRoles, { loginId: "", name: "", role: "", duties: "" }] }));
-  const findTeamMember = (loginIdOf: string) => teamMembers?.find((m: any) => m.loginId === loginIdOf);
 
   // --- 로드맵 ---
   const [newRoadmap, setNewRoadmap] = useState({ title: "", startDate: "", endDate: "" });
@@ -467,37 +436,31 @@ export const AssemblyPlanPage = ({
           )}
         </section>
 
-        {/* 역할 및 담당 — 이번 학기 팀 프로젝트일 때만 노출 */}
+        {/* 함께한 사람 — 개인 프로젝트라 기본은 비어 있고, 필요할 때만 직접 추가 (팀 역할은 팀 계획서에서) */}
+        {!showRoleSection && !disabled && (
+          <button onClick={addExternalMember} className="flex items-center gap-1 -mt-4 text-xs font-bold text-slate-400 hover:text-indigo-600">
+            <UserPlus size={13} /> 함께한 사람 추가 (선택)
+          </button>
+        )}
         {showRoleSection && (
           <section>
             <div className="flex items-center justify-between mb-3">
-              <SectionHeader icon={<Users size={14} />} label="역할 및 담당" noMargin />
+              <SectionHeader icon={<Users size={14} />} label="함께한 사람 (선택)" noMargin />
             </div>
             <div className="space-y-2.5">
               {state.planRoles.map((row, i) => {
-                const member = row.loginId ? findTeamMember(row.loginId) : null;
                 return (
                   <div key={i} className="flex items-center gap-2.5 p-3 bg-slate-50 rounded-xl border border-slate-100">
-                    <div className="w-8 h-8 rounded-full overflow-hidden bg-indigo-100 shrink-0">
-                      {member?.profileImage ? (
-                        <img src={member.profileImage} alt={row.name} className="w-full h-full object-cover" />
-                      ) : (
-                        <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-xs">{(row.name || "?")[0]}</div>
-                      )}
+                    <div className="w-8 h-8 rounded-full bg-indigo-100 shrink-0 flex items-center justify-center text-indigo-500 font-bold text-xs">
+                      {(row.name || "?")[0]}
                     </div>
-                    {row.loginId ? (
-                      <span className="w-24 md:w-28 shrink-0 text-xs font-bold text-slate-800 truncate">
-                        {formatStudentId(member?.studentId)} {member?.name || row.name}
-                      </span>
-                    ) : (
-                      <input
-                        value={row.name}
-                        onChange={(e) => updateRole(i, "name", e.target.value)}
-                        disabled={disabled}
-                        placeholder="이름"
-                        className="w-24 md:w-28 shrink-0 px-2.5 py-2 bg-white rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium disabled:opacity-50 min-w-0"
-                      />
-                    )}
+                    <input
+                      value={row.name}
+                      onChange={(e) => updateRole(i, "name", e.target.value)}
+                      disabled={disabled}
+                      placeholder="이름"
+                      className="w-24 md:w-28 shrink-0 px-2.5 py-2 bg-white rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium disabled:opacity-50 min-w-0"
+                    />
                     <input
                       value={row.role}
                       onChange={(e) => updateRole(i, "role", e.target.value)}
@@ -523,7 +486,7 @@ export const AssemblyPlanPage = ({
             </div>
             {!disabled && (
               <button onClick={addExternalMember} className="flex items-center gap-1 mt-3 text-xs font-bold text-indigo-500 hover:text-indigo-700">
-                <UserPlus size={13} /> 팀원 추가 (동아리 외부인 포함)
+                <UserPlus size={13} /> 함께한 사람 추가
               </button>
             )}
           </section>

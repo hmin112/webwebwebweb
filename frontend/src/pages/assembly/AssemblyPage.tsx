@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   UserCircle, Users, LayoutDashboard, ChevronRight,
@@ -65,6 +65,14 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
 
   // 모바일 탭 출력을 위한 통합 메뉴
   const allMenus = [...userMenus, ...(isAdmin ? adminMenus : [])];
+
+  // ✨ [2026-09-29] 탭(또는 부원 상세·계획서 페이지)이 바뀌면 맨 위에서 시작 — 이전 탭에서 내려둔
+  // 스크롤 위치가 그대로 남아 새 탭이 중간부터 보이던 문제. 창 스크롤과 메인 영역 스크롤을 모두 초기화한다.
+  const mainRef = useRef<HTMLElement | null>(null);
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    if (mainRef.current) mainRef.current.scrollTop = 0;
+  }, [activeTab, selectedLoginId]);
 
   const handleTabChange = (id: string) => {
     setActiveTab(id);
@@ -137,7 +145,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
 
       {/* 🚀 메인 컨텐츠 */}
       {/* ✨ 모바일에서 상단 탭 여유를 위해 패딩 살짝 조정 */}
-      <main className="flex-1 p-5 md:p-12 overflow-y-auto">
+      <main ref={mainRef} className="flex-1 p-5 md:p-12 overflow-y-auto">
         <AnimatePresence mode="wait">
           {activeTab === "mypage" && <MyPageTab key="mypage" loginId={loginId} onOpenPlanEditor={handleOpenPlanEditor} />}
 
