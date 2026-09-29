@@ -201,7 +201,10 @@ export const Navbar = ({
   return (
     <>
       {/* h-16(모바일) / lg:h-20(데스크탑) 으로 반응형 높이 설정 */}
-      <nav aria-label="주요 메뉴" className="liquid-glass fixed top-0 left-0 right-0 z-[100] h-16 lg:h-[72px] flex items-center border-x-0 border-t-0 rounded-none">
+      {/* ✨ [2026-09-29] layoutRoot — 화면에 고정된(fixed) 메뉴바라서, 페이지가 바뀌며 스크롤 위치가 달라져도
+          유리 알약 이동 계산에서 스크롤을 빼도록 한다. 없으면 총회 → 홈 섹션처럼 스크롤이 바뀌는 이동에서
+          스크롤 차이만큼 알약이 아래에서 튀어나오는 것처럼 보였다. */}
+      <motion.nav layoutRoot aria-label="주요 메뉴" className="liquid-glass fixed top-0 left-0 right-0 z-[100] h-16 lg:h-[72px] flex items-center border-x-0 border-t-0 rounded-none">
         <div className="w-full max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
 
           {/* 로고 영역 - 데스크탑에서는 다시 w-10 h-10으로 복구 */}
@@ -335,7 +338,7 @@ export const Navbar = ({
             </button>
           </div>
         </div>
-      </nav>
+      </motion.nav>
 
       <AnimatePresence>
         {isMobileMenuOpen && (
