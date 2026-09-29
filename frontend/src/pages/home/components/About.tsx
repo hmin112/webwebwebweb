@@ -1,7 +1,100 @@
-import { motion } from "framer-motion";
-import { 
-  Lock, Wind, Power, Circle, Cpu 
-} from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { motion, AnimatePresence, useInView } from "framer-motion";
+import { Power, Cpu, Snowflake, Flame, LockOpen } from "lucide-react";
+
+// ✨ [2026-09-30] 동아리 기수 — 2010년 창단이 1기. 해가 바뀌면 자동으로 올라간다 (2026년 = 17th).
+const FOUNDED_YEAR = 2010;
+const toOrdinal = (n: number) => {
+  const rem100 = n % 100;
+  if (rem100 >= 11 && rem100 <= 13) return `${n}th`;
+  return `${n}${({ 1: "st", 2: "nd", 3: "rd" } as Record<number, string>)[n % 10] || "th"}`;
+};
+
+// 도어락 기록 미리보기 — 화면에 보이는 동안 몇 초마다 새 기록이 위로 올라온다 (예시 데이터)
+const DOOR_LOG_PEOPLE = [
+  { name: "김유찬", tint: "#E8EBFF", ink: "#4F46E5" },
+  { name: "최승원", tint: "#FFF3DC", ink: "#C27803" },
+  { name: "김아현", tint: "#FFE8F0", ink: "#DB2777" },
+];
+type DoorLog = { id: number; person: (typeof DOOR_LOG_PEOPLE)[number]; at: Date };
+
+const formatKoreanTime = (d: Date) => {
+  const h = d.getHours();
+  const m = String(d.getMinutes()).padStart(2, "0");
+  return `${h < 12 ? "오전" : "오후"} ${String(h % 12 === 0 ? 12 : h % 12).padStart(2, "0")}:${m}`;
+};
+
+const DoorLockFeed = () => {
+  const ref = useRef<HTMLDivElement>(null);
+  const inView = useInView(ref, { margin: "-80px" });
+  const counter = useRef(3);
+  const [logs, setLogs] = useState<DoorLog[]>(() => {
+    const now = Date.now();
+    return DOOR_LOG_PEOPLE.map((person, i) => ({ id: i, person, at: new Date(now - (i + 1) * 17 * 60000) }));
+  });
+
+  useEffect(() => {
+    if (!inView) return;
+    const timer = setInterval(() => {
+      setLogs((prev) => {
+        const id = counter.current++;
+        // 맨 위 사람과 겹치지 않게 순서대로 돌려서, 화면의 세 줄이 항상 서로 다른 사람이 되게
+        const topIndex = DOOR_LOG_PEOPLE.indexOf(prev[0].person);
+        const person = DOOR_LOG_PEOPLE[(topIndex + DOOR_LOG_PEOPLE.length - 1) % DOOR_LOG_PEOPLE.length];
+        return [{ id, person, at: new Date() }, ...prev].slice(0, 3);
+      });
+    }, 3200);
+    return () => clearInterval(timer);
+  }, [inView]);
+
+  return (
+    <div ref={ref} className="bg-[#fff] rounded-[1.5rem] md:rounded-[2rem] border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-6 min-h-[220px] md:min-h-[320px] flex flex-col">
+      <div className="flex items-center justify-between mb-3 md:mb-5">
+        <span className="text-[12px] md:text-sm font-semibold text-[#1D1D1F]">도어락 기록</span>
+        <span className="flex items-center gap-1.5 text-[10px] md:text-[11px] font-semibold text-[#34C759]">
+          <span className="relative flex w-1.5 h-1.5">
+            <span className="absolute inset-0 rounded-full bg-[#34C759] animate-ping opacity-60" />
+            <span className="relative w-1.5 h-1.5 rounded-full bg-[#34C759]" />
+          </span>
+          실시간
+        </span>
+      </div>
+      <div className="flex-1 flex flex-col gap-2 md:gap-2.5 overflow-hidden">
+        <AnimatePresence initial={false}>
+          {logs.map((log, i) => (
+            <motion.div
+              key={log.id}
+              layout
+              initial={{ opacity: 0, y: -18, scale: 0.97 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.2 } }}
+              transition={{ type: "spring", stiffness: 380, damping: 32 }}
+              className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-[#F5F5F7]"
+            >
+              <div
+                className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-[12px] md:text-[13px] font-bold shrink-0"
+                style={{ background: log.person.tint, color: log.person.ink }}
+              >
+                {log.person.name[0]}
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-[12px] md:text-[14px] text-[#1D1D1F] truncate">
+                  <span className="font-semibold">{log.person.name}</span> 님이 문을 열었습니다
+                </p>
+                <p className="flex items-center gap-1 text-[10px] md:text-[11px] text-[#8E8E93] mt-0.5">
+                  <LockOpen className="w-3 h-3 text-[#34C759]" /> 학번 인증 · 디스코드
+                </p>
+              </div>
+              <span className="text-[10px] md:text-[11px] font-medium text-[#AEAEB2] shrink-0">
+                {i === 0 && Date.now() - log.at.getTime() < 60000 ? "방금 전" : formatKoreanTime(log.at)}
+              </span>
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
+    </div>
+  );
+};
 
 export const About = () => {
   return (
@@ -66,7 +159,7 @@ export const About = () => {
                   <div className="text-slate-500 font-bold text-[11px] md:text-sm">활동 부원</div>
                 </div>
                 <div>
-                  <div className="text-2xl md:text-4xl font-black text-pink-500 mb-0.5 md:mb-1">17th</div>
+                  <div className="text-2xl md:text-4xl font-black text-pink-500 mb-0.5 md:mb-1">{toOrdinal(new Date().getFullYear() - FOUNDED_YEAR + 1)}</div>
                   <div className="text-slate-500 font-bold text-[11px] md:text-sm">동아리 기수</div>
                 </div>
               </div>
@@ -111,7 +204,7 @@ export const About = () => {
                   </div>
                   <div>
                     <h3 className="text-lg md:text-2xl font-black text-slate-900 flex items-center gap-2">
-                      WINDEV <span className="px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg bg-indigo-600 text-[8px] md:text-[10px] text-white uppercase tracking-widest">APP</span>
+                      WINDEV
                     </h3>
                     <p className="text-slate-400 font-bold text-xs md:text-sm uppercase tracking-wider">냉난방기 제어 봇</p>
                   </div>
@@ -122,28 +215,34 @@ export const About = () => {
                 언제 어디서나 디스코드로 동아리방 온도를 조절하세요. 외부에서도 냉난방기를 원격 제어하여 입실 전 최적의 환경을 조성할 수 있습니다.
               </p>
 
-              {/* ✨ 내부 제어 박스 최소 높이(200px) 및 패딩 대폭 축소 */}
-              <div className="bg-slate-900 rounded-[1.5rem] md:rounded-[2.5rem] p-4 md:p-8 shadow-2xl border border-slate-800 flex flex-col justify-between min-h-[200px] md:min-h-[340px]">
-                <div className="flex justify-between items-center mb-4 md:mb-8 border-b border-slate-800 pb-3 md:pb-5">
-                  <span className="text-slate-400 text-[10px] md:text-xs font-black uppercase tracking-widest">[냉난방기 제어]</span>
-                  <div className="px-2 py-1 md:px-3 md:py-1 rounded-full bg-green-500/10 text-green-500 text-[9px] md:text-[10px] font-black tracking-widest animate-pulse">연결됨</div>
+              {/* ✨ [2026-09-30] 냉난방기 제어 미리보기 — 흰 카드 + 옅은 회색 칸 + 애플 색 알약 버튼 */}
+              <div className="bg-[#fff] rounded-[1.5rem] md:rounded-[2rem] border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-6 min-h-[220px] md:min-h-[320px] flex flex-col">
+                <div className="flex items-center justify-between mb-3 md:mb-5">
+                  <span className="text-[12px] md:text-sm font-semibold text-[#1D1D1F]">냉난방기 제어</span>
+                  <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#34C759]/10 text-[#248A3D] text-[10px] md:text-[11px] font-semibold">
+                    <span className="w-1.5 h-1.5 rounded-full bg-[#34C759]" /> 연결됨
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-3 md:gap-4 mb-4 md:mb-8">
-                  <div className="bg-slate-800/50 p-4 md:p-5 rounded-xl md:rounded-2xl border border-slate-700/50">
-                    <p className="text-green-400 font-black text-[10px] md:text-[11px] mb-1 md:mb-2 uppercase">냉방</p>
-                    <p className="text-white font-black text-sm md:text-xl tracking-tight">18°C ~ 27°C</p>
+                <div className="grid grid-cols-2 gap-2 md:gap-3 flex-1">
+                  <div className="rounded-2xl bg-[#F5F5F7] p-3.5 md:p-5 flex flex-col justify-between">
+                    <span className="flex items-center gap-1.5 text-[11px] md:text-xs font-semibold text-[#0071E3]">
+                      <Snowflake className="w-3.5 h-3.5" /> 냉방
+                    </span>
+                    <p className="text-[#1D1D1F] font-semibold text-base md:text-2xl tracking-tight mt-3">18° – 27°</p>
                   </div>
-                  <div className="bg-slate-800/50 p-4 md:p-5 rounded-xl md:rounded-2xl border border-slate-700/50">
-                    <p className="text-red-400 font-black text-[10px] md:text-[11px] mb-1 md:mb-2 uppercase">난방</p>
-                    <p className="text-white font-black text-sm md:text-xl tracking-tight">23°C ~ 30°C</p>
+                  <div className="rounded-2xl bg-[#F5F5F7] p-3.5 md:p-5 flex flex-col justify-between">
+                    <span className="flex items-center gap-1.5 text-[11px] md:text-xs font-semibold text-[#FF9500]">
+                      <Flame className="w-3.5 h-3.5" /> 난방
+                    </span>
+                    <p className="text-[#1D1D1F] font-semibold text-base md:text-2xl tracking-tight mt-3">23° – 30°</p>
                   </div>
                 </div>
-                <div className="flex flex-wrap gap-2 md:gap-3">
-                  <div className="bg-[#22c55e] text-white px-3 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black shadow-lg shadow-green-500/20 active:scale-95 transition-all cursor-default">에어컨 켜기</div>
-                  <div className="bg-[#ef4444] text-white px-3 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black shadow-lg shadow-red-500/20 active:scale-95 transition-all cursor-default">히터 켜기</div>
-                  <div className="bg-slate-700 text-white px-3 py-2.5 md:px-5 md:py-3 rounded-lg md:rounded-xl text-[10px] md:text-[11px] font-black hover:bg-slate-600 active:scale-95 transition-all flex items-center gap-1.5 md:gap-2 cursor-default">
-                    <Power className="w-3 h-3 md:w-3.5 md:h-3.5" /> 전원 끄기
-                  </div>
+                <div className="flex flex-wrap gap-2 mt-3 md:mt-5">
+                  <span className="px-3.5 py-2 md:px-4 md:py-2.5 rounded-full bg-[#0071E3] text-white text-[11px] md:text-xs font-semibold cursor-default">에어컨 켜기</span>
+                  <span className="px-3.5 py-2 md:px-4 md:py-2.5 rounded-full bg-[#FF9500] text-white text-[11px] md:text-xs font-semibold cursor-default">히터 켜기</span>
+                  <span className="px-3.5 py-2 md:px-4 md:py-2.5 rounded-full bg-[#E5E5EA] text-[#1D1D1F] text-[11px] md:text-xs font-semibold flex items-center gap-1.5 cursor-default">
+                    <Power className="w-3 h-3" /> 전원 끄기
+                  </span>
                 </div>
               </div>
             </motion.div>
@@ -163,7 +262,7 @@ export const About = () => {
                   </div>
                   <div>
                     <h3 className="text-lg md:text-2xl font-black text-slate-900 flex items-center gap-2">
-                      크산테 <span className="px-1.5 py-0.5 md:px-2 md:py-0.5 rounded-md md:rounded-lg bg-indigo-600 text-[8px] md:text-[10px] text-white uppercase tracking-widest">APP</span>
+                      크산테
                     </h3>
                     <p className="text-slate-400 font-bold text-xs md:text-sm uppercase tracking-wider">도어락 제어 봇</p>
                   </div>
@@ -174,29 +273,7 @@ export const About = () => {
                 24시간 여러분들의 자유로운 학습을 지원합니다. 물리적인 열쇠 필요없이 디스코드를 사용해 학번을 인증하고 도어락을 제어하여 동아리방에 자유롭게 출입 가능합니다.
               </p>
 
-              {/* ✨ 내부 제어 박스 최소 높이(200px) 및 패딩 대폭 축소 */}
-              <div className="space-y-2 md:space-y-4 bg-white/50 p-4 md:p-6 rounded-[1.5rem] md:rounded-[2.5rem] border border-slate-200 shadow-inner min-h-[200px] md:min-h-[340px] flex flex-col">
-                <div className="px-2 md:px-4 py-1 md:py-2 text-[9px] md:text-[10px] font-black text-slate-300 uppercase tracking-widest">[도어락 제어]</div>
-                <div className="flex-1 flex flex-col justify-around">
-                  {[
-                    { name: "김유찬", time: "오전 09:38", color: "indigo" },
-                    { name: "최승원", time: "오후 12:44", color: "amber" },
-                    { name: "김아현", time: "오후 01:08", color: "pink" }
-                  ].map((log, i) => (
-                    <div key={i} className="flex items-center justify-between bg-white p-2.5 md:p-5 rounded-xl md:rounded-2xl shadow-sm border border-slate-100 group-hover:translate-x-1 transition-transform">
-                      <div className="flex items-center gap-3 md:gap-4">
-                        <div className={`w-8 h-8 md:w-10 md:h-10 bg-${log.color}-50 text-${log.color}-500 rounded-lg md:rounded-xl flex items-center justify-center text-[10px] md:text-xs font-black border border-${log.color}-100/50`}>
-                          {log.name[0]}
-                        </div>
-                        <p className="text-xs md:text-sm font-bold text-slate-700">
-                          <span className="text-indigo-600 font-black">{log.name}</span> 님이 문을 열었습니다
-                        </p>
-                      </div>
-                      <span className="text-[9px] md:text-[10px] font-black text-slate-300">{log.time}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
+              <DoorLockFeed />
             </motion.div>
 
           </div>
