@@ -70,14 +70,14 @@ export const Navbar = ({
   // 드로어가 열린 동안 배경 스크롤을 막고 Escape로 닫힌다.
   useEffect(() => {
     if (!isMobileMenuOpen) return;
-    const previousOverflow = document.body.style.overflow;
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === "Escape") setIsMobileMenuOpen(false);
     };
-    document.body.style.overflow = "hidden";
+    // ✨ [2026-09-30] 최상위(html)가 스크롤을 맡으므로 body가 아니라 html을 잠근다 (index.css의 .scroll-locked — 스크롤바 폭 보정 포함)
+    document.documentElement.classList.add("scroll-locked");
     window.addEventListener("keydown", handleEscape);
     return () => {
-      document.body.style.overflow = previousOverflow;
+      document.documentElement.classList.remove("scroll-locked");
       window.removeEventListener("keydown", handleEscape);
     };
   }, [isMobileMenuOpen]);

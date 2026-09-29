@@ -260,12 +260,24 @@
     backdrop-filter: saturate(170%) blur(18px);
   }
 
-  /* ✨ [2026-09-30] 화면 전체를 덮는 팝업(모달·미리보기)이 열리면
-     1) 페이지 본문(main, z-index 1) 층을 상단 바(z-index 100)보다 위로 올린다 — 팝업은 본문 안에 있어서 본문 층을
-        넘지 못해 상단 바에 가려졌었다.
-     2) 뒤쪽 페이지 스크롤을 막는다 — 팝업을 스크롤하다 페이지까지 내려가 푸터가 보였었다(팝업 안쪽 스크롤은 그대로). */
-  .apple-app main:has(div.fixed.inset-0.flex.items-center, div.fixed.inset-0.overflow-y-auto) {
-    z-index: 200 !important;
+  /* ✨ [2026-09-30] 화면 전체를 덮는 팝업(모달·미리보기) — 상단 바는 그대로 보이게 두고(예전엔 본문 층을 상단 바 위로
+     올려서 팝업이 열리면 상단 바가 통째로 사라졌다), 팝업은 상단 바 아래 공간 가운데에 띄운다. */
+  .apple-app main div.fixed.inset-0.flex.items-center,
+  .apple-app main div.fixed.inset-0.overflow-y-auto {
+    padding-top: 76px !important;
+  }
+
+  /* 안쪽 스크롤이 있는 팝업 상자는 남은 공간 안으로 높이를 제한 — 길면 위쪽이 상단 바 밑으로 들어가지 않게 */
+  .apple-app main div.fixed.inset-0.flex.items-center > [class*="overflow-y-auto"]:not(.absolute):not(.fixed),
+  .apple-app main div.fixed.inset-0.flex.items-center > [class*="overflow-auto"]:not(.absolute):not(.fixed) {
+    max-height: 100%;
+  }
+
+  @media (min-width: 1024px) {
+    .apple-app main div.fixed.inset-0.flex.items-center,
+    .apple-app main div.fixed.inset-0.overflow-y-auto {
+      padding-top: 88px !important;
+    }
   }
 
   /* ✨ [2026-09-30] 입력칸 안에 겹쳐 놓은 아이콘(검색 돋보기 등)이 사라지던 문제 — 위 규칙의 backdrop-filter 때문에 입력칸이
@@ -372,12 +384,18 @@
   }
 }
 
-/* ✨ [2026-09-30] 팝업이 열려 있는 동안 뒤 페이지 스크롤 잠금 (스크롤바가 사라져도 레이아웃이 흔들리지 않게 자리 확보) */
-html {
-  scrollbar-gutter: stable;
-}
-
+/* ✨ [2026-09-30] 팝업·모바일 메뉴가 열려 있는 동안 뒤 페이지 스크롤 잠금.
+   잠그면 스크롤바가 사라져 화면 폭이 넓어지므로, 사라진 스크롤바 폭(--sbw, main.tsx에서 잼)만큼 오른쪽 여백을 채워
+   페이지와 상단 바가 1px도 움직이지 않게 한다. (scrollbar-gutter는 잠금 상태의 최상위 스크롤에서 무시되어 안 씀) */
+html.scroll-locked,
 html:has(div.fixed.inset-0.flex.items-center.justify-center),
 html:has(div.fixed.inset-0.overflow-y-auto) {
   overflow: hidden;
+  padding-right: var(--sbw, 0px);
+}
+
+html.scroll-locked nav[aria-label="주요 메뉴"],
+html:has(div.fixed.inset-0.flex.items-center.justify-center) nav[aria-label="주요 메뉴"],
+html:has(div.fixed.inset-0.overflow-y-auto) nav[aria-label="주요 메뉴"] {
+  padding-right: var(--sbw, 0px);
 }
