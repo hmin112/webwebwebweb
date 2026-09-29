@@ -239,9 +239,29 @@ export const AdminPage = () => {
     return groups;
   };
 
-  const getAvailableDates = () => {
-    const dates = accessLogs.map(log => log.timestamp.split('T')[0] || log.timestamp.split(' ')[0]);
-    return Array.from(new Set(dates)).sort((a, b) => b.localeCompare(a));
+  // ✨ [2026-09-30] 날짜 알약은 전체보기 + 오늘/어제/그저께만. 그 외 날짜는 "다른 날짜" 달력으로 바로 이동.
+  const toLocalDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+  const recentDateChips = useMemo(() => {
+    const labels = ["오늘", "어제", "그저께"];
+    return labels.map((label, i) => {
+      const d = new Date();
+      d.setDate(d.getDate() - i);
+      const value = toLocalDateStr(d);
+      return { label, value, short: value.slice(5).replace("-", ".") };
+    });
+  }, []);
+  const logDateInputRef = useRef<HTMLInputElement>(null);
+  const isCustomDate = selectedDate !== "ALL" && !recentDateChips.some((c) => c.value === selectedDate);
+
+  // ✨ [2026-09-30] 페이지 번호는 5개씩 묶어서 보여준다 (1–5, 6–10 …) + 원하는 페이지로 바로 이동
+  const LOG_PAGE_GROUP = 5;
+  const logPageGroupStart = Math.floor(logsPage / LOG_PAGE_GROUP) * LOG_PAGE_GROUP;
+  const [logPageJump, setLogPageJump] = useState("");
+  const jumpToLogPage = () => {
+    const n = parseInt(logPageJump, 10);
+    if (!Number.isNaN(n)) setLogsPage(Math.min(totalLogsPages, Math.max(1, n)) - 1);
+    setLogPageJump("");
   };
 
   const getLogStyle = (type: LogType) => {
@@ -625,19 +645,43 @@ export const AdminPage = () => {
 
         {activeTab === "access" && (
           <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="space-y-6 md:space-y-8">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-              <div className="flex items-center gap-3 md:gap-4 bg-white p-3 md:p-4 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl shrink-0"><Calendar size={16} /><span className="text-[10px] font-black uppercase">날짜</span></div>
-                <div className="flex gap-1.5">
-                  <button onClick={() => setSelectedDate("ALL")} className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedDate === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400"}`}>전체보기</button>
-                  {getAvailableDates().map(date => <button key={date} onClick={() => setSelectedDate(date)} className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedDate === date ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400"}`}>{date}</button>)}
+            {/* ✨ [2026-09-30] 날짜·시간 필터 — 스크롤 없이 한 줄에 들어가게. 날짜는 전체/오늘/어제/그저께 + "다른 날짜" 달력,
+                시간 선택 색도 날짜와 같은 색으로 통일 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 md:gap-4">
+              <div className="flex items-center gap-2 md:gap-3 bg-white p-2.5 md:p-3 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl shrink-0"><Calendar size={15} /><span className="text-[10px] font-black">날짜</span></div>
+                <div className="flex flex-wrap gap-1.5 min-w-0">
+                  <button onClick={() => setSelectedDate("ALL")} className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedDate === "ALL" ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400 hover:text-slate-600"}`}>전체보기</button>
+                  {recentDateChips.map((c) => (
+                    <button key={c.value} onClick={() => setSelectedDate(c.value)} title={c.value} className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedDate === c.value ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400 hover:text-slate-600"}`}>
+                      {c.label} <span className="opacity-60 font-medium">{c.short}</span>
+                    </button>
+                  ))}
+                  <div className="relative">
+                    <button
+                      onClick={() => { const el = logDateInputRef.current as any; if (el?.showPicker) el.showPicker(); else el?.click(); }}
+                      className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap flex items-center gap-1 ${isCustomDate ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400 hover:text-slate-600"}`}
+                    >
+                      <Calendar size={12} /> {isCustomDate ? selectedDate.slice(5).replace("-", ".") : "다른 날짜"}
+                    </button>
+                    <input
+                      ref={logDateInputRef}
+                      type="date"
+                      aria-label="날짜 선택"
+                      max={recentDateChips[0].value}
+                      value={isCustomDate ? selectedDate : ""}
+                      onChange={(e) => e.target.value && setSelectedDate(e.target.value)}
+                      className="absolute inset-0 w-full h-full opacity-0 pointer-events-none"
+                      tabIndex={-1}
+                    />
+                  </div>
                 </div>
               </div>
-              <div className="flex items-center gap-3 md:gap-4 bg-white p-3 md:p-4 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-x-auto no-scrollbar">
-                <div className="flex items-center gap-1.5 md:gap-2 px-3 md:px-4 py-1.5 md:py-2 bg-amber-50 text-amber-600 rounded-lg md:rounded-xl shrink-0"><Clock size={16} /><span className="text-[10px] font-black uppercase">시간</span></div>
-                <div className="flex gap-1.5">
+              <div className="flex items-center gap-2 md:gap-3 bg-white p-2.5 md:p-3 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm overflow-hidden">
+                <div className="flex items-center gap-1.5 px-3 py-1.5 md:py-2 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl shrink-0"><Clock size={15} /><span className="text-[10px] font-black">시간</span></div>
+                <div className="flex flex-wrap gap-1.5 min-w-0">
                   {[{ id: "ALL", label: "전체" }, { id: "MORNING", label: "오전" }, { id: "AFTERNOON", label: "오후" }, { id: "EVENING", label: "저녁" }, { id: "NIGHT", label: "새벽" }].map(r => (
-                    <button key={r.id} onClick={() => setSelectedTimeRange(r.id)} className={`px-4 md:px-5 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedTimeRange === r.id ? "bg-amber-500 text-white" : "bg-slate-50 text-slate-400"}`}>{r.label}</button>
+                    <button key={r.id} onClick={() => setSelectedTimeRange(r.id)} className={`px-3 md:px-4 py-1.5 md:py-2 rounded-lg md:rounded-xl text-[10px] md:text-xs font-bold transition-all whitespace-nowrap ${selectedTimeRange === r.id ? "bg-indigo-600 text-white" : "bg-slate-50 text-slate-400 hover:text-slate-600"}`}>{r.label}</button>
                   ))}
                 </div>
               </div>
@@ -680,24 +724,53 @@ export const AdminPage = () => {
             )}
 
             {totalLogsPages > 1 && (
-              <div className="flex items-center justify-center gap-3 md:gap-4 pt-2 md:pt-4">
-                <button
-                  onClick={() => setLogsPage(p => Math.max(0, p - 1))}
-                  disabled={logsPage === 0}
-                  className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+              <div className="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2 md:pt-4">
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={() => setLogsPage(Math.max(0, logPageGroupStart - LOG_PAGE_GROUP))}
+                    disabled={logPageGroupStart === 0}
+                    aria-label="이전 페이지 묶음"
+                    className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                  >
+                    <ChevronDown className="rotate-90 w-4 h-4 text-slate-500" />
+                  </button>
+                  {Array.from({ length: Math.min(LOG_PAGE_GROUP, totalLogsPages - logPageGroupStart) }, (_, i) => logPageGroupStart + i).map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => setLogsPage(p)}
+                      className={`min-w-9 h-9 px-2 rounded-xl text-xs md:text-sm font-bold tabular-nums transition-colors ${
+                        p === logsPage ? "bg-indigo-600 text-white" : "bg-white border border-slate-200 text-slate-500 hover:bg-slate-50"
+                      }`}
+                    >
+                      {p + 1}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setLogsPage(Math.min(totalLogsPages - 1, logPageGroupStart + LOG_PAGE_GROUP))}
+                    disabled={logPageGroupStart + LOG_PAGE_GROUP >= totalLogsPages}
+                    aria-label="다음 페이지 묶음"
+                    className="w-9 h-9 flex items-center justify-center bg-white border border-slate-200 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
+                  >
+                    <ChevronDown className="-rotate-90 w-4 h-4 text-slate-500" />
+                  </button>
+                </div>
+                <form
+                  onSubmit={(e) => { e.preventDefault(); jumpToLogPage(); }}
+                  className="flex items-center gap-1.5 text-xs font-bold text-slate-400"
                 >
-                  <ChevronDown className="rotate-90 w-4 h-4 md:w-5 md:h-5 text-slate-500" />
-                </button>
-                <span className="text-[11px] md:text-sm font-black text-slate-600 tracking-tight">
-                  {logsPage + 1} / {totalLogsPages} 페이지
-                </span>
-                <button
-                  onClick={() => setLogsPage(p => Math.min(totalLogsPages - 1, p + 1))}
-                  disabled={logsPage >= totalLogsPages - 1}
-                  className="p-2 md:p-3 bg-white border border-slate-200 rounded-xl disabled:opacity-40 disabled:cursor-not-allowed hover:bg-slate-50"
-                >
-                  <ChevronDown className="-rotate-90 w-4 h-4 md:w-5 md:h-5 text-slate-500" />
-                </button>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalLogsPages}
+                    value={logPageJump}
+                    onChange={(e) => setLogPageJump(e.target.value)}
+                    placeholder={String(logsPage + 1)}
+                    aria-label="이동할 페이지"
+                    className="w-16 h-9 px-2 text-center rounded-xl border border-slate-200 bg-white text-slate-700 outline-none focus:ring-2 focus:ring-indigo-500 [appearance:textfield] [&::-webkit-inner-spin-button]:appearance-none"
+                  />
+                  <span>/ {totalLogsPages}</span>
+                  <button type="submit" className="h-9 px-3 rounded-xl bg-slate-900 text-white hover:bg-black">이동</button>
+                </form>
               </div>
             )}
           </motion.div>

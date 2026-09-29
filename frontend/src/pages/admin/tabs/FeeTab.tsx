@@ -400,13 +400,14 @@ export const FeeTab = () => {
                 <span className="mt-2 text-[10px] md:text-xs font-bold text-red-500">미납 {data.totalCount - data.paidCount}명</span>
               </div>
 
-              <div className="bg-indigo-600 p-5 md:p-7 rounded-2xl md:rounded-[2rem] shadow-lg shadow-indigo-100 flex flex-col justify-center">
+              {/* ✨ [2026-09-30] 전역 CSS가 보라 배경 상자를 흰 유리로 바꿔 흰 글씨가 안 보이던 문제 — 흰 카드 + 검정 글씨로 */}
+              <div className="bg-[#fff] p-5 md:p-7 rounded-2xl md:rounded-[2rem] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] flex flex-col justify-center">
                 <div className="flex items-center gap-2 mb-2">
-                  <Wallet size={14} className="text-indigo-200" />
-                  <span className="text-[10px] md:text-xs font-black text-indigo-200 uppercase tracking-widest">걷힌 금액</span>
+                  <Wallet size={14} className="text-[#0071E3]" />
+                  <span className="text-[10px] md:text-xs font-black text-[#6E6E73] uppercase tracking-widest">걷힌 금액</span>
                 </div>
-                <div className="text-2xl md:text-4xl font-black text-white tabular-nums break-all">{won(data.collectedAmount)}</div>
-                <span className="mt-2 text-[10px] md:text-xs font-bold text-indigo-200">
+                <div className="text-2xl md:text-4xl font-black text-[#1D1D1F] tabular-nums break-all">{won(data.collectedAmount)}</div>
+                <span className="mt-2 text-[10px] md:text-xs font-bold text-[#8E8E93]">
                   신입생 {won(data.freshmanAmount)} · 재학생 {won(data.attendingAmount)}
                 </span>
               </div>
