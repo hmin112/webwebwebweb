@@ -232,29 +232,42 @@ export const Navbar = ({
           </button>
 
           {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
-          {/* ✨ [2026-09-29] 리퀴드 글라스 메뉴 — 오목한 유리 트랙 위를 선택된 메뉴의 유리 렌즈가 스프링으로
-              미끄러진다. 글자는 애플 기본 글자색(#1D1D1F), 선택 안 된 메뉴는 살짝 흐리게. */}
-          <div className="hidden lg:flex items-center p-1 rounded-full glass-track">
+          {/* ✨ [2026-09-29] 리퀴드 글라스 메뉴 — 평평한 메뉴 줄에서 선택된 메뉴만 유리 알약이 아래에서 위로
+              톡 떠오른다(누른 버튼이 밑에서 밀려 올라오는 느낌). 이전 알약은 살짝 가라앉으며 사라진다. */}
+          <div className="hidden lg:flex items-center gap-0.5 xl:gap-1">
             {visibleLinks.map((link) => {
               const isActive = activeTab === link.id;
               return (
-                <button
+                <motion.button
                   key={link.id}
                   onClick={() => handleNavigate(link.id)}
                   aria-current={isActive ? "page" : undefined}
+                  whileTap={{ scale: 0.95 }}
+                  transition={{ type: "spring", stiffness: 500, damping: 30 }}
                   className={`relative px-3 xl:px-4 h-8 xl:h-9 rounded-full font-medium tracking-[-0.01em] text-[12px] xl:text-[14px] whitespace-nowrap transition-colors duration-300 ${
                     isActive ? "text-[#1D1D1F]" : "text-[#1D1D1F]/60 hover:text-[#1D1D1F]"
                   }`}
                 >
-                  {isActive && (
-                    <motion.span
-                      layoutId="active-navigation-indicator"
-                      className="absolute inset-0 rounded-full glass-lens"
-                      transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.9 }}
-                    />
-                  )}
-                  <span className="relative z-[1]">{link.name}</span>
-                </button>
+                  <AnimatePresence initial={false}>
+                    {isActive && (
+                      <motion.span
+                        key="lens"
+                        className="absolute inset-0 rounded-full glass-lens"
+                        initial={{ opacity: 0, y: 7, scale: 0.82 }}
+                        animate={{ opacity: 1, y: -1, scale: 1 }}
+                        exit={{ opacity: 0, y: 4, scale: 0.9, transition: { duration: 0.18, ease: [0.4, 0, 1, 1] } }}
+                        transition={{ type: "spring", stiffness: 420, damping: 24, mass: 0.8 }}
+                      />
+                    )}
+                  </AnimatePresence>
+                  <motion.span
+                    className="relative z-[1] inline-block"
+                    animate={{ y: isActive ? -1 : 0 }}
+                    transition={{ type: "spring", stiffness: 420, damping: 26 }}
+                  >
+                    {link.name}
+                  </motion.span>
+                </motion.button>
               );
             })}
           </div>
