@@ -61,8 +61,8 @@ const sortHallOfFameByDate = (list: any[]) =>
   });
 
 // DB에 테스트 계정을 만들지 않고 로그인 후 레이아웃만 확인하는 로컬 전용 미리보기.
-// Vite 개발 모드에서 ?preview=member를 붙였을 때만 활성화되며 운영 빌드에서는 제거된다.
-const DEV_PREVIEW_USER = {
+// localhost/127.0.0.1에서만 ?preview=member 또는 ?preview=admin으로 활성화된다.
+const LOCAL_PREVIEW_USER = {
   loginId: "design-preview",
   name: "디자인 미리보기",
   studentId: "20999999",
@@ -73,16 +73,29 @@ const DEV_PREVIEW_USER = {
   role: "USER",
 };
 
-const isDevMemberPreview = () =>
-  import.meta.env.DEV && new URLSearchParams(window.location.search).get("preview") === "member";
+const LOCAL_PREVIEW_ADMIN = {
+  ...LOCAL_PREVIEW_USER,
+  loginId: "admin-design-preview",
+  name: "관리자 미리보기",
+  discordTag: "admin-preview-user",
+  role: "ADMIN",
+};
+
+const getLocalPreviewRole = () => {
+  if (!["localhost", "127.0.0.1"].includes(window.location.hostname)) return null;
+  const preview = new URLSearchParams(window.location.search).get("preview");
+  return preview === "member" || preview === "admin" ? preview : null;
+};
 
 function AppContent() {
   const navigate = useNavigate();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(() => isDevMemberPreview() || localStorage.getItem("isLoggedIn") === "true");
-  const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem("isAdmin") === "true");
+  const [isLoggedIn, setIsLoggedIn] = useState(() => Boolean(getLocalPreviewRole()) || localStorage.getItem("isLoggedIn") === "true");
+  const [isAdmin, setIsAdmin] = useState(() => getLocalPreviewRole() === "admin" || localStorage.getItem("isAdmin") === "true");
   const [currentUser, setCurrentUser] = useState<any>(() => {
-    if (isDevMemberPreview()) return DEV_PREVIEW_USER;
+    const previewRole = getLocalPreviewRole();
+    if (previewRole === "admin") return LOCAL_PREVIEW_ADMIN;
+    if (previewRole === "member") return LOCAL_PREVIEW_USER;
     const savedUser = localStorage.getItem("currentUser");
     return savedUser ? JSON.parse(savedUser) : null;
   });
