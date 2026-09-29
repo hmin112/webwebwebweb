@@ -1,5 +1,5 @@
 import { api } from "../../api/axios";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LogOut, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
@@ -96,6 +96,17 @@ export const Navbar = ({
       return;
     }
 
+    // ✨ [2026-09-29] 다른 페이지에서 "/#faq" 처럼 섹션으로 들어온 경우 — App이 그 섹션으로 바로 이동시키는 동안
+    // 맨 위(홈) 기준으로 선택 표시가 잠깐 바뀌었다가 다시 이동하던 것을 막는다. 목표 섹션으로 먼저 고정하고 잠근다.
+    const hashTarget = location.hash.replace("#", "");
+    const lockForHash = Boolean(hashTarget);
+    if (lockForHash) {
+      setActiveTab(hashTarget === "events" ? "event" : hashTarget);
+      scrollLockRef.current = true;
+      if (scrollIdleTimerRef.current) clearTimeout(scrollIdleTimerRef.current);
+      scrollIdleTimerRef.current = setTimeout(() => { scrollLockRef.current = false; }, 900);
+    }
+
     const handleScroll = () => {
       // 감지할 섹션 리스트 (Home.tsx의 id와 navLinks의 id 매칭)
       const sections = [
@@ -143,13 +154,43 @@ export const Navbar = ({
     };
 
     window.addEventListener("scroll", onScroll, { passive: true });
-    handleScroll(); // 초기 로드 시 실행
+    if (!lockForHash) handleScroll(); // 초기 로드 시 실행
 
     return () => {
       window.removeEventListener("scroll", onScroll);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [location.pathname, currentPage]);
+  }, [location.pathname, location.hash, currentPage]);
+
+  // ✨ [2026-09-29] 선택 표시(유리 알약) 위치를 메뉴 줄 안에서 직접 잰다(offsetLeft/offsetWidth).
+  // 라이브러리의 공유 레이아웃(layoutId)은 페이지 전환 때 스크롤 변화를 위치 계산에 섞어 알약이 아래에서
+  // 튀어나오는 것처럼 보였다 — 메뉴 줄 기준 좌표만 쓰면 스크롤과 무관하게 좌우로만 움직인다.
+  const menuItemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
+  const [indicator, setIndicator] = useState<{ x: number; w: number; visible: boolean } | null>(null);
+  const visibleLinkKey = navLinks
+    .filter((link) => (link.id === "assembly" || link.id === "oj") ? isLoggedIn : link.id === "admin" ? isLoggedIn && userRole === "ADMIN" : true)
+    .map((link) => link.id)
+    .join(",");
+
+  const measureIndicator = useCallback(() => {
+    const el = menuItemRefs.current[activeTab];
+    if (!el || el.offsetWidth === 0) {
+      setIndicator((prev) => (prev ? { ...prev, visible: false } : prev));
+      return;
+    }
+    setIndicator({ x: el.offsetLeft, w: el.offsetWidth, visible: true });
+  }, [activeTab]);
+
+  useLayoutEffect(() => {
+    measureIndicator();
+  }, [measureIndicator, visibleLinkKey]);
+
+  useEffect(() => {
+    window.addEventListener("resize", measureIndicator);
+    // 웹폰트가 늦게 적용되면 글자 폭이 바뀌므로 한 번 더 잰다
+    document.fonts?.ready.then(measureIndicator).catch(() => {});
+    return () => window.removeEventListener("resize", measureIndicator);
+  }, [measureIndicator]);
 
   const handleNavigate = (id: string) => {
     // ✨ 메인 페이지에서 스크롤로 이동할 섹션들
@@ -178,7 +219,8 @@ export const Navbar = ({
     } else {
       // ✨ 총회, 관리, 로그인 등 "새 페이지"로 이동할 때는 스크롤을 최상단으로 리셋
       onNavigate(id);
-      window.scrollTo(0, 0); 
+      // 새 페이지는 즉시 맨 위에서 시작 (CSS의 scroll-behavior: smooth 때문에 기본값이면 쫘라락 올라감)
+      window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     }
     
     setIsMobileMenuOpen(false);
@@ -201,10 +243,7 @@ export const Navbar = ({
   return (
     <>
       {/* h-16(모바일) / lg:h-20(데스크탑) 으로 반응형 높이 설정 */}
-      {/* ✨ [2026-09-29] layoutRoot — 화면에 고정된(fixed) 메뉴바라서, 페이지가 바뀌며 스크롤 위치가 달라져도
-          유리 알약 이동 계산에서 스크롤을 빼도록 한다. 없으면 총회 → 홈 섹션처럼 스크롤이 바뀌는 이동에서
-          스크롤 차이만큼 알약이 아래에서 튀어나오는 것처럼 보였다. */}
-      <motion.nav layoutRoot aria-label="주요 메뉴" className="liquid-glass fixed top-0 left-0 right-0 z-[100] h-16 lg:h-[72px] flex items-center border-x-0 border-t-0 rounded-none">
+      <nav aria-label="주요 메뉴" className="liquid-glass fixed top-0 left-0 right-0 z-[100] h-16 lg:h-[72px] flex items-center border-x-0 border-t-0 rounded-none">
         <div className="w-full max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
 
           {/* 로고 영역 - 데스크탑에서는 다시 w-10 h-10으로 복구 */}
@@ -236,28 +275,34 @@ export const Navbar = ({
 
           {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
           {/* ✨ [2026-09-29] 리퀴드 글라스 메뉴 — 평평한 메뉴 줄 위를 떠 있는 유리 알약 하나가 눌린 메뉴까지
-              좌우로 미끄러져 이어서 이동한다(layoutId 공유). 거리와 상관없이 같은 시간(duration 기반 스프링)에
-              도착하게 해서, 맨 끝 ↔ 맨 앞처럼 멀리 가도 과하게 튕기지 않고 자연스럽다.
-              누름 효과는 글자에만 준다 — 버튼 자체를 줄이면 알약 위치 측정이 흔들려 이동이 튀었음. */}
-          <div className="hidden lg:flex items-center gap-0.5 xl:gap-1">
+              좌우로 미끄러져 이어서 이동한다. 거리와 상관없이 같은 시간(duration 기반 스프링)에 도착해서
+              맨 끝 ↔ 맨 앞처럼 멀리 가도 과하게 튕기지 않는다. 누름 효과는 글자에만 준다. */}
+          <div className="relative hidden lg:flex items-center gap-0.5 xl:gap-1">
+            {indicator && (
+              <motion.span
+                aria-hidden
+                className="absolute left-0 top-0 bottom-0 rounded-full glass-lens pointer-events-none"
+                initial={false}
+                animate={{ x: indicator.x, width: indicator.w, y: -1, opacity: indicator.visible ? 1 : 0 }}
+                transition={{
+                  x: { type: "spring", bounce: 0.18, duration: 0.5 },
+                  width: { type: "spring", bounce: 0.18, duration: 0.5 },
+                  opacity: { duration: 0.2 },
+                }}
+              />
+            )}
             {visibleLinks.map((link) => {
               const isActive = activeTab === link.id;
               return (
                 <button
                   key={link.id}
+                  ref={(el) => { menuItemRefs.current[link.id] = el; }}
                   onClick={() => handleNavigate(link.id)}
                   aria-current={isActive ? "page" : undefined}
                   className={`relative px-3 xl:px-4 h-8 xl:h-9 rounded-full font-medium tracking-[-0.01em] text-[12px] xl:text-[14px] whitespace-nowrap transition-colors duration-300 ${
                     isActive ? "text-[#1D1D1F]" : "text-[#1D1D1F]/60 hover:text-[#1D1D1F]"
                   }`}
                 >
-                  {isActive && (
-                    <motion.span
-                      layoutId="active-navigation-indicator"
-                      className="absolute inset-0 -top-px bottom-px rounded-full glass-lens"
-                      transition={{ type: "spring", bounce: 0.18, duration: 0.5 }}
-                    />
-                  )}
                   <motion.span
                     className="relative z-[1] inline-block"
                     whileTap={{ scale: 0.94 }}
@@ -338,7 +383,7 @@ export const Navbar = ({
             </button>
           </div>
         </div>
-      </motion.nav>
+      </nav>
 
       <AnimatePresence>
         {isMobileMenuOpen && (

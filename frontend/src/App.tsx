@@ -191,15 +191,16 @@ function AppContent() {
 
   useEffect(() => {
     if (location.hash) {
-      setTimeout(() => {
-        const id = location.hash.replace('#', '');
-        const element = document.getElementById(id);
-        if (element) {
-          element.scrollIntoView({ behavior: 'smooth' });
-        }
-      }, 100);
+      // ✨ [2026-09-29] 다른 페이지에서 "/#faq" 처럼 섹션으로 들어올 때는 맨 위부터 부드럽게 쭉 내려가지 않고
+      // 그 섹션으로 바로 이동한다. 위쪽 섹션 데이터가 늦게 로드되며 높이가 바뀔 수 있어 잠시 뒤 한 번 더 맞춘다.
+      const id = location.hash.replace('#', '');
+      // 'instant' — 사이트 CSS에 scroll-behavior: smooth가 걸려 있어 'auto'로는 여전히 부드럽게(쫘라락) 스크롤된다
+      const jump = () => document.getElementById(id)?.scrollIntoView({ behavior: 'instant', block: 'start' });
+      const t1 = setTimeout(jump, 60);
+      const t2 = setTimeout(jump, 450);
+      return () => { clearTimeout(t1); clearTimeout(t2); };
     } else {
-      window.scrollTo(0, 0);
+      window.scrollTo({ top: 0, left: 0, behavior: 'instant' });
     }
   }, [location.pathname, location.hash]);
 

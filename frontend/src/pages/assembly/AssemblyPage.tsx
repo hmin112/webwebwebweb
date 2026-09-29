@@ -70,7 +70,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   // 스크롤 위치가 그대로 남아 새 탭이 중간부터 보이던 문제. 창 스크롤과 메인 영역 스크롤을 모두 초기화한다.
   const mainRef = useRef<HTMLElement | null>(null);
   useEffect(() => {
-    window.scrollTo({ top: 0, left: 0, behavior: "auto" });
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
     if (mainRef.current) mainRef.current.scrollTop = 0;
   }, [activeTab, selectedLoginId]);
 
