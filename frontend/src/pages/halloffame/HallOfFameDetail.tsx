@@ -109,8 +109,8 @@ export const HallOfFameDetail = ({ onNavigate, isAdmin, isLoggedIn, entry, onDel
         {entry.image ? (
           <div className="relative rounded-[24px] md:rounded-[32px] overflow-hidden mb-10 md:mb-14 border border-black/[0.06] shadow-[0_8px_30px_rgb(0_0_0/0.06)]">
             <img src={entry.image} alt={entry.title} className="block w-full h-auto" />
-            {/* 사진 아래쪽에 옅은 어둠을 깔아 흰 글자가 어떤 사진 위에서도 읽히게 */}
-            <div className="absolute inset-x-0 bottom-0 pt-20 md:pt-28 px-4 pb-4 md:px-6 md:pb-6 bg-gradient-to-t from-black/55 via-black/20 to-transparent">
+            {/* 사진 위쪽에 옅은 어둠을 깔아 흰 글자가 어떤 사진 위에서도 읽히게 (아래쪽은 상장·사람에 가려 잘 안 보여서 상단 배치) */}
+            <div className="absolute inset-x-0 top-0 pb-20 md:pb-28 px-4 pt-4 md:px-6 md:pt-6 bg-gradient-to-b from-black/55 via-black/20 to-transparent">
               <AwardRow awardGroups={awardGroups} onPhoto />
             </div>
           </div>
