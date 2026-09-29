@@ -1,5 +1,5 @@
 import { api } from "../../api/axios";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X, LogOut, ChevronRight } from "lucide-react";
 import { Button } from "../ui/button";
@@ -83,7 +83,12 @@ export const Navbar = ({
     };
   }, [isMobileMenuOpen]);
 
-  // ✨ 스크롤 위치를 감지하여 밑줄(activeTab)을 자동으로 변경 (ScrollSpy)
+  // ✨ [2026-09-29] 메뉴를 눌러 부드럽게 스크롤되는 동안에는 스크롤 감지가 선택 표시를 바꾸지 못하게 잠근다.
+  // (안 그러면 지나가는 중간 섹션마다 선택 표시가 왔다 갔다 해서 버벅여 보였음) 스크롤이 멈추면 잠금 해제.
+  const scrollLockRef = useRef(false);
+  const scrollIdleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ✨ 스크롤 위치를 감지하여 선택 표시(activeTab)를 자동으로 변경 (ScrollSpy)
   useEffect(() => {
     // 메인 페이지가 아닐 때는 부모가 주는 currentPage를 그대로 따름
     if (location.pathname !== "/") {
@@ -118,10 +123,32 @@ export const Navbar = ({
       setActiveTab(currentSection);
     };
 
-    window.addEventListener("scroll", handleScroll);
+    // 스크롤 이벤트마다 계산하지 않고 프레임당 한 번만 (requestAnimationFrame)
+    let frame = 0;
+    const onScroll = () => {
+      if (scrollLockRef.current) {
+        // 프로그램 스크롤 중 — 멈춘 뒤 150ms가 지나면 잠금을 풀고 현재 위치로 한 번 맞춘다
+        if (scrollIdleTimerRef.current) clearTimeout(scrollIdleTimerRef.current);
+        scrollIdleTimerRef.current = setTimeout(() => {
+          scrollLockRef.current = false;
+          handleScroll();
+        }, 150);
+        return;
+      }
+      if (frame) return;
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        handleScroll();
+      });
+    };
+
+    window.addEventListener("scroll", onScroll, { passive: true });
     handleScroll(); // 초기 로드 시 실행
 
-    return () => window.removeEventListener("scroll", handleScroll);
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      if (frame) cancelAnimationFrame(frame);
+    };
   }, [location.pathname, currentPage]);
 
   const handleNavigate = (id: string) => {
@@ -132,12 +159,16 @@ export const Navbar = ({
       // Home.tsx의 id="events" 와 맞추기 위한 예외 처리 (event -> events)
       const targetId = id === "event" ? "events" : id;
       
-      setActiveTab(id); // 클릭 즉시 밑줄 이동
+      setActiveTab(id); // 클릭 즉시 선택 표시 이동
 
       if (location.pathname === "/") {
-        // 이미 메인 페이지라면 부드럽게 스크롤
+        // 이미 메인 페이지라면 부드럽게 스크롤 — 스크롤이 끝날 때까지 스크롤 감지 잠금
         const element = document.getElementById(targetId);
         if (element) {
+          scrollLockRef.current = true;
+          if (scrollIdleTimerRef.current) clearTimeout(scrollIdleTimerRef.current);
+          // 이미 그 위치라 스크롤 이벤트가 안 나는 경우를 대비한 안전장치
+          scrollIdleTimerRef.current = setTimeout(() => { scrollLockRef.current = false; }, 1200);
           element.scrollIntoView({ behavior: "smooth" });
         }
       } else {
@@ -201,9 +232,9 @@ export const Navbar = ({
           </button>
 
           {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
-          {/* ✨ [2026-09-29] 애플 스타일 — 보조 회색(#6E6E73) 글자, 마우스를 올리면 기본 글자색(#1D1D1F) +
-              아주 옅은 캡슐, 선택된 메뉴는 옅은 회색 캡슐이 스프링으로 미끄러져 따라간다 (macOS 세그먼트 컨트롤 느낌) */}
-          <div className="hidden lg:flex items-center gap-0.5 xl:gap-1">
+          {/* ✨ [2026-09-29] 리퀴드 글라스 메뉴 — 오목한 유리 트랙 위를 선택된 메뉴의 유리 렌즈가 스프링으로
+              미끄러진다. 글자는 애플 기본 글자색(#1D1D1F), 선택 안 된 메뉴는 살짝 흐리게. */}
+          <div className="hidden lg:flex items-center p-1 rounded-full glass-track">
             {visibleLinks.map((link) => {
               const isActive = activeTab === link.id;
               return (
@@ -211,18 +242,18 @@ export const Navbar = ({
                   key={link.id}
                   onClick={() => handleNavigate(link.id)}
                   aria-current={isActive ? "page" : undefined}
-                  className={`relative px-3 xl:px-3.5 py-1.5 rounded-full font-medium tracking-[-0.01em] text-[12px] xl:text-[14px] whitespace-nowrap transition-colors duration-200 ${
-                    isActive ? "text-[#1D1D1F]" : "text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-black/[0.04]"
+                  className={`relative px-3 xl:px-4 h-8 xl:h-9 rounded-full font-medium tracking-[-0.01em] text-[12px] xl:text-[14px] whitespace-nowrap transition-colors duration-300 ${
+                    isActive ? "text-[#1D1D1F]" : "text-[#1D1D1F]/60 hover:text-[#1D1D1F]"
                   }`}
                 >
                   {isActive && (
                     <motion.span
                       layoutId="active-navigation-indicator"
-                      className="absolute inset-0 rounded-full bg-black/[0.06] shadow-[inset_0_0_0_0.5px_rgba(0,0,0,0.04)]"
-                      transition={{ type: "spring", stiffness: 500, damping: 38 }}
+                      className="absolute inset-0 rounded-full glass-lens"
+                      transition={{ type: "spring", stiffness: 380, damping: 32, mass: 0.9 }}
                     />
                   )}
-                  <span className="relative">{link.name}</span>
+                  <span className="relative z-[1]">{link.name}</span>
                 </button>
               );
             })}
@@ -326,8 +357,8 @@ export const Navbar = ({
                     key={link.id} 
                     onClick={() => handleNavigate(link.id)} 
                     aria-current={isActive ? "page" : undefined}
-                    className={`text-left py-3 px-4 text-[15px] font-medium tracking-[-0.01em] rounded-2xl transition-colors duration-200 ${
-                      isActive ? "bg-black/[0.06] text-[#1D1D1F] font-semibold" : "text-[#6E6E73] hover:text-[#1D1D1F] hover:bg-black/[0.04]"
+                    className={`relative text-left py-3 px-4 text-[15px] font-medium tracking-[-0.01em] rounded-2xl transition-colors duration-300 ${
+                      isActive ? "glass-lens text-[#1D1D1F] font-semibold" : "text-[#1D1D1F]/65 hover:text-[#1D1D1F] hover:bg-white/50"
                     }`}
                   >
                     {link.name}
