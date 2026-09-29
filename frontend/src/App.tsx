@@ -60,12 +60,29 @@ const sortHallOfFameByDate = (list: any[]) =>
     return diff !== 0 ? diff : b.id - a.id;
   });
 
+// DB에 테스트 계정을 만들지 않고 로그인 후 레이아웃만 확인하는 로컬 전용 미리보기.
+// Vite 개발 모드에서 ?preview=member를 붙였을 때만 활성화되며 운영 빌드에서는 제거된다.
+const DEV_PREVIEW_USER = {
+  loginId: "design-preview",
+  name: "디자인 미리보기",
+  studentId: "20999999",
+  dept: "AI소프트웨어학부(컴퓨터공학전공)",
+  interests: "웹 개발",
+  discordTag: "preview-user",
+  userStatus: "ATTENDING",
+  role: "USER",
+};
+
+const isDevMemberPreview = () =>
+  import.meta.env.DEV && new URLSearchParams(window.location.search).get("preview") === "member";
+
 function AppContent() {
   const navigate = useNavigate();
 
-  const [isLoggedIn, setIsLoggedIn] = useState(() => localStorage.getItem("isLoggedIn") === "true");
+  const [isLoggedIn, setIsLoggedIn] = useState(() => isDevMemberPreview() || localStorage.getItem("isLoggedIn") === "true");
   const [isAdmin, setIsAdmin] = useState(() => localStorage.getItem("isAdmin") === "true");
   const [currentUser, setCurrentUser] = useState<any>(() => {
+    if (isDevMemberPreview()) return DEV_PREVIEW_USER;
     const savedUser = localStorage.getItem("currentUser");
     return savedUser ? JSON.parse(savedUser) : null;
   });
@@ -337,7 +354,7 @@ function AppContent() {
         />
       )}
 
-      <main>
+      <main className="relative z-[1] min-h-screen bg-transparent">
         <Routes>
           <Route path="/" element={<Home isAdmin={isAdmin && isLoggedIn} isLoggedIn={isLoggedIn} events={events} notices={notices} posts={posts} hallOfFame={hallOfFame} chosunPrograms={chosunPrograms} onNavigate={handleNavigateCompat} />} />
 
@@ -465,7 +482,8 @@ function HallOfFameWriteWrapper({ entries, onNavigate, fetchHallOfFame }: any) {
 
 function App() {
   return (
-    <div className="min-h-screen bg-white font-sans selection:bg-indigo-100 selection:text-indigo-700">
+    <div className="apple-app isolate relative min-h-screen bg-[#f5f5f7] font-sans text-slate-900 selection:bg-indigo-100 selection:text-indigo-800">
+      <div className="apple-ambient" aria-hidden="true" />
       <BrowserRouter>
         <AppContent />
       </BrowserRouter>

@@ -29,6 +29,7 @@ interface NavbarProps {
   isLoggedIn: boolean;
   userRole: string; // ✨ 관리자 권한 확인을 위해 추가
   onLogout: () => void;
+  user?: any;
 }
 
 export const Navbar = ({ 
@@ -36,10 +37,10 @@ export const Navbar = ({
   currentPage, 
   isLoggedIn, 
   userRole, 
-  onLogout 
+  onLogout,
+  user,
 }: NavbarProps) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [user, setUser] = useState<any>(null);
   const [activeTab, setActiveTab] = useState(currentPage); // ✨ 현재 활성화된 밑줄 상태
   const [guildIconUrl, setGuildIconUrl] = useState<string>(FALLBACK_DISCORD_SERVER_ICON);
 
@@ -67,15 +68,20 @@ export const Navbar = ({
   // 로고를 못 띄우는 원인이 됐다. 탭/검색 로고는 index.html의 고정 파일(/favicon.ico)로 고정하고,
   // 화면에 보이는 네비바 로고만 실시간 서버 아이콘을 쓴다.
 
-  // ✨ 컴포넌트 마운트 시 및 로그인 상태 변경 시 사용자 정보 로드
+  // 드로어가 열린 동안 배경 스크롤을 막고 Escape로 닫힌다.
   useEffect(() => {
-    const savedUser = localStorage.getItem("currentUser");
-    if (savedUser) {
-      setUser(JSON.parse(savedUser));
-    } else {
-      setUser(null);
-    }
-  }, [isLoggedIn]);
+    if (!isMobileMenuOpen) return;
+    const previousOverflow = document.body.style.overflow;
+    const handleEscape = (event: KeyboardEvent) => {
+      if (event.key === "Escape") setIsMobileMenuOpen(false);
+    };
+    document.body.style.overflow = "hidden";
+    window.addEventListener("keydown", handleEscape);
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      window.removeEventListener("keydown", handleEscape);
+    };
+  }, [isMobileMenuOpen]);
 
   // ✨ 스크롤 위치를 감지하여 밑줄(activeTab)을 자동으로 변경 (ScrollSpy)
   useEffect(() => {
@@ -164,15 +170,17 @@ export const Navbar = ({
   return (
     <>
       {/* h-16(모바일) / lg:h-20(데스크탑) 으로 반응형 높이 설정 */}
-      <nav className="fixed top-0 left-0 right-0 z-[100] bg-white/80 backdrop-blur-xl border-b border-slate-100 h-16 lg:h-20 flex items-center shadow-sm">
-        <div className="w-full px-8 md:px-12 flex items-center justify-between">
+      <nav aria-label="주요 메뉴" className="liquid-glass fixed top-0 left-0 right-0 z-[100] h-16 lg:h-[72px] flex items-center border-x-0 border-t-0 rounded-none">
+        <div className="w-full max-w-[1480px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-4">
 
           {/* 로고 영역 - 데스크탑에서는 다시 w-10 h-10으로 복구 */}
-          <div 
-            className="flex items-center gap-3 cursor-pointer shrink-0" 
+          <button
+            type="button"
+            aria-label="DEVSIGN 홈으로 이동"
+            className="flex items-center gap-2.5 cursor-pointer shrink-0 rounded-full focus-visible:outline-none"
             onClick={() => handleNavigate("home")}
           >
-            <div className="w-9 h-9 lg:w-10 lg:h-10 rounded-xl overflow-hidden shadow-lg border border-slate-100 flex items-center justify-center bg-white group hover:scale-105 transition-transform">
+            <div className="w-9 h-9 rounded-[11px] overflow-hidden shadow-apple-sm border border-black/5 flex items-center justify-center bg-white transition-transform duration-200 hover:scale-105">
               <img
                 src={guildIconUrl}
                 alt="DEVSIGN"
@@ -187,34 +195,24 @@ export const Navbar = ({
                 }}
               />
             </div>
-            <span className="font-bold text-xl lg:text-2xl text-slate-900 tracking-tight">
+            <span className="font-[800] text-[19px] text-slate-900 tracking-[-0.035em]">
               DEVSIGN
             </span>
-          </div>
+          </button>
 
           {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
-          <div className="hidden lg:flex items-center gap-10">
+          <div className="hidden lg:flex items-center gap-0.5 p-1 rounded-full bg-slate-100/70 border border-black/[0.035]">
             {visibleLinks.map((link) => {
               const isActive = activeTab === link.id; 
               return (
                 <button
                   key={link.id}
                   onClick={() => handleNavigate(link.id)}
-                  className={`relative py-1 lg:py-2 font-bold transition-all text-[14px] lg:text-[15px] whitespace-nowrap group ${
-                    isActive ? "text-indigo-600" : "text-slate-500 hover:text-indigo-600"
+                  className={`relative px-3 py-2 rounded-full font-semibold transition-all text-[13px] whitespace-nowrap group ${
+                    isActive ? "text-slate-900 bg-white shadow-sm" : "text-slate-500 hover:text-slate-900 hover:bg-white/60"
                   }`}
                 >
                   {link.name}
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeUnderline"
-                      className="absolute -bottom-1 left-0 right-0 h-0.5 bg-indigo-600 rounded-full"
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
-                  {!isActive && (
-                    <div className="absolute -bottom-1 left-0 right-0 h-0.5 bg-indigo-600/20 rounded-full scale-x-0 group-hover:scale-x-100 transition-transform duration-300 origin-left" />
-                  )}
                 </button>
               );
             })}
@@ -227,13 +225,13 @@ export const Navbar = ({
                 <>
                   <Button 
                     variant="ghost" 
-                    className="font-bold text-slate-600 hover:text-indigo-600 text-sm lg:text-base" 
+                    className="font-semibold text-slate-600 hover:text-slate-900 text-sm"
                     onClick={() => handleNavigate("signup")}
                   >
                     회원가입
                   </Button>
                   <Button 
-                    className="bg-indigo-600 text-white font-bold px-6 py-4 lg:px-8 lg:py-5 rounded-xl hover:bg-indigo-700 shadow-lg transition-all active:scale-95 text-sm lg:text-base" 
+                    className="apple-button px-6 text-sm"
                     onClick={() => handleNavigate("login")}
                   >
                     로그인
@@ -242,7 +240,7 @@ export const Navbar = ({
               ) : (
                 <div className="flex items-center gap-3">
                   <div
-                    className="flex items-center gap-3 px-3 py-1.5 bg-slate-50 rounded-2xl border border-slate-100 hover:bg-slate-100 transition-all cursor-pointer group"
+                    className="flex items-center gap-2.5 px-2.5 py-1.5 bg-slate-100/70 rounded-full border border-black/[0.035] hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
                     onClick={() => handleNavigate("profile")}
                   >
                     <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
@@ -277,8 +275,11 @@ export const Navbar = ({
             </div>
             
             {/* 모바일 메뉴 햄버거 버튼 */}
-            <button 
-              className="lg:hidden p-2 text-slate-600" 
+            <button
+              type="button"
+              aria-label={isMobileMenuOpen ? "메뉴 닫기" : "메뉴 열기"}
+              aria-expanded={isMobileMenuOpen}
+              className="lg:hidden w-10 h-10 inline-flex items-center justify-center rounded-full bg-slate-100/80 text-slate-700 hover:bg-slate-200 transition-colors"
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
             >
               {isMobileMenuOpen ? <X size={24} /> : <Menu size={24} />}
@@ -294,7 +295,7 @@ export const Navbar = ({
               initial={{ opacity: 0 }} 
               animate={{ opacity: 1 }} 
               exit={{ opacity: 0 }} 
-              className="fixed inset-0 bg-slate-900/20 backdrop-blur-sm z-[105] lg:hidden" 
+              className="fixed inset-0 bg-slate-950/25 backdrop-blur-sm z-[105] lg:hidden"
               onClick={() => setIsMobileMenuOpen(false)} 
             />
             
@@ -303,7 +304,10 @@ export const Navbar = ({
               animate={{ x: 0 }} 
               exit={{ x: "100%" }} 
               transition={{ type: "spring", damping: 30, stiffness: 300 }} 
-              className="fixed top-0 right-0 bottom-0 w-[75%] max-w-[280px] bg-white z-[110] lg:hidden flex flex-col p-6 pt-16 gap-2 shadow-2xl"
+              role="dialog"
+              aria-modal="true"
+              aria-label="모바일 메뉴"
+              className="liquid-glass fixed top-2 right-2 bottom-2 w-[86%] max-w-[340px] z-[110] lg:hidden flex flex-col p-5 pt-14 gap-1.5 rounded-[28px] shadow-apple-lg"
             >
               {visibleLinks.map((link) => {
                 const isActive = activeTab === link.id;
@@ -311,8 +315,8 @@ export const Navbar = ({
                   <button 
                     key={link.id} 
                     onClick={() => handleNavigate(link.id)} 
-                    className={`text-left py-2.5 px-4 text-[15px] font-bold rounded-xl transition-all ${
-                      isActive ? "bg-indigo-50 text-indigo-600" : "text-slate-700"
+                    className={`text-left py-3 px-4 text-[15px] font-semibold rounded-2xl transition-all ${
+                      isActive ? "bg-indigo-50 text-indigo-700" : "text-slate-700 hover:bg-slate-100"
                     }`}
                   >
                     {link.name}

@@ -100,7 +100,7 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
   };
 
   return (
-    <footer className="bg-slate-950 text-slate-400 py-10 md:py-20 px-5 md:px-6 border-t border-slate-900">
+    <footer className="relative z-[1] bg-[#f5f5f7]/80 text-slate-500 py-10 md:py-16 px-5 md:px-6 border-t border-white/70 backdrop-blur-xl">
       <div className="max-w-7xl mx-auto">
         {/* ✨ 핵심 변경: 모바일에서 grid-cols-2 적용하여 2열로 나란히 배치 */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-12 mb-10 md:mb-16">
@@ -127,7 +127,7 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
                   }}
                 />
               </div>
-              <span className="font-bold text-lg md:text-2xl text-white tracking-tight truncate">DEVSIGN</span>
+              <span className="font-[800] text-lg md:text-2xl text-slate-900 tracking-[-0.035em] truncate">DEVSIGN</span>
             </div>
             {/* ✨ 공간이 좁아지므로 모바일 글씨 크기를 text-[11px]로 더 작게 조정 */}
             <p className="text-[11px] md:text-sm leading-relaxed font-medium">
@@ -139,7 +139,7 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
 
           {/* 2. 빠른 링크 영역 */}
           <div className="col-span-1">
-            <h4 className="text-[13px] md:text-base text-white font-bold mb-3 md:mb-6 flex items-center gap-1.5 md:gap-2">
+            <h4 className="text-[13px] md:text-base text-slate-900 font-bold mb-3 md:mb-6 flex items-center gap-1.5 md:gap-2">
               <ChevronRight className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-500 shrink-0" /> 바로가기
             </h4>
             <ul className="space-y-2 md:space-y-4 text-[11px] md:text-sm font-medium">
@@ -158,7 +158,7 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
 
           {/* 3. 운영진 연락처 영역 (소셜 아이콘 대체) */}
           <div className="col-span-1">
-            <h4 className="text-[13px] md:text-base text-white font-bold mb-3 md:mb-6 flex items-center gap-1.5 md:gap-2">
+            <h4 className="text-[13px] md:text-base text-slate-900 font-bold mb-3 md:mb-6 flex items-center gap-1.5 md:gap-2">
               <Phone className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-500 shrink-0" /> 연락처
               {isAdmin && (
                 <button
@@ -177,13 +177,13 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
                     <div className="flex flex-col gap-0.5 md:gap-1">
                       <div className="flex flex-col lg:flex-row lg:items-center gap-0.5 lg:gap-2 text-[11px] md:text-sm">
                         <span className="text-indigo-400 font-bold">{admin.role}</span>
-                        <span className="text-slate-200 font-bold truncate">{admin.year} {admin.name}</span>
+                        <span className="text-slate-700 font-bold truncate">{admin.year} {admin.name}</span>
                       </div>
                       <input
                         value={phoneDraft[PHONE_KEYS[admin.role as keyof typeof PHONE_KEYS]] || ""}
                         onChange={(e) => setPhoneDraft((p) => ({ ...p, [PHONE_KEYS[admin.role as keyof typeof PHONE_KEYS]]: e.target.value }))}
                         placeholder="010-0000-0000"
-                        className="w-full bg-slate-900 border border-slate-800 rounded-lg px-2 py-1 text-[10px] md:text-xs font-medium text-white outline-none focus:ring-1 focus:ring-indigo-500"
+                        className="w-full bg-white border border-slate-200 rounded-lg px-2 py-1 text-[10px] md:text-xs font-medium text-slate-900 outline-none focus:ring-2 focus:ring-indigo-500/30"
                       />
                     </div>
                   ) : (
@@ -191,7 +191,7 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
                       {/* ✨ 좁은 공간을 위해 이름과 직책을 분리하여 줄바꿈 허용 */}
                       <div className="flex flex-col lg:flex-row lg:items-center gap-0.5 lg:gap-2 text-[11px] md:text-sm">
                         <span className="text-indigo-400 font-bold">{admin.role}</span>
-                        <span className="text-slate-200 font-bold truncate">{admin.year} {admin.name}</span>
+                        <span className="text-slate-700 font-bold truncate">{admin.year} {admin.name}</span>
                       </div>
                       <span className="text-[10px] md:text-xs font-medium group-hover:text-indigo-400 transition-colors">
                         {admin.phone}
@@ -205,12 +205,12 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
 
           {/* 4. 오시는 길 영역 */}
           <div className="col-span-1">
-            <h4 className="text-[13px] md:text-base text-white font-bold mb-3 md:mb-6 flex items-center gap-1.5 md:gap-2">
+            <h4 className="text-[13px] md:text-base text-slate-900 font-bold mb-3 md:mb-6 flex items-center gap-1.5 md:gap-2">
               <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-500 shrink-0" /> 오시는 길
             </h4>
             <div className="space-y-2 md:space-y-4 text-[11px] md:text-sm font-medium leading-relaxed">
               <div className="flex gap-2 md:gap-3">
-                <span className="text-slate-200">
+                <span className="text-slate-700">
                   광주 동구 필문대로 309<br />
                   IT융합대학 4층 4122
                 </span>
@@ -220,7 +220,7 @@ export const Footer = ({ onNavigate, isAdmin }: FooterProps) => {
         </div>
 
         {/* 하단 저작권 영역 */}
-        <div className="pt-6 md:pt-10 border-t border-slate-900 flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 text-center md:text-left">
+        <div className="pt-6 md:pt-8 border-t border-black/[0.06] flex flex-col md:flex-row justify-between items-center gap-4 md:gap-6 text-center md:text-left">
           <p className="text-[11px] md:text-[13px] font-medium">
             © {currentYear} <span className="text-indigo-500 font-bold tracking-tight">DEVSIGN</span>. All rights reserved.
           </p>
