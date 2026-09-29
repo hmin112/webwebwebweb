@@ -434,6 +434,13 @@ public class OjClient {
         return unwrap(response);
     }
 
+    // 회원 본인의 OJ 프로필 — acm/oi_problems_status에 푼 문제(status 0 = 정답) 목록이 들어 있다
+    public Map<String, Object> getProfile(String appkey) {
+        HttpEntity<Void> entity = new HttpEntity<>(appkeyHeaders(appkey));
+        ResponseEntity<Map> response = restTemplate.exchange(ojBaseUrl + "/api/profile/", HttpMethod.GET, entity, Map.class);
+        return unwrap(response);
+    }
+
     // 서비스(관리자) 계정으로 제출 상세 조회 — OJ는 본인·관리자만 남의 제출 코드를 볼 수 있어서,
     // 부원 간 코드 열람은 우리 백엔드가 권한을 판단한 뒤 이 메서드로 가져온다
     public Map<String, Object> getSubmissionAsService(String submissionId) {

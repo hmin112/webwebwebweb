@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
-import { ArrowLeft, Clock, Cpu, Play, Pencil, Check, X, Plus, Code2, Users, User } from "lucide-react";
+import { ArrowLeft, Clock, Cpu, Play, Pencil, Check, X, Plus, Code2, Users, User, Lock } from "lucide-react";
 import Editor from "@monaco-editor/react";
 import { api } from "../../api/axios";
 
@@ -27,8 +27,11 @@ type OjSubmission = {
   result: number;
   language: string;
   create_time: string;
-  statistic_info?: { time_cost?: number; memory_cost?: number };
+  statistic_info?: { time_cost?: number; memory_cost?: number; score?: number; err_info?: string };
   code?: string;
+  codeVisible?: boolean;
+  passedCases?: number;
+  totalCases?: number;
   memberName?: string;
   memberStudentId?: string | null;
   mine?: boolean;
@@ -421,6 +424,12 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
               {(() => {
                 const rows = historyScope === "mine" ? history : allHistory;
                 if (rows === null) return <p className="text-[12px] text-slate-400 py-2">불러오는 중...</p>;
+                const lockedHint =
+                  historyScope === "all" && rows.some((r) => !r.mine && r.codeVisible === false) ? (
+                    <p className="flex items-center gap-1 text-[11px] text-slate-400 mb-2">
+                      <Lock size={11} /> 결과는 누구나 볼 수 있고, 코드는 이 문제를 맞히면 열려요
+                    </p>
+                  ) : null;
                 if (rows.length === 0) {
                   return (
                     <p className="text-[12px] text-slate-400 py-2">
@@ -429,6 +438,8 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
                   );
                 }
                 return (
+                  <>
+                  {lockedHint}
                   <div className="space-y-0.5 max-h-[320px] overflow-y-auto -mx-2">
                     {rows.map((h) => {
                       const style = RESULT_STYLE[h.result] ?? { label: "-", color: "#8E8E93" };
@@ -448,13 +459,21 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
                             <span className="text-slate-300 shrink-0 hidden sm:inline">{formatSubmitTime(h.create_time)}</span>
                           </span>
                           <span className="flex items-center gap-2 shrink-0">
+                            {typeof h.statistic_info?.score === "number" && (
+                              <span className="text-slate-500 font-medium">{h.statistic_info.score}점</span>
+                            )}
                             <span className="font-medium" style={{ color: style.color }}>{style.label}</span>
-                            <Code2 size={12} className="text-slate-300" />
+                            {historyScope === "all" && !h.mine && h.codeVisible === false ? (
+                              <Lock size={12} className="text-slate-300" />
+                            ) : (
+                              <Code2 size={12} className="text-slate-300" />
+                            )}
                           </span>
                         </button>
                       );
                     })}
                   </div>
+                  </>
                 );
               })()}
             </div>
@@ -538,6 +557,10 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
                       {(RESULT_STYLE[viewing.result] ?? { label: "-" }).label}
                     </span>
                     <span>{viewing.language}</span>
+                    {typeof viewing.statistic_info?.score === "number" && <span>{viewing.statistic_info.score}점</span>}
+                    {typeof viewing.passedCases === "number" && (
+                      <span>테스트 {viewing.passedCases}/{viewing.totalCases} 통과</span>
+                    )}
                     {viewing.statistic_info?.time_cost !== undefined && (
                       <span>{viewing.statistic_info.time_cost}ms · {viewing.statistic_info.memory_cost}KB</span>
                     )}
@@ -566,6 +589,17 @@ export const OjProblemPage = ({ loginId, isAdmin }: { loginId?: string; isAdmin?
               {viewLoading ? (
                 <div className="h-[300px] flex items-center justify-center">
                   <div className="w-5 h-5 rounded-full border-2 border-slate-200 border-t-slate-900 animate-spin" />
+                </div>
+              ) : viewing.codeVisible === false && !viewing.mine ? (
+                <div className="px-6 py-14 flex flex-col items-center text-center gap-2">
+                  <div className="w-11 h-11 rounded-2xl bg-slate-100 text-slate-400 flex items-center justify-center">
+                    <Lock size={18} />
+                  </div>
+                  <p className="text-[14px] font-semibold text-slate-800">이 문제를 맞히면 코드를 볼 수 있어요</p>
+                  <p className="text-[12px] text-slate-400">결과와 점수, 통과한 테스트 수는 위에서 확인할 수 있어요.</p>
+                  {viewing.statistic_info?.err_info && (
+                    <pre className="mt-3 max-w-full text-left text-[11px] text-red-500 bg-red-50 rounded-xl p-3 whitespace-pre-wrap overflow-x-auto">{viewing.statistic_info.err_info}</pre>
+                  )}
                 </div>
               ) : (
                 <Editor

@@ -7,9 +7,11 @@ import org.springframework.stereotype.Service;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -43,9 +45,10 @@ public class OjService {
         return ojClient.createSubmission(resolveAppkey(loginId), problemId, language, code);
     }
 
-    // ✨ [2026-09-29] 부원끼리 서로의 제출 코드를 참고할 수 있게 서비스 계정으로 조회한다.
-    // 단, 동아리 부원 계정(dv_)의 일반 문제 제출만 — 서비스/관리자 계정이 문제 등록 때 올린 모범답안 검증
-    // 제출이나 대회 제출은 보여주지 않는다.
+    // ✨ [2026-09-29] 부원끼리 서로의 제출을 참고할 수 있게 서비스 계정으로 조회한다.
+    // - 결과·점수·시간/메모리·통과한 테스트 수는 누구나 볼 수 있고,
+    // - 코드는 본인 제출이거나 "보는 사람이 그 문제를 맞혔을 때"만 내려준다(백준 방식, 과제 베끼기 방지).
+    // 동아리 부원 계정(dv_)의 일반 문제 제출만 대상 — 서비스/관리자 계정의 모범답안 검증 제출이나 대회 제출은 제외.
     public Map<String, Object> getSubmission(String loginId, String submissionId) {
         Map<String, Object> submission = new HashMap<>(ojClient.getSubmissionAsService(submissionId));
         String username = String.valueOf(submission.getOrDefault("username", ""));
@@ -53,6 +56,19 @@ public class OjService {
             throw new OjClient.OjApiException("열람할 수 없는 제출입니다.");
         }
         decorateWithMember(submission, loginId, memberIndex());
+
+        boolean mine = Boolean.TRUE.equals(submission.get("mine"));
+        String problemPk = String.valueOf(submission.get("problem"));
+        boolean codeVisible = mine || solvedProblems(loginId).pkSet().contains(problemPk);
+
+        addTestCaseSummary(submission);
+        // 관리자 권한으로 받아온 채점 상세(테스트케이스별 출력 등)는 일반 부원 화면과 맞춰 내려주지 않는다
+        submission.remove("info");
+        submission.remove("ip");
+        if (!codeVisible) {
+            submission.remove("code");
+        }
+        submission.put("codeVisible", codeVisible);
         return submission;
     }
 
@@ -60,6 +76,7 @@ public class OjService {
     public Map<String, Object> getMemberSubmissionList(String loginId, String problemDisplayId, int limit) {
         Map<String, Object> data = new HashMap<>(ojClient.getMemberSubmissionList(resolveAppkey(loginId), problemDisplayId, limit));
         Map<String, Member> members = memberIndex();
+        Set<String> solvedDisplayIds = solvedProblems(loginId).displayIdSet();
         Object raw = data.get("results");
         List<Map<String, Object>> results = new ArrayList<>();
         if (raw instanceof List<?> list) {
@@ -68,11 +85,49 @@ public class OjService {
                 Map<String, Object> row = new HashMap<>((Map<String, Object>) m);
                 if (!String.valueOf(row.getOrDefault("username", "")).startsWith(MEMBER_PREFIX)) continue;
                 decorateWithMember(row, loginId, members);
+                row.put("codeVisible", Boolean.TRUE.equals(row.get("mine"))
+                        || solvedDisplayIds.contains(String.valueOf(row.get("problem"))));
                 results.add(row);
             }
         }
         data.put("results", results);
         return data;
+    }
+
+    private record SolvedProblems(Set<String> pkSet, Set<String> displayIdSet) {}
+
+    // 보는 사람이 정답(status 0)을 받은 문제 — ACM/OI 규칙 모두. OI는 만점일 때 status 0이 된다.
+    @SuppressWarnings("unchecked")
+    private SolvedProblems solvedProblems(String loginId) {
+        Set<String> pks = new HashSet<>();
+        Set<String> displayIds = new HashSet<>();
+        Map<String, Object> profile = ojClient.getProfile(resolveAppkey(loginId));
+        for (String key : List.of("acm_problems_status", "oi_problems_status")) {
+            if (!(profile.get(key) instanceof Map<?, ?> status)) continue;
+            if (!(status.get("problems") instanceof Map<?, ?> problems)) continue;
+            for (Map.Entry<?, ?> entry : problems.entrySet()) {
+                if (!(entry.getValue() instanceof Map<?, ?> p)) continue;
+                Object st = p.get("status");
+                if (st instanceof Number n && n.intValue() == 0) {
+                    pks.add(String.valueOf(entry.getKey()));
+                    if (p.get("_id") != null) displayIds.add(String.valueOf(p.get("_id")));
+                }
+            }
+        }
+        return new SolvedProblems(pks, displayIds);
+    }
+
+    // 채점 상세(info.data)에서 테스트케이스 통과 개수만 요약해 붙인다 (result 0 = 통과)
+    @SuppressWarnings("unchecked")
+    private void addTestCaseSummary(Map<String, Object> submission) {
+        if (!(submission.get("info") instanceof Map<?, ?> info)) return;
+        if (!(info.get("data") instanceof List<?> cases) || cases.isEmpty()) return;
+        int passed = 0;
+        for (Object c : cases) {
+            if (c instanceof Map<?, ?> tc && tc.get("result") instanceof Number n && n.intValue() == 0) passed++;
+        }
+        submission.put("passedCases", passed);
+        submission.put("totalCases", cases.size());
     }
 
     private static final String MEMBER_PREFIX = "dv_";
