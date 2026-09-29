@@ -9,25 +9,25 @@ export const About = () => {
       {/* 1. 기존 동아리 소개 섹션 */}
       <section id="about" className="py-16 md:py-24 overflow-hidden bg-[#FAFAFC]">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-          <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-20">
-            
+          {/* ✨ [2026-09-30] 실제 동아리 사진으로 교체. PC에서는 두 칸을 같은 높이로 늘려(items-stretch)
+              사진 높이가 오른쪽 글 영역과 정확히 같아지게 하고, 사진은 그 칸을 꽉 채우도록(object-cover) 잘라 보여준다.
+              천장보다 사람들이 보이도록 아래쪽 기준으로 자른다. */}
+          <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] items-stretch gap-8 lg:gap-16">
+
             {/* 왼쪽: 이미지 영역 */}
-            <motion.div 
-              initial={{ opacity: 0, x: -50 }}
+            <motion.div
+              initial={{ opacity: 0, x: -40 }}
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
-              className="w-full lg:w-[60%] relative"
+              className="relative w-full aspect-[4/3] lg:aspect-auto lg:h-full min-h-[240px] rounded-[1.5rem] lg:rounded-[2rem] overflow-hidden border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_32px_rgb(0_0_0/0.06)] bg-[#E5E5EA]"
             >
-              <div className="relative rounded-[1.5rem] lg:rounded-[2.5rem] overflow-hidden shadow-2xl shadow-indigo-100/50 border border-slate-100">
-                <img 
-                  src="https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&q=80&w=2000" 
-                  alt="Coding Community" 
-                  className="w-full h-[200px] md:h-[500px] object-cover transform hover:scale-105 transition-transform duration-1000"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-indigo-900/20 to-transparent" />
-              </div>
-              <div className="absolute -z-10 -top-10 -left-10 w-40 h-40 bg-indigo-50 rounded-full blur-3xl opacity-60" />
+              <img
+                src="/images/about-members.jpg"
+                alt="DEVSIGN 부원들이 강의실에 모여 함께 찍은 사진"
+                loading="lazy"
+                className="absolute inset-0 w-full h-full object-cover object-[50%_78%] transition-transform duration-1000 hover:scale-[1.03]"
+              />
             </motion.div>
 
             {/* 오른쪽: 텍스트 영역 */}
@@ -36,7 +36,7 @@ export const About = () => {
               whileInView={{ opacity: 1, x: 0 }}
               viewport={{ once: true }}
               transition={{ duration: 0.8 }}
-              className="w-full lg:w-[40%]"
+              className="w-full flex flex-col justify-center lg:py-2"
             >
               <span className="text-indigo-600 font-extrabold text-sm md:text-lg mb-2 md:mb-4 block tracking-wider">
                 동아리 소개
