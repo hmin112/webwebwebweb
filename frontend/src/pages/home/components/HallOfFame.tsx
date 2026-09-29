@@ -11,12 +11,16 @@ const formatStudentId = (id?: string) => {
 };
 
 // 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
-const getAwardBadgeStyle = (awardName?: string) => {
+// ✨ [2026-09-30] 상 배지 — 색을 채우지 않고 테두리만 있는 알약(첫 화면 배너와 같은 스타일).
+// 사진 위(onPhoto)는 밝은 색 + 글자 그림자로 어떤 사진에서도 읽히게, 흰 카드 위는 진한 색으로.
+const getAwardBadgeStyle = (awardName?: string, onPhoto = true) => {
   const name = awardName || "";
-  if (name.includes("금")) return "bg-gradient-to-br from-[#FFDD66] to-[#B8860B] text-white shadow-lg shadow-amber-300/50";
-  if (name.includes("은")) return "bg-gradient-to-br from-[#F4F4F5] to-[#9CA3AF] text-slate-900 shadow-lg shadow-slate-300/50";
-  if (name.includes("동")) return "bg-gradient-to-br from-[#E0985A] to-[#8B5A2B] text-white shadow-lg shadow-orange-300/50";
-  return "bg-amber-500 text-white shadow-lg";
+  const photo = "bg-transparent border-[1.5px] backdrop-blur-[2px] [text-shadow:0_1px_3px_rgb(0_0_0/0.45)] shadow-[0_1px_3px_rgb(0_0_0/0.18)]";
+  const light = "bg-transparent border-[1.5px]";
+  if (name.includes("금")) return onPhoto ? `${photo} border-[#FFDD66] text-[#FFDD66]` : `${light} border-[#C9A227] text-[#A8841A]`;
+  if (name.includes("은")) return onPhoto ? `${photo} border-white text-white` : `${light} border-[#AEAEB2] text-[#6E6E73]`;
+  if (name.includes("동")) return onPhoto ? `${photo} border-[#F0A868] text-[#F0A868]` : `${light} border-[#C98547] text-[#A6662C]`;
+  return onPhoto ? `${photo} border-amber-300 text-amber-300` : `${light} border-amber-500 text-amber-600`;
 };
 
 export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string, id?: number) => void; entries: any[] }) => {
@@ -31,7 +35,7 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
   });
 
   return (
-    <section id="halloffame" className="py-10 md:py-16 bg-[#FAF9F6]">
+    <section id="halloffame" className="py-10 md:py-16 bg-[#FDFDFE]">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
 
         <div className="flex flex-row justify-between items-end mb-6 md:mb-8 gap-4 md:gap-6">
@@ -81,7 +85,7 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                     </div>
                   )}
                   <div className="absolute top-2 left-2 md:top-4 md:left-4 flex flex-wrap gap-1.5">
-                    {awardGroups.map((award: any) => <span key={award.awardName} className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-lg md:rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
+                    {awardGroups.map((award: any) => <span key={award.awardName} className={`px-2.5 py-1 md:px-3.5 md:py-1.5 rounded-full text-[10px] md:text-xs font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>)}
                   </div>
 
                   {awardGroups.some((award: any) => award.participants?.length) && (

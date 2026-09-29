@@ -22,65 +22,55 @@ export const Events = ({ onNavigate, events }: { onNavigate: (page: string, id?:
           </button>
         </div>
 
-        {/* 이벤트 카드 목록 */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-8">
+        {/* ✨ [2026-09-30] 이벤트 카드 — PC·모바일 모두 깔끔한 흰 카드. 예전엔 PC에서 배경 없는 카드로 짜여 있었는데
+            전역 "흰 배경 = 유리" 규칙이 PC에서도 유리 박스를 씌워 여백 없는 상자에 사진·글자가 붙어 보였다.
+            bg-white 대신 임의값(#fff)을 써서 전역 규칙에 걸리지 않게 하고 카드 모양을 직접 정한다. */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-6">
           {events && events.map((event, index) => (
             <motion.div
               key={event.id}
-              initial={{ opacity: 0, y: 30 }}
+              initial={{ opacity: 0, y: 24 }}
               whileInView={{ opacity: 1, y: 0 }}
-              transition={{ delay: index * 0.1 }}
+              viewport={{ once: true }}
+              transition={{ delay: index * 0.08 }}
               onClick={() => onNavigate("event-detail", event.id)}
-              // ✨ 모바일: flex-row(가로형) 및 카드 배경/테두리 추가, 데스크탑: flex-col(세로형) 및 배경 제거(기존 디자인)
-              className="group cursor-pointer bg-white md:bg-transparent p-4 md:p-0 rounded-[1.5rem] md:rounded-none shadow-sm md:shadow-none border border-slate-100 md:border-none hover:shadow-xl md:hover:shadow-none transition-all flex flex-row md:flex-col items-center md:items-stretch gap-4 md:gap-0"
+              className="group cursor-pointer bg-[#fff] rounded-[1.5rem] md:rounded-[1.75rem] overflow-hidden border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04)] hover:shadow-[0_10px_30px_rgb(0_0_0/0.07)] hover:-translate-y-0.5 transition-all duration-300 flex flex-row md:flex-col items-center md:items-stretch gap-4 md:gap-0 p-3 md:p-0"
             >
-              
-              {/* ✨ 이미지 영역: 모바일에서는 왼쪽의 작은 정사각형, 데스크탑에서는 윗쪽의 큰 직사각형 */}
-              <div className="relative w-24 h-24 md:w-full md:h-64 rounded-2xl md:rounded-[2.5rem] overflow-hidden md:mb-6 shadow-sm border border-slate-100 shrink-0">
-                <img 
-                  src={event.image} 
-                  alt={event.title} 
-                  className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" 
-                />
-                {/* 카테고리 태그 */}
-                <div className="absolute top-2 left-2 md:top-6 md:left-6">
-                  <span className="px-2 py-1 md:px-4 md:py-1.5 rounded-lg md:rounded-full bg-indigo-600 text-white text-[9px] md:text-[11px] font-black uppercase shadow-lg">
+              {/* 사진: 모바일은 왼쪽 정사각형, PC는 카드 위쪽을 꽉 채움 */}
+              <div className="relative w-24 h-24 md:w-full md:h-auto md:aspect-[16/10] rounded-2xl md:rounded-none overflow-hidden shrink-0 bg-[#F2F2F7]">
+                {event.image && (
+                  <img
+                    src={event.image}
+                    alt={event.title}
+                    className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
+                  />
+                )}
+                {event.category && (
+                  <span className="absolute top-2 left-2 md:top-4 md:left-4 px-2 py-0.5 md:px-3 md:py-1 rounded-full bg-[#ffffff]/90 backdrop-blur text-[#1D1D1F] text-[9px] md:text-[11px] font-semibold shadow-[0_1px_3px_rgb(0_0_0/0.12)]">
                     {event.category}
                   </span>
-                </div>
+                )}
               </div>
 
-              {/* 텍스트 컨텐츠 영역 */}
-              <div className="flex flex-col flex-1 min-w-0 md:px-2 justify-center h-full">
-                
-                {/* 제목 */}
-                <h3 className="text-base md:text-2xl font-black text-slate-900 mb-1.5 md:mb-4 group-hover:text-indigo-600 transition-colors leading-tight line-clamp-1">
+              {/* 글자 영역 */}
+              <div className="flex flex-col flex-1 min-w-0 md:p-5 md:pt-4">
+                <h3 className="text-[15px] md:text-lg font-bold tracking-[-0.01em] text-[#1D1D1F] mb-1.5 md:mb-2.5 group-hover:text-[#0071E3] transition-colors leading-snug line-clamp-1">
                   {event.title}
                 </h3>
-                
-                {/* 날짜 및 장소 정보 */}
-                <div className="flex flex-col gap-1 md:space-y-3 mb-2 md:mb-6">
-                  <div className="flex items-center gap-1.5 md:gap-3 text-slate-500 font-medium text-xs md:text-sm">
-                    <Calendar className="w-3.5 h-3.5 md:w-4 md:h-4 text-indigo-400 shrink-0" /> 
+                <div className="flex flex-col gap-1 md:gap-1.5 text-[12px] md:text-[13px] text-[#6E6E73]">
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <Calendar className="w-3.5 h-3.5 shrink-0 text-[#8E8E93]" />
                     <span className="truncate">{event.date}</span>
                   </div>
-                  <div className="flex items-center gap-1.5 md:gap-3 text-slate-500 font-medium text-xs md:text-sm">
-                    <MapPin className="w-3.5 h-3.5 md:w-4 md:h-4 text-pink-400 shrink-0" /> 
+                  <div className="flex items-center gap-1.5 min-w-0">
+                    <MapPin className="w-3.5 h-3.5 shrink-0 text-[#8E8E93]" />
                     <span className="truncate">{event.location}</span>
                   </div>
                 </div>
-
-                {/* 하단 조회수 및 좋아요 표시 영역 */}
-                {/* ✨ 모바일 여백 축소 (pt-1), 데스크탑 유지 (md:pt-5) */}
-                <div className="flex items-center justify-start md:justify-end pt-1 md:pt-5 border-t-0 md:border-t border-slate-50 gap-3 md:gap-4 mt-auto md:mt-0">
-                  <div className="flex items-center gap-1 md:gap-1.5 text-slate-300 font-bold text-[10px] md:text-[11px]">
-                    <Eye className="w-3 h-3 md:w-3.5 md:h-3.5" /> {event.views || 0}
-                  </div>
-                  <div className="flex items-center gap-1 md:gap-1.5 text-slate-300 font-bold text-[10px] md:text-[11px]">
-                    <Heart className="w-3 h-3 md:w-3.5 md:h-3.5" /> {event.likes || 0}
-                  </div>
+                <div className="flex items-center gap-3 mt-2 md:mt-4 md:pt-3.5 md:border-t md:border-black/[0.05] text-[11px] text-[#AEAEB2] font-medium">
+                  <span className="flex items-center gap-1"><Eye className="w-3.5 h-3.5" /> {event.views || 0}</span>
+                  <span className="flex items-center gap-1"><Heart className="w-3.5 h-3.5" /> {event.likes || 0}</span>
                 </div>
-                
               </div>
             </motion.div>
           ))}

@@ -12,12 +12,16 @@ const formatStudentId = (id?: string) => {
 };
 
 // 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
-const getAwardBadgeStyle = (awardName?: string) => {
+// ✨ [2026-09-30] 상 배지 — 색을 채우지 않고 테두리만 있는 알약(첫 화면 배너와 같은 스타일).
+// 사진 위(onPhoto)는 밝은 색 + 글자 그림자로 어떤 사진에서도 읽히게, 흰 카드 위는 진한 색으로.
+const getAwardBadgeStyle = (awardName?: string, onPhoto = true) => {
   const name = awardName || "";
-  if (name.includes("금")) return "bg-gradient-to-br from-[#FFDD66] to-[#B8860B] text-white shadow-lg shadow-amber-300/50";
-  if (name.includes("은")) return "bg-gradient-to-br from-[#F4F4F5] to-[#9CA3AF] text-slate-900 shadow-lg shadow-slate-300/50";
-  if (name.includes("동")) return "bg-gradient-to-br from-[#E0985A] to-[#8B5A2B] text-white shadow-lg shadow-orange-300/50";
-  return "bg-amber-500 text-white shadow-lg";
+  const photo = "bg-transparent border-[1.5px] backdrop-blur-[2px] [text-shadow:0_1px_3px_rgb(0_0_0/0.45)] shadow-[0_1px_3px_rgb(0_0_0/0.18)]";
+  const light = "bg-transparent border-[1.5px]";
+  if (name.includes("금")) return onPhoto ? `${photo} border-[#FFDD66] text-[#FFDD66]` : `${light} border-[#C9A227] text-[#A8841A]`;
+  if (name.includes("은")) return onPhoto ? `${photo} border-white text-white` : `${light} border-[#AEAEB2] text-[#6E6E73]`;
+  if (name.includes("동")) return onPhoto ? `${photo} border-[#F0A868] text-[#F0A868]` : `${light} border-[#C98547] text-[#A6662C]`;
+  return onPhoto ? `${photo} border-amber-300 text-amber-300` : `${light} border-amber-500 text-amber-600`;
 };
 
 export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any) => {
@@ -79,7 +83,7 @@ export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any
                     <div className={`pt-4 md:pt-5 border-t border-slate-50 ${hasMultipleAwards ? "grid sm:grid-cols-2 gap-3" : "flex items-center gap-2 flex-wrap"}`}>
                       {awardGroups.map((award: any) => (
                         <div key={award.awardName} className="flex flex-wrap items-center gap-2">
-                          {hasMultipleAwards && <span className={`px-2 py-1 rounded-lg text-[9px] font-black ${getAwardBadgeStyle(award.awardName)}`}>{award.awardName}</span>}
+                          {hasMultipleAwards && <span className={`px-2 py-0.5 rounded-full text-[9px] font-black ${getAwardBadgeStyle(award.awardName, false)}`}>{award.awardName}</span>}
                           {(award.participants || []).map((p: any) => (
                             <div key={p.loginId} className="flex items-center gap-1.5 bg-slate-50 rounded-full pl-1 pr-2.5 py-1">
                           <div className="w-5 h-5 rounded-full overflow-hidden bg-indigo-100 shrink-0">

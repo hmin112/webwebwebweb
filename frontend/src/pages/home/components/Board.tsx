@@ -9,7 +9,7 @@ interface BoardSectionProps {
 
 export const Board = ({ onNavigate, posts, isLoggedIn }: BoardSectionProps) => {
   return (
-    <div id="board" className="py-10 md:py-16 bg-[#F3F5F4] scroll-mt-20 px-4 md:px-6">
+    <div id="board" className="py-10 md:py-16 bg-[#FCFCFD] scroll-mt-20 px-4 md:px-6">
       <div className="max-w-7xl mx-auto px-2 md:px-6">
         
         {/* ✨ 상단 헤더 영역: 전체 보기 버튼이 항상 '게시판' 글씨 우측 끝에 오도록 flex-row 고정 */}
