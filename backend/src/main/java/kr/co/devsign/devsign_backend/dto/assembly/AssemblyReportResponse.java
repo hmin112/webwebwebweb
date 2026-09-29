@@ -22,6 +22,7 @@ public record AssemblyReportResponse(
         List<PlanRoadmapItemDto> planRoadmapItems,
         List<PlanRoleDto> planRoles,
         List<PlanLinkDto> planLinks,
-        String planNotes
+        String planNotes,
+        String planFilePath
 ) {
 }

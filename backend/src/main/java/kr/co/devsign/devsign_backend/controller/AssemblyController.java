@@ -10,12 +10,18 @@ import kr.co.devsign.devsign_backend.dto.assembly.SubmissionPeriodResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesResponse;
 import kr.co.devsign.devsign_backend.dto.common.StatusResponse;
+import kr.co.devsign.devsign_backend.util.PlanTemplateGenerator;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.core.Authentication;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @RestController
@@ -24,6 +30,7 @@ import java.util.List;
 public class AssemblyController {
 
     private final AssemblyService assemblyService;
+    private final PlanTemplateGenerator planTemplateGenerator;
 
     @GetMapping("/my-submissions")
     public ResponseEntity<MySubmissionsResponse> getMySubmissions(
@@ -98,5 +105,58 @@ public class AssemblyController {
     @PostMapping("/plan/submit")
     public ResponseEntity<AssemblyReportResponse> submitPlan(@RequestBody SavePlanRequest request) {
         return ResponseEntity.ok(assemblyService.submitPlan(request));
+    }
+
+    // ✨ [2026-09-29 추가] 계획서 파일 업로드(원본 첨부 + 양식 자동 추출) / 첨부 삭제 / 빈 양식 내려받기
+    @PostMapping(value = "/plan/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadPlanFile(
+            Authentication authentication,
+            @RequestParam String loginId,
+            @RequestParam String reportId,
+            @RequestParam int year,
+            @RequestParam int semester,
+            @RequestParam int month,
+            @RequestParam MultipartFile file
+    ) {
+        if (authentication == null || !loginId.equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail("본인 계획서에만 파일을 올릴 수 있습니다."));
+        }
+        try {
+            return ResponseEntity.ok(assemblyService.uploadPlanFile(loginId, reportId, year, semester, month, file));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(StatusResponse.fail("계획서 파일을 저장하지 못했습니다."));
+        }
+    }
+
+    @DeleteMapping("/plan/file")
+    public ResponseEntity<?> removePlanFile(
+            Authentication authentication,
+            @RequestParam String loginId,
+            @RequestParam String reportId,
+            @RequestParam int year,
+            @RequestParam int semester,
+            @RequestParam int month
+    ) {
+        if (authentication == null || !loginId.equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail("본인 계획서만 수정할 수 있습니다."));
+        }
+        try {
+            return ResponseEntity.ok(assemblyService.removePlanFile(loginId, reportId, year, semester, month));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
+    @GetMapping("/plan/template")
+    public ResponseEntity<byte[]> downloadPlanTemplate(@RequestParam(defaultValue = "false") boolean team) {
+        byte[] docx = planTemplateGenerator.generate(team);
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document"));
+        headers.setContentDisposition(ContentDisposition.attachment()
+                .filename(team ? "DEVSIGN_팀_계획서_양식.docx" : "DEVSIGN_계획서_양식.docx", StandardCharsets.UTF_8)
+                .build());
+        return new ResponseEntity<>(docx, headers, HttpStatus.OK);
     }
 }

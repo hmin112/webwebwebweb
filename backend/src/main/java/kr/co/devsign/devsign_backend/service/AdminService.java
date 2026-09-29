@@ -426,6 +426,7 @@ public class AdminService {
                 addFileToZip(zipOut, folderName, report.getPdfPath(), includePdf, Set.of("pdf"));
                 addFileToZip(zipOut, folderName, report.getOtherPath(), includeOther, Collections.emptySet());
                 addPlanPdfToZip(zipOut, folderName, report, includePdf);
+                addPlanFileToZip(zipOut, folderName, report.getPlanFilePath(), includeOther, includePdf, includePresentation);
             }
 
             for (TeamSubmission ts : teamSubs) {
@@ -435,6 +436,7 @@ public class AdminService {
                 addFileToZip(zipOut, folderName, ts.getPdfPath(), includePdf, Set.of("pdf"));
                 addFileToZip(zipOut, folderName, ts.getOtherPath(), includeOther, Collections.emptySet());
                 addTeamPlanPdfToZip(zipOut, folderName, ts, includePdf);
+                addPlanFileToZip(zipOut, folderName, ts.getPlanFilePath(), includeOther, includePdf, includePresentation);
             }
 
             zipOut.finish();
@@ -1012,12 +1014,27 @@ public class AdminService {
         }
 
         // ✨ 핵심: ZIP 안에서의 파일 경로를 "22 김형민/원래파일명.확장자" 형태로 지정!
-        String entryName = folderName + "/" + file.getName();
+        String entryName = folderName + "/" + file.getName().replaceFirst("^plan_[0-9a-f]{32}_", "계획서_");
         zipOut.putNextEntry(new ZipEntry(entryName));
         try (BufferedInputStream in = new BufferedInputStream(new FileInputStream(file))) {
             in.transferTo(zipOut);
         }
         zipOut.closeEntry();
+    }
+
+    // ✨ [2026-09-29 추가] 계획서를 파일로 올린 경우 원본도 함께 담는다 — "전체"면 형식 무관,
+    // "PDF만"/"PPT만"이면 해당 확장자인 원본만.
+    private void addPlanFileToZip(ZipOutputStream zipOut, String folderName, String planFilePath,
+                                  boolean includeAll, boolean includePdf, boolean includePresentation) throws IOException {
+        if (!StringUtils.hasText(planFilePath)) {
+            return;
+        }
+        if (includeAll) {
+            addFileToZip(zipOut, folderName, planFilePath, true, Collections.emptySet());
+            return;
+        }
+        addFileToZip(zipOut, folderName, planFilePath, includePdf, Set.of("pdf"));
+        addFileToZip(zipOut, folderName, planFilePath, includePresentation, Set.of("ppt", "pptx"));
     }
 
     // ✨ [2026-09-02 추가] 웹에서 작성한 계획서(PLAN)는 파일이 아니라 텍스트 필드로 저장되므로,

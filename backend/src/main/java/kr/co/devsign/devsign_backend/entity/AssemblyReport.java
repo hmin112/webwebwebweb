@@ -37,6 +37,9 @@ public class AssemblyReport {
     private String pdfPath;
     private String otherPath;
 
+    // ✨ [2026-09-29 추가] 계획서(PLAN)를 파일로 올린 경우 원본 파일 경로 — 내용은 양식 추출 후 아래 plan* 필드에 채워진다
+    private String planFilePath;
+
     // ✨ [2026-09-02 추가, 2026-09-03 구조화된 양식으로 재구성] 계획서(PLAN)를 파일 업로드 대신
     // 웹에서 바로 작성할 수 있도록 추가한 필드들. 예전 학기의 PLAN 제출은 파일 경로만 채워져 있고
     // 이 필드들은 비어있는 채로 남아있음(마이그레이션 없음) — planOverview 등 이 필드 중 하나라도

@@ -46,6 +46,10 @@ dependencies {
 
 	// 조선대 SW중심대학 지원프로그램 페이지 실시간 스크래핑용 HTML 파서
 	implementation 'org.jsoup:jsoup:1.18.3'
+
+	// 총회 계획서 파일 업로드 시 양식 자동 추출용 (PDF / 한글 .hwp) — .docx/.pptx는 poi-ooxml, .hwpx는 zip+jsoup으로 처리
+	implementation 'org.apache.pdfbox:pdfbox:3.0.7'
+	implementation 'kr.dogfoot:hwplib:1.1.9'
 }
 
 tasks.named('test') {

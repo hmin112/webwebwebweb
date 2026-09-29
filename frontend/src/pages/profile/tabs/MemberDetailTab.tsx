@@ -506,6 +506,14 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
                   <DownloadSlot label="발표자료 (PPT)" path={selectedReport.presentationPath} onDownload={() => handleDownload(selectedReport.presentationPath)} />
                   <DownloadSlot label="PDF 보고서" path={selectedReport.pdfPath} onDownload={() => handleDownload(selectedReport.pdfPath)} onPreview={() => handlePreviewPdf(selectedReport.pdfPath)} />
                   <DownloadSlot label="기타 부속 자료" path={selectedReport.otherPath} onDownload={() => handleDownload(selectedReport.otherPath)} />
+                  {selectedReport.planFilePath && (
+                    <DownloadSlot
+                      label="계획서 원본 파일"
+                      path={selectedReport.planFilePath}
+                      onDownload={() => handleDownload(selectedReport.planFilePath)}
+                      onPreview={/\.pdf$/i.test(selectedReport.planFilePath) ? () => handlePreviewPdf(selectedReport.planFilePath) : undefined}
+                    />
+                  )}
                 </div>
               </div>
               <button onClick={() => setSelectedReport(null)} className="w-full py-4 md:py-5 bg-slate-900 text-white rounded-xl md:rounded-2xl font-black text-sm md:text-base shadow-xl hover:bg-black transition-all">닫기</button>

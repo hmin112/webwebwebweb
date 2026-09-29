@@ -5,6 +5,7 @@ import {
   ArrowLeft, Check, Loader2, Lock, Plus, Send, Target, ListChecks,
   Route, Users, Link2, StickyNote, X, UserPlus,
 } from "lucide-react";
+import { PlanFileUploader, mergeExtractedPlan, hasPlanContent, type PlanFileUploadResult } from "./PlanFileUploader";
 
 type Row = Record<string, string>;
 type RoadmapItem = { title: string; startDate: string; endDate: string; detail: string };
@@ -58,6 +59,7 @@ export const AssemblyPlanPage = ({
   });
 
   const [saveState, setSaveState] = useState<"idle" | "saving" | "saved" | "error">("idle");
+  const [planFilePath, setPlanFilePath] = useState<string | null>(report.planFilePath || null);
   const [submitting, setSubmitting] = useState(false);
   const submitLockRef = useRef(false);
   const [teamMembers, setTeamMembers] = useState<any[] | null>(null); // null=로딩중, []=팀 없음(개인), [...]=팀원 목록
@@ -161,12 +163,41 @@ export const AssemblyPlanPage = ({
     }
   };
 
+  const roadmapValid = state.planRoadmapItems.every(
+    (r) => r.title?.trim() && r.startDate && r.endDate && r.startDate <= r.endDate
+  );
   const canSubmit =
     state.memo.trim() &&
     state.planOverview.trim() &&
     state.planGoals.filter((g) => g.trim()).length >= MIN_GOALS &&
-    state.planRoadmapItems.length > 0;
+    state.planRoadmapItems.length > 0 &&
+    roadmapValid;
   const showRoleSection = (teamMembers && teamMembers.length > 0) || state.planRoles.length > 0;
+
+  // --- 계획서 파일 업로드 (원본 첨부 + 양식 자동 추출) ---
+  const buildFileParams = () => ({
+    loginId,
+    reportId: reportIdRef.current.includes("temp") ? "0" : reportIdRef.current,
+    year: report.year,
+    semester: report.semester,
+    month: report.month,
+  });
+
+  const handlePlanFileUploaded = (result: PlanFileUploadResult) => {
+    if (result.submission?.id) reportIdRef.current = result.submission.id.toString();
+    setPlanFilePath(result.submission?.planFilePath || null);
+    if (!result.templateRecognized) return { filledCount: 0, applied: false };
+    const { next, filledCount } = mergeExtractedPlan(stateRef.current, result.extracted, teamMembers ?? [], MIN_GOALS);
+    if (filledCount === 0) return { filledCount: 0, applied: true };
+    if (
+      hasPlanContent(stateRef.current) &&
+      !window.confirm("파일에서 읽은 내용으로 아래 작성 칸을 채울까요?\n이미 작성한 항목 중 파일에 있는 항목은 파일 내용으로 바뀌어요.")
+    ) {
+      return { filledCount, applied: false };
+    }
+    setState(next);
+    return { filledCount, applied: true };
+  };
 
   const saveIndicator = () => {
     if (disabled) return null;
@@ -209,8 +240,8 @@ export const AssemblyPlanPage = ({
     setNewRoadmap({ title: "", startDate: "", endDate: "" });
   };
   const removeRoadmapItem = (i: number) => setState((p) => ({ ...p, planRoadmapItems: p.planRoadmapItems.filter((_, idx) => idx !== i) }));
-  const updateRoadmapDetail = (i: number, detail: string) =>
-    setState((p) => ({ ...p, planRoadmapItems: p.planRoadmapItems.map((r, idx) => (idx === i ? { ...r, detail } : r)) }));
+  const updateRoadmapItem = (i: number, key: keyof RoadmapItem, value: string) =>
+    setState((p) => ({ ...p, planRoadmapItems: p.planRoadmapItems.map((r, idx) => (idx === i ? { ...r, [key]: value } : r)) }));
 
   const roadmapRange = useMemo(() => {
     const times = state.planRoadmapItems
@@ -247,6 +278,18 @@ export const AssemblyPlanPage = ({
           <Lock size={16} className="text-indigo-400 shrink-0" />
           <p className="text-xs font-bold">현재 제출 및 수정 가능 기간이 아닙니다. (읽기 전용)</p>
         </div>
+      )}
+
+      {(!disabled || planFilePath) && (
+        <PlanFileUploader
+          disabled={disabled}
+          planFilePath={planFilePath}
+          uploadUrl="/assembly/plan/file"
+          buildParams={buildFileParams}
+          team={false}
+          onUploaded={handlePlanFileUploaded}
+          onRemoved={() => setPlanFilePath(null)}
+        />
       )}
 
       <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm p-5 md:p-10 space-y-10">
@@ -367,21 +410,49 @@ export const AssemblyPlanPage = ({
 
           <div className="space-y-2.5">
             {state.planRoadmapItems.map((item, i) => (
-              <div key={i} className="p-3.5 bg-slate-50 rounded-xl border border-slate-100">
-                <div className="flex items-center justify-between mb-2">
-                  <div className="min-w-0">
-                    <span className="text-xs font-bold text-slate-800">{item.title || `일정 ${i + 1}`}</span>
-                    <span className="text-[10px] text-slate-400 ml-2">{item.startDate} ~ {item.endDate}</span>
+              <div
+                key={i}
+                className={`p-3.5 bg-slate-50 rounded-xl border ${
+                  !disabled && (!item.title?.trim() || !item.startDate || !item.endDate || item.startDate > item.endDate)
+                    ? "border-amber-300"
+                    : "border-slate-100"
+                }`}
+              >
+                {disabled ? (
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="min-w-0">
+                      <span className="text-xs font-bold text-slate-800">{item.title || `일정 ${i + 1}`}</span>
+                      <span className="text-[10px] text-slate-400 ml-2">{item.startDate} ~ {item.endDate}</span>
+                    </div>
                   </div>
-                  {!disabled && (
-                    <button onClick={() => removeRoadmapItem(i)} className="text-slate-300 hover:text-red-500 shrink-0">
+                ) : (
+                  <div className="grid grid-cols-[1fr_auto] sm:grid-cols-[1fr_130px_130px_auto] gap-2 mb-2 items-center">
+                    <input
+                      value={item.title}
+                      onChange={(e) => updateRoadmapItem(i, "title", e.target.value)}
+                      placeholder="일정 제목"
+                      className="px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-bold text-slate-800 min-w-0"
+                    />
+                    <button onClick={() => removeRoadmapItem(i)} className="text-slate-300 hover:text-red-500 shrink-0 sm:order-last">
                       <X size={14} />
                     </button>
-                  )}
-                </div>
+                    <input
+                      type="date"
+                      value={item.startDate}
+                      onChange={(e) => updateRoadmapItem(i, "startDate", e.target.value)}
+                      className="px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-[11px] font-medium min-w-0"
+                    />
+                    <input
+                      type="date"
+                      value={item.endDate}
+                      onChange={(e) => updateRoadmapItem(i, "endDate", e.target.value)}
+                      className="px-2.5 py-1.5 bg-white rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-[11px] font-medium min-w-0"
+                    />
+                  </div>
+                )}
                 <textarea
                   value={item.detail}
-                  onChange={(e) => updateRoadmapDetail(i, e.target.value)}
+                  onChange={(e) => updateRoadmapItem(i, "detail", e.target.value)}
                   disabled={disabled}
                   placeholder="이 기간에 할 일을 자세히 적어주세요."
                   className="w-full px-3 py-2 bg-white rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-xs font-medium disabled:opacity-50 resize-none min-h-[60px]"
@@ -389,6 +460,11 @@ export const AssemblyPlanPage = ({
               </div>
             ))}
           </div>
+          {!disabled && !roadmapValid && (
+            <p className="text-[11px] font-bold text-amber-600 mt-2.5">
+              제목이나 날짜가 비어 있거나, 종료일이 시작일보다 빠른 일정이 있어요 — 고쳐야 제출할 수 있어요.
+            </p>
+          )}
         </section>
 
         {/* 역할 및 담당 — 이번 학기 팀 프로젝트일 때만 노출 */}

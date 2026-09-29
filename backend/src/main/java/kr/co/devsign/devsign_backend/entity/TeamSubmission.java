@@ -41,6 +41,9 @@ public class TeamSubmission {
     private String pdfPath;
     private String otherPath;
 
+    // ✨ [2026-09-29 추가] 팀 계획서를 파일로 올린 경우 원본 파일 경로 (AssemblyReport.planFilePath와 동일)
+    private String planFilePath;
+
     @Column(length = 1000)
     private String memo;
 

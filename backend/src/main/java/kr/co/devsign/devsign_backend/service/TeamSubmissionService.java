@@ -1,5 +1,6 @@
 package kr.co.devsign.devsign_backend.service;
 
+import kr.co.devsign.devsign_backend.dto.assembly.PlanFileUploadResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto;
 import kr.co.devsign.devsign_backend.dto.assembly.PlanRoadmapItemDto;
 import kr.co.devsign.devsign_backend.dto.assembly.PlanRoleDto;
@@ -14,6 +15,7 @@ import kr.co.devsign.devsign_backend.entity.TeamSubmission;
 import kr.co.devsign.devsign_backend.repository.TeamMemberRepository;
 import kr.co.devsign.devsign_backend.repository.TeamRepository;
 import kr.co.devsign.devsign_backend.repository.TeamSubmissionRepository;
+import kr.co.devsign.devsign_backend.util.PlanFileExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -23,6 +25,9 @@ import org.springframework.web.multipart.MultipartFile;
 
 import java.io.File;
 import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
@@ -41,6 +46,7 @@ public class TeamSubmissionService {
     private final TeamSubmissionRepository submissionRepository;
     private final TeamRepository teamRepository;
     private final TeamMemberRepository teamMemberRepository;
+    private final PlanFileExtractor planFileExtractor;
 
     @Value("${app.upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -138,6 +144,81 @@ public class TeamSubmissionService {
         return "submitted";
     }
 
+    // ✨ [2026-09-29 추가] 팀 계획서 파일 업로드 — 개인용(AssemblyService.uploadPlanFile)과 같은 방식
+    @Transactional
+    public PlanFileUploadResponse<TeamSubmissionResponse> uploadPlanFile(
+            String loginId, Long teamId, String submissionId, int year, int semester, int month, MultipartFile file
+    ) throws IOException {
+        requireAcceptedMember(teamId, loginId);
+        String extension = AssemblyService.requirePlanFileExtension(file);
+        TeamSubmission sub = findOrCreate(teamId, submissionId, year, semester, month);
+        if (!teamId.equals(sub.getTeam().getId())) {
+            throw new IllegalStateException("이 팀의 자료가 아닙니다.");
+        }
+        if (!"PLAN".equals(sub.getType())) {
+            throw new IllegalArgumentException("계획서 제출 달에만 계획서 파일을 올릴 수 있습니다.");
+        }
+
+        Path base = uploadBasePath();
+        String relativeDir = "team_" + teamId + "/" + month;
+        Path dir = base.resolve(relativeDir).normalize();
+        Files.createDirectories(dir);
+        String fileName = AssemblyService.buildPlanFileName(file);
+        Path target = dir.resolve(fileName).normalize();
+        if (!target.startsWith(base)) {
+            throw new IllegalArgumentException("invalid upload path");
+        }
+        file.transferTo(target.toFile());
+
+        String previousPath = sub.getPlanFilePath();
+        sub.setPlanFilePath(relativeDir + "/" + fileName);
+        sub.setUpdatedBy(loginId);
+        if (!STATUS_SUBMITTED.equals(sub.getStatus())) {
+            sub.setStatus("DRAFT");
+        }
+        TeamSubmission saved = submissionRepository.save(sub);
+        deleteStoredFileQuietly(previousPath);
+
+        PlanFileExtractor.Result result = planFileExtractor.extract(target, extension, year);
+        return new PlanFileUploadResponse<>(toResponse(saved), result.plan(), result.templateRecognized(), result.warnings());
+    }
+
+    @Transactional
+    public TeamSubmissionResponse removePlanFile(String loginId, Long teamId, String submissionId, int year, int semester, int month) {
+        requireAcceptedMember(teamId, loginId);
+        TeamSubmission sub = findOrCreate(teamId, submissionId, year, semester, month);
+        if (sub.getId() == null || !teamId.equals(sub.getTeam().getId())) {
+            throw new IllegalStateException("이 팀의 자료가 아닙니다.");
+        }
+        String previousPath = sub.getPlanFilePath();
+        sub.setPlanFilePath(null);
+        sub.setUpdatedBy(loginId);
+        TeamSubmission saved = submissionRepository.save(sub);
+        deleteStoredFileQuietly(previousPath);
+        return toResponse(saved);
+    }
+
+    private Path uploadBasePath() {
+        Path configured = Paths.get(uploadBaseDir);
+        if (!configured.isAbsolute()) {
+            configured = Paths.get(System.getProperty("user.dir")).resolve(configured);
+        }
+        return configured.toAbsolutePath().normalize();
+    }
+
+    private void deleteStoredFileQuietly(String storedPath) {
+        if (!StringUtils.hasText(storedPath)) return;
+        try {
+            Path base = uploadBasePath();
+            Path resolved = base.resolve(storedPath.replaceFirst("^/?uploads/", "")).normalize();
+            if (resolved.startsWith(base)) {
+                Files.deleteIfExists(resolved);
+            }
+        } catch (IOException | RuntimeException ignored) {
+            // 이전 첨부 파일 정리 실패는 업로드 자체를 막지 않는다
+        }
+    }
+
     private boolean hasUpload(MultipartFile file) {
         return file != null && !file.isEmpty();
     }
@@ -223,7 +304,8 @@ public class TeamSubmissionService {
                 sub.getPlanLinks().stream()
                         .map(l -> new PlanLinkDto(l.getLabel(), l.getUrl()))
                         .toList(),
-                sub.getPlanNotes()
+                sub.getPlanNotes(),
+                sub.getPlanFilePath()
         );
     }
 }

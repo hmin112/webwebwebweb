@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -70,6 +71,52 @@ public class TeamSubmissionController {
     public ResponseEntity<?> submitPlan(@RequestBody SaveTeamPlanRequest request) {
         try {
             return ResponseEntity.ok(teamSubmissionService.submitPlan(request));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
+    // ✨ [2026-09-29 추가] 팀 계획서 파일 업로드(원본 첨부 + 양식 자동 추출) / 첨부 삭제
+    @PostMapping(value = "/plan/file", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadPlanFile(
+            Authentication authentication,
+            @RequestParam String loginId,
+            @RequestParam Long teamId,
+            @RequestParam String submissionId,
+            @RequestParam int year,
+            @RequestParam int semester,
+            @RequestParam int month,
+            @RequestParam MultipartFile file
+    ) {
+        if (authentication == null || !loginId.equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail("본인 계정으로만 올릴 수 있습니다."));
+        }
+        try {
+            return ResponseEntity.ok(teamSubmissionService.uploadPlanFile(loginId, teamId, submissionId, year, semester, month, file));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(StatusResponse.fail("계획서 파일을 저장하지 못했습니다."));
+        }
+    }
+
+    @DeleteMapping("/plan/file")
+    public ResponseEntity<?> removePlanFile(
+            Authentication authentication,
+            @RequestParam String loginId,
+            @RequestParam Long teamId,
+            @RequestParam String submissionId,
+            @RequestParam int year,
+            @RequestParam int semester,
+            @RequestParam int month
+    ) {
+        if (authentication == null || !loginId.equals(authentication.getName())) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail("본인 계정으로만 수정할 수 있습니다."));
+        }
+        try {
+            return ResponseEntity.ok(teamSubmissionService.removePlanFile(loginId, teamId, submissionId, year, semester, month));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
         }

@@ -16,6 +16,8 @@ import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectLinksRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SavePlanRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SubmitFilesCommand;
+import kr.co.devsign.devsign_backend.dto.assembly.PlanFileUploadResponse;
+import kr.co.devsign.devsign_backend.util.PlanFileExtractor;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ContentDisposition;
@@ -41,6 +43,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -51,6 +54,7 @@ public class AssemblyService {
     private final AssemblyPeriodRepository periodRepository;
     private final AssemblyReportRepository reportRepository;
     private final AssemblyProjectRepository projectRepository;
+    private final PlanFileExtractor planFileExtractor;
     @Value("${app.upload.base-dir:uploads}")
     private String uploadBaseDir;
 
@@ -301,6 +305,95 @@ public class AssemblyService {
         report.setPlanNotes(req.planNotes());
     }
 
+    // ✨ [2026-09-29 추가] 계획서를 파일(PDF/DOCX/HWP/HWPX/PPTX)로 올리기 — 원본은 첨부로 보관하고,
+    // 양식 기준으로 추출한 내용은 저장하지 않은 채 돌려준다(프론트 폼에 채운 뒤 확인·자동저장·제출 흐름 그대로).
+    @Transactional
+    public PlanFileUploadResponse<AssemblyReportResponse> uploadPlanFile(
+            String loginId, String reportId, int year, int semester, int month, MultipartFile file
+    ) throws IOException {
+        String extension = requirePlanFileExtension(file);
+        AssemblyReport report = findOrCreateReport(loginId, reportId, year, semester, month);
+        if (report.getId() != null && !loginId.equals(report.getLoginId())) {
+            throw new IllegalArgumentException("본인 계획서에만 파일을 올릴 수 있습니다.");
+        }
+        if (!"PLAN".equals(report.getType())) {
+            throw new IllegalArgumentException("계획서 제출 달에만 계획서 파일을 올릴 수 있습니다.");
+        }
+
+        Path uploadBasePath = getUploadBasePath();
+        Path userPath = uploadBasePath.resolve(loginId).resolve(String.valueOf(month)).normalize();
+        validateWithinBase(userPath, uploadBasePath);
+        Files.createDirectories(userPath);
+
+        Path targetPath = userPath.resolve(buildPlanFileName(file)).normalize();
+        validateWithinBase(targetPath, uploadBasePath);
+        file.transferTo(targetPath.toFile());
+
+        String previousPath = report.getPlanFilePath();
+        report.setPlanFilePath(toStoredPath(uploadBasePath, targetPath));
+        if (!"SUBMITTED".equals(report.getStatus())) {
+            report.setStatus("DRAFT");
+        }
+        AssemblyReport saved = reportRepository.save(report);
+        deleteStoredFileQuietly(previousPath);
+
+        PlanFileExtractor.Result result = planFileExtractor.extract(targetPath, extension, year);
+        return new PlanFileUploadResponse<>(toReportResponse(saved), result.plan(), result.templateRecognized(), result.warnings());
+    }
+
+    @Transactional
+    public AssemblyReportResponse removePlanFile(String loginId, String reportId, int year, int semester, int month) {
+        AssemblyReport report = findOrCreateReport(loginId, reportId, year, semester, month);
+        if (report.getId() == null || !loginId.equals(report.getLoginId())) {
+            throw new IllegalArgumentException("계획서를 찾을 수 없습니다.");
+        }
+        String previousPath = report.getPlanFilePath();
+        report.setPlanFilePath(null);
+        AssemblyReport saved = reportRepository.save(report);
+        deleteStoredFileQuietly(previousPath);
+        return toReportResponse(saved);
+    }
+
+    static String requirePlanFileExtension(MultipartFile file) {
+        if (file == null || file.isEmpty()) {
+            throw new IllegalArgumentException("업로드할 계획서 파일을 선택해주세요.");
+        }
+        String extension = PlanFileExtractor.extensionOf(file.getOriginalFilename());
+        if (!PlanFileExtractor.ALLOWED_EXTENSIONS.contains(extension)) {
+            throw new IllegalArgumentException("계획서 파일은 PDF, Word(.docx), 한글(.hwp/.hwpx), PowerPoint(.pptx)만 올릴 수 있습니다.");
+        }
+        if (file.getSize() > 50L * 1024 * 1024) {
+            throw new IllegalArgumentException("계획서 파일은 50MB 이하만 올릴 수 있습니다.");
+        }
+        return extension;
+    }
+
+    // 저장 파일명: plan_<32자리 uuid>_<원본 파일명> — 다운로드 시 접두어는 떼고 원본 이름으로 내려준다
+    static String buildPlanFileName(MultipartFile file) {
+        String original = StringUtils.cleanPath(file.getOriginalFilename() == null ? "" : file.getOriginalFilename());
+        String fileName = Paths.get(original).getFileName().toString().replaceAll("[\\\\/:*?\"<>|]", "_");
+        if (!StringUtils.hasText(fileName)) {
+            fileName = "plan";
+        }
+        if (fileName.length() > 150) {
+            fileName = fileName.substring(fileName.length() - 150);
+        }
+        return "plan_" + UUID.randomUUID().toString().replace("-", "") + "_" + fileName;
+    }
+
+    private void deleteStoredFileQuietly(String storedPath) {
+        if (!StringUtils.hasText(storedPath)) return;
+        try {
+            Path uploadBasePath = getUploadBasePath();
+            Path resolved = resolveUploadPath(storedPath, uploadBasePath);
+            if (resolved != null && resolved.startsWith(uploadBasePath)) {
+                Files.deleteIfExists(resolved);
+            }
+        } catch (IOException | RuntimeException ignored) {
+            // 이전 첨부 파일 정리 실패는 업로드 자체를 막지 않는다
+        }
+    }
+
     public ResponseEntity<byte[]> downloadFile(String path) {
         try {
             if (!StringUtils.hasText(path)) {
@@ -319,7 +412,7 @@ public class AssemblyService {
             }
 
             byte[] data = Files.readAllBytes(resolvedPath);
-            String fileName = resolvedPath.getFileName().toString();
+            String fileName = resolvedPath.getFileName().toString().replaceFirst("^plan_[0-9a-f]{32}_", "");
 
             HttpHeaders headers = new HttpHeaders();
             headers.setContentType(MediaType.APPLICATION_OCTET_STREAM);
@@ -426,7 +519,8 @@ public class AssemblyService {
                 report.getPlanLinks().stream()
                         .map(l -> new kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto(l.getLabel(), l.getUrl()))
                         .toList(),
-                report.getPlanNotes()
+                report.getPlanNotes(),
+                report.getPlanFilePath()
         );
     }
 
