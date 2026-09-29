@@ -201,18 +201,27 @@ export const Navbar = ({
           </button>
 
           {/* 중앙 메뉴 영역 - 데스크탑 폰트 크기 및 패딩 복구 */}
-          <div className="hidden lg:flex items-center gap-0.5 p-1 rounded-full bg-slate-100/70 border border-black/[0.035]">
+          <div className="hidden lg:flex items-center gap-4 xl:gap-7">
             {visibleLinks.map((link) => {
               const isActive = activeTab === link.id; 
               return (
                 <button
                   key={link.id}
                   onClick={() => handleNavigate(link.id)}
-                  className={`relative px-3 py-2 rounded-full font-semibold transition-all text-[13px] whitespace-nowrap group ${
-                    isActive ? "text-slate-900 bg-white shadow-sm" : "text-slate-500 hover:text-slate-900 hover:bg-white/60"
+                  className={`relative py-2 font-semibold transition-colors text-[12px] xl:text-[14px] whitespace-nowrap group ${
+                    isActive ? "text-slate-900" : "text-slate-500 hover:text-slate-900"
                   }`}
                 >
                   {link.name}
+                  {isActive ? (
+                    <motion.span
+                      layoutId="active-navigation-indicator"
+                      className="absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full bg-slate-900"
+                      transition={{ type: "spring", stiffness: 420, damping: 34 }}
+                    />
+                  ) : (
+                    <span className="absolute left-0 right-0 -bottom-0.5 h-[2px] rounded-full bg-slate-900/20 scale-x-0 group-hover:scale-x-100 transition-transform origin-center" />
+                  )}
                 </button>
               );
             })}
