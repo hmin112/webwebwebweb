@@ -147,21 +147,9 @@ export const Navbar = ({
     setIsMobileMenuOpen(false);
   };
 
-  // ✨ 로그아웃 클릭 시 로그를 먼저 남기고 부모의 onLogout 실행
-  const handleLogoutClick = async () => {
-    const currentUserInfo = JSON.parse(localStorage.getItem("currentUser") || "{}");
-
-    if (currentUserInfo && currentUserInfo.name) {
-      try {
-        await api.post("/members/logout-log", {
-          name: currentUserInfo.name,
-          studentId: currentUserInfo.studentId
-        });
-      } catch (e) {
-        console.error("로그아웃 로그 기록 실패", e);
-      }
-    }
-
+  // ✨ [2026-09-29] 로그아웃 기록·토큰 폐기는 App.handleLogout이 확인창 이후 한 번에 처리한다
+  // (여기서도 기록하면 기록이 두 번 남고, 확인창에서 취소해도 로그아웃 기록이 남았었음)
+  const handleLogoutClick = () => {
     onLogout();
     setIsMobileMenuOpen(false);
   };

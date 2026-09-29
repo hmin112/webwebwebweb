@@ -80,14 +80,8 @@ function AppContent() {
 
   const handleLogout = async (isForced: boolean = false) => {
     if (!isForced && !window.confirm("로그아웃 하시겠습니까?")) return;
-    try {
-      // ✨ 로그아웃 시 서버에서 지금 이 토큰을 실제로 무효화(tokenVersion 증가).
-      // 이후엔 만료 전이라도 이 토큰으로는 어떤 요청도 인증되지 않음 — 로컬스토리지를
-      // 지우기 전에, 아직 토큰이 남아있는 상태에서 호출해야 함
-      await api.post("/members/logout");
-    } catch (e) {
-      console.error("토큰 무효화 실패", e);
-    }
+    // ✨ [2026-09-29] 순서 중요: 로그아웃 기록 → 토큰 폐기. 토큰을 먼저 폐기하면 뒤따르는 요청이
+    // 인증 실패(403)로 떨어져 "인증이 만료되었습니다" 알림과 함께 로그인 페이지로 튕겨나갔었다.
     try {
       if (currentUser && currentUser.name) {
         await api.post("/members/logout-log", {
@@ -97,6 +91,14 @@ function AppContent() {
       }
     } catch (e) {
       console.error("로그아웃 로그 전송 실패", e);
+    }
+    try {
+      // 로그아웃 시 서버에서 지금 이 토큰을 실제로 무효화(tokenVersion 증가).
+      // 이후엔 만료 전이라도 이 토큰으로는 어떤 요청도 인증되지 않음 — 로컬스토리지를
+      // 지우기 전에, 아직 토큰이 남아있는 상태에서 마지막으로 호출해야 함
+      await api.post("/members/logout");
+    } catch (e) {
+      console.error("토큰 무효화 실패", e);
     }
     setIsLoggedIn(false);
     setIsAdmin(false);

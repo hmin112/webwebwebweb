@@ -38,7 +38,8 @@ api.interceptors.response.use(
                 }
             }
             // ✨ 2. 수정: 매번 F12로 개발자 도구에서 지우는 귀찮음을 해결하는 401/403 자동 청소!
-            else if (error.response.status === 401 || error.response.status === 403) {
+            // 로그아웃 요청 자체의 인증 실패(이미 만료된 토큰 등)는 조용히 넘긴다 — 로그아웃 흐름이 알아서 메인으로 보낸다
+            else if ((error.response.status === 401 || error.response.status === 403) && !String(error.config?.url || "").startsWith("/members/logout")) {
                 // ✨ 핵심 수정: 브라우저에 토큰(token)이 있는 사람만 알림을 띄우고 쫓아냅니다!
                 // 애초에 로그인을 안 한 손님(token이 null)은 알림 없이 조용히 에러만 넘깁니다.
                 const token = localStorage.getItem("token");
