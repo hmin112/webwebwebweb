@@ -130,7 +130,8 @@
   }
 
   .nav-pill.is-ready > span {
-    transition: transform 520ms cubic-bezier(0.3, 1.12, 0.5, 1);
+    /* 목표를 지나치지 않는 감속 곡선 — 지나쳤다 돌아오면 좁은 메뉴(홈)로 올 때 양 끝 원이 순간 엇갈려 초승달처럼 보였다 */
+    transition: transform 480ms cubic-bezier(0.22, 1, 0.36, 1);
   }
 
   .nav-pill-cap {

@@ -181,7 +181,11 @@ export const Navbar = ({
       setIndicator((prev) => (prev ? { ...prev, visible: false } : prev));
       return;
     }
-    setIndicator({ x: el.offsetLeft, w: el.offsetWidth, h: el.offsetHeight, visible: true });
+    // ✨ [2026-09-30] "홈"처럼 글자가 짧아 버튼 폭이 높이보다 좁으면 양 끝 원이 서로 엇갈려 초승달처럼 겹쳐 보였다 —
+    // 알약 폭을 최소 높이만큼(=동그라미)으로 잡고 버튼 가운데에 맞춘다.
+    const h = el.offsetHeight;
+    const w = Math.max(el.offsetWidth, h);
+    setIndicator({ x: el.offsetLeft - (w - el.offsetWidth) / 2, w, h, visible: true });
   }, [activeTab]);
 
   useEffect(() => {
