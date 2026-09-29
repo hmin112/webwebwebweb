@@ -243,6 +243,7 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
             <section className="space-y-4 md:space-y-6">
               <h3 className="text-base md:text-lg font-bold text-slate-900 flex items-center gap-2">
                 <span className="w-1 md:w-1.5 h-5 md:h-6 bg-indigo-400 rounded-full" /> 디스코드 인증
+                <DiscordUsernameHelp />
               </h3>
               <div className="space-y-4">
                 <div className="flex gap-2">
@@ -359,5 +360,78 @@ export const Signup = ({ onNavigate }: { onNavigate: (page: string) => void }) =
         </div>
       </motion.div>
     </div>
+  );
+};
+
+// ✨ [2026-09-30] 디스코드 사용자명이 어디 있는지 알려주는 도움말 — 디스코드 앱의 내 프로필 팝업과 비슷한 카드에서
+// 이름 아래의 작은 글씨(사용자명)를 짚어준다. 예시 계정은 가짜 이름.
+const DiscordUsernameHelp = () => {
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLSpanElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    document.addEventListener("mousedown", onDown);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
+  return (
+    <span ref={wrapRef} className="relative inline-flex">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        aria-label="디스코드 사용자명 찾는 법"
+        aria-expanded={open}
+        className={`w-5 h-5 md:w-6 md:h-6 rounded-full text-[11px] md:text-xs font-bold flex items-center justify-center transition-colors ${
+          open ? "bg-[#5865F2] text-white" : "bg-[#E5E5EA] text-[#6E6E73] hover:bg-[#D1D1D6]"
+        }`}
+      >
+        ?
+      </button>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -6, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -6, scale: 0.97 }}
+            transition={{ duration: 0.16 }}
+            className="absolute left-1/2 -translate-x-1/2 sm:left-0 sm:translate-x-0 top-8 z-50 w-[290px] font-normal"
+          >
+            <div className="rounded-2xl overflow-hidden bg-[#111214] shadow-[0_12px_40px_rgb(0_0_0/0.35)] border border-white/10 text-left">
+              {/* 배너 + 아바타 */}
+              <div className="h-14 bg-[#4E5D3A]" />
+              <div className="px-4 pb-4">
+                <div className="-mt-8 mb-2 w-16 h-16 rounded-full bg-[#111214] p-1">
+                  <div className="w-full h-full rounded-full bg-gradient-to-br from-[#57F287] to-[#2D7D46] flex items-center justify-center text-white text-lg font-bold">김</div>
+                </div>
+                <p className="text-white text-lg font-bold leading-tight">김데브</p>
+                <div className="relative mt-0.5 inline-flex items-center">
+                  <span className="text-[#DBDEE1] text-[13px] px-1.5 -mx-1.5 py-0.5 rounded-md ring-2 ring-[#FEE75C] bg-[#FEE75C]/10">devsign_user</span>
+                  <span className="ml-2 flex items-center gap-1 text-[#FEE75C] text-[11px] font-bold whitespace-nowrap">
+                    ← 이게 사용자명
+                  </span>
+                </div>
+                <div className="mt-3 rounded-xl bg-[#1E1F22] divide-y divide-white/5 text-[12px] text-[#B5BAC1]">
+                  <div className="px-3 py-2">프로필 편집</div>
+                  <div className="px-3 py-2">사용자 ID 복사하기</div>
+                </div>
+              </div>
+            </div>
+            <div className="mt-2 rounded-xl bg-white border border-black/5 shadow-[0_4px_16px_rgb(0_0_0/0.08)] px-3.5 py-3 text-[12px] leading-relaxed text-[#1D1D1F] text-left">
+              디스코드 앱에서 <b>왼쪽 아래 내 프로필 사진</b>을 누르면 이 화면이 떠요.
+              굵은 이름 <b>아래의 작은 글씨</b>가 사용자명이에요. <span className="text-[#6E6E73]">(@ 없이 그대로 입력)</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </span>
   );
 };
