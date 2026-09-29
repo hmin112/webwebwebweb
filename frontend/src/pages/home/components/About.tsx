@@ -48,7 +48,7 @@ const DoorLockFeed = () => {
   }, [inView]);
 
   return (
-    <div ref={ref} className="bg-[#fff] rounded-[1.5rem] md:rounded-[2rem] border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-6 min-h-[220px] md:min-h-[320px] flex flex-col">
+    <div ref={ref} className="bg-[#fff] rounded-[1.5rem] md:rounded-[2rem] border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-6 min-h-[264px] md:min-h-[332px] flex flex-col justify-between">
       <div className="flex items-center justify-between mb-3 md:mb-5">
         <span className="text-[12px] md:text-sm font-semibold text-[#1D1D1F]">도어락 기록</span>
         <span className="flex items-center gap-1.5 text-[10px] md:text-[11px] font-semibold text-[#34C759]">
@@ -59,8 +59,10 @@ const DoorLockFeed = () => {
           실시간
         </span>
       </div>
-      <div className="flex-1 flex flex-col gap-2 md:gap-2.5 overflow-hidden">
-        <AnimatePresence initial={false}>
+      {/* 목록 칸은 딱 세 줄 높이로 고정 — 새 기록이 들어오는 순간 사라지는 기록까지 네 줄이 되며 카드가 늘었다
+          줄어들고, 같은 줄의 냉난방기 카드까지 출렁이던 문제. popLayout으로 사라지는 기록은 자리를 차지하지 않는다. */}
+      <div className="relative h-[196px] md:h-[236px] flex flex-col gap-2 md:gap-2.5 overflow-hidden">
+        <AnimatePresence initial={false} mode="popLayout">
           {logs.map((log, i) => (
             <motion.div
               key={log.id}
@@ -69,7 +71,7 @@ const DoorLockFeed = () => {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.97, transition: { duration: 0.2 } }}
               transition={{ type: "spring", stiffness: 380, damping: 32 }}
-              className="flex items-center gap-3 p-3 md:p-4 rounded-2xl bg-[#F5F5F7]"
+              className="flex items-center gap-3 h-[60px] md:h-[72px] px-3 md:px-4 rounded-2xl bg-[#F5F5F7] shrink-0"
             >
               <div
                 className="w-9 h-9 md:w-10 md:h-10 rounded-full flex items-center justify-center text-[12px] md:text-[13px] font-bold shrink-0"
@@ -216,7 +218,7 @@ export const About = () => {
               </p>
 
               {/* ✨ [2026-09-30] 냉난방기 제어 미리보기 — 흰 카드 + 옅은 회색 칸 + 애플 색 알약 버튼 */}
-              <div className="bg-[#fff] rounded-[1.5rem] md:rounded-[2rem] border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-6 min-h-[220px] md:min-h-[320px] flex flex-col">
+              <div className="bg-[#fff] rounded-[1.5rem] md:rounded-[2rem] border border-black/[0.05] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-6 min-h-[264px] md:min-h-[332px] flex flex-col">
                 <div className="flex items-center justify-between mb-3 md:mb-5">
                   <span className="text-[12px] md:text-sm font-semibold text-[#1D1D1F]">냉난방기 제어</span>
                   <span className="flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-[#34C759]/10 text-[#248A3D] text-[10px] md:text-[11px] font-semibold">
