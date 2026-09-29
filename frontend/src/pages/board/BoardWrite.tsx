@@ -6,6 +6,7 @@ import {
   ImagePlus, Trash2, Wallet, Hash, Users, Plus, TrendingUp, TrendingDown, Scale
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { FileDropZone } from "../../components/ui/FileDropZone";
 
 type LedgerItem = { type: "입금" | "사용"; date: string; description: string; amount: string };
 
@@ -425,6 +426,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
               <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest flex items-center gap-1.5 md:gap-2">
                 <ImagePlus className="w-3.5 h-3.5 md:w-4 md:h-4" /> 사진 첨부
               </label>
+              <FileDropZone inputRef={fileInputRef} label="사진을 놓으면 추가돼요">
               <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2 md:gap-4">
                 <AnimatePresence>
                   {images.map((img, index) => (
@@ -455,6 +457,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
                   <span className="text-[8px] md:text-[10px] font-black uppercase tracking-widest">Add Photo</span>
                 </button>
               </div>
+              </FileDropZone>
               <input type="file" multiple accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageUpload} />
             </div>
 

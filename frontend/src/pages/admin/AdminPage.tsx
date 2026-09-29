@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Users, ClipboardList, ShieldCheck, RefreshCcw,
@@ -13,6 +13,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
 import { FeeTab } from "./tabs/FeeTab";
+import { FileDropZone } from "../../components/ui/FileDropZone";
 
 // --- 1. 타입 정의 ---
 type SortCriteria = "ID_DESC" | "ID_ASC" | "NAME_ASC";
@@ -98,6 +99,7 @@ export const AdminPage = () => {
 
   // ✨ [2026-09-08 신규] "명단 대조" 탭 상태
   const [rosterFile, setRosterFile] = useState<File | null>(null);
+  const rosterInputRef = useRef<HTMLInputElement>(null);
   const [rosterCheckResult, setRosterCheckResult] = useState<RosterCheckResult | null>(null);
   const [isRosterChecking, setIsRosterChecking] = useState(false);
   const [rosterCheckError, setRosterCheckError] = useState<string | null>(null);
@@ -979,18 +981,21 @@ export const AdminPage = () => {
         {activeTab === "roster" && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <div className="flex flex-col md:flex-row md:items-center gap-3 md:gap-4 bg-white p-4 md:p-6 rounded-xl md:rounded-[2rem] border border-slate-100 shadow-sm mb-8 md:mb-10">
-              <label className="flex-1 flex items-center gap-3 px-4 md:px-5 py-3 md:py-4 bg-slate-50 rounded-xl md:rounded-2xl border border-dashed border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
+              <FileDropZone inputRef={rosterInputRef} className="flex-1 flex min-w-0" label="엑셀 파일을 놓으세요">
+              <label className="flex-1 min-w-0 flex items-center gap-3 px-4 md:px-5 py-3 md:py-4 bg-slate-50 rounded-xl md:rounded-2xl border border-dashed border-slate-200 cursor-pointer hover:bg-slate-100 transition-colors">
                 <FileSpreadsheet size={18} className="text-indigo-500 shrink-0" />
                 <span className="text-xs md:text-sm font-bold text-slate-500 truncate">
-                  {rosterFile ? rosterFile.name : "부원 명부 엑셀(.xlsx) 파일 선택 — 이름/아이디/학번/상태 컬럼 필요"}
+                  {rosterFile ? rosterFile.name : "부원 명부 엑셀(.xlsx) 파일 선택 또는 끌어다 놓기 — 이름/아이디/학번/상태 컬럼 필요"}
                 </span>
                 <input
+                  ref={rosterInputRef}
                   type="file"
                   accept=".xlsx"
                   className="hidden"
                   onChange={(e) => setRosterFile(e.target.files?.[0] || null)}
                 />
               </label>
+              </FileDropZone>
               <button
                 onClick={handleRosterCheck}
                 disabled={isRosterChecking || !rosterFile}

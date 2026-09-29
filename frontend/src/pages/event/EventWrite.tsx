@@ -3,6 +3,7 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Save, Type, Image as ImageIcon, Link as LinkIcon, X, Upload } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { FileDropZone } from "../../components/ui/FileDropZone";
 
 // ✨ user, fetchEvents 프롭을 추가하여 로그 연동 및 목록 갱신을 처리합니다.
 export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any) => {
@@ -154,6 +155,7 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
           {/* ✨ 개선된 이미지 섹션: 파일 업로드 + 링크 입력 */}
           <div className="space-y-4">
             <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">Event Image</label>
+            <FileDropZone inputRef={fileInputRef} label="사진을 놓으면 올라가요">
             <div className="flex flex-col gap-4">
               <div className="flex gap-3">
                 <Button
@@ -161,7 +163,7 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
                   variant="outline"
                   className="flex-1 h-14 rounded-2xl border-dashed border-2 border-slate-200 text-slate-500 font-bold flex items-center gap-2 hover:bg-slate-50 transition-all"
                 >
-                  <Upload size={18} /> 파일 선택
+                  <Upload size={18} /> 파일 선택 · 끌어다 놓기
                 </Button>
                 <input
                   type="file"
@@ -210,6 +212,7 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
                 )}
               </AnimatePresence>
             </div>
+            </FileDropZone>
           </div>
 
           <div className="pt-6 border-t border-slate-50">

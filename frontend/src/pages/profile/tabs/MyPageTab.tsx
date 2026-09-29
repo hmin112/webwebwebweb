@@ -7,6 +7,7 @@ import {
   MessageCircle, Upload, FileArchive, Loader2,
   Lock, Link2, Plus
 } from "lucide-react";
+import { FileDropZone } from "../../../components/ui/FileDropZone";
 
 // 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 별도 페이지(AssemblyPlanPage)에서 웹으로 작성.
 const isPlanMonth = (month: number) => month === 3 || month === 9;
@@ -453,9 +454,15 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
                   <input type="file" accept=".pdf" ref={fileRefs.pdf} className="hidden" onChange={handlePdfFileChange} />
                   <input type="file" ref={fileRefs.other} className="hidden" onChange={(e) => setUploadedFiles({ ...uploadedFiles, other: e.target.files![0] })} />
 
-                  <UploadSlot label="발표자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.presentationPath} fileName={uploadedFiles.presentation?.name} onDownload={() => handleDownload(selectedReport.presentationPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.presentation.current?.click()} />
-                  <UploadSlot label="PDF" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.pdfPath} fileName={uploadedFiles.pdf?.name} onDownload={() => handleDownload(selectedReport.pdfPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.pdf.current?.click()} />
-                  <UploadSlot label="기타 자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.otherPath} fileName={uploadedFiles.other?.name} onDownload={() => handleDownload(selectedReport.otherPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.other.current?.click()} />
+                  <FileDropZone inputRef={fileRefs.presentation} disabled={!selectedReport.isWithinPeriod} label="발표자료 파일을 놓으세요">
+                    <UploadSlot label="발표자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.presentationPath} fileName={uploadedFiles.presentation?.name} onDownload={() => handleDownload(selectedReport.presentationPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.presentation.current?.click()} />
+                  </FileDropZone>
+                  <FileDropZone inputRef={fileRefs.pdf} disabled={!selectedReport.isWithinPeriod} label="PDF 파일을 놓으세요">
+                    <UploadSlot label="PDF" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.pdfPath} fileName={uploadedFiles.pdf?.name} onDownload={() => handleDownload(selectedReport.pdfPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.pdf.current?.click()} />
+                  </FileDropZone>
+                  <FileDropZone inputRef={fileRefs.other} disabled={!selectedReport.isWithinPeriod} label="기타 자료 파일을 놓으세요">
+                    <UploadSlot label="기타 자료" disabled={!selectedReport.isWithinPeriod} existingPath={selectedReport.otherPath} fileName={uploadedFiles.other?.name} onDownload={() => handleDownload(selectedReport.otherPath)} onClick={() => selectedReport.isWithinPeriod && fileRefs.other.current?.click()} />
+                  </FileDropZone>
                 </div>
               </div>
 
@@ -487,7 +494,7 @@ const UploadSlot = ({ label, fileName, onClick, disabled, existingPath, onDownlo
       </div>
       <div className="text-left min-w-0">
         <p className="text-[11px] md:text-sm font-bold text-slate-800">{label}</p>
-        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase truncate max-w-[100px] md:max-w-[150px]">{fileName || (existingPath ? "파일 있음" : "자료 없음")}</p>
+        <p className="text-[8px] md:text-[10px] font-bold text-slate-400 uppercase truncate max-w-[100px] md:max-w-[150px]">{fileName || (existingPath ? "파일 있음" : disabled ? "자료 없음" : "끌어다 놓거나 선택")}</p>
       </div>
     </div>
     <div className="flex items-center gap-1.5">

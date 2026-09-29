@@ -3,6 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import { ArrowLeft, Plus, X, Upload, Check } from "lucide-react";
 import { api } from "../../api/axios";
+import { FileDropZone } from "../../components/ui/FileDropZone";
 
 type Sample = { input: string; output: string };
 type TestCaseInfo = { input_name: string; output_name: string };
@@ -295,6 +296,7 @@ export const OjAdminProblemWrite = ({ loginId }: { loginId?: string }) => {
           <div>
             <label className="text-[11px] font-semibold text-slate-400 uppercase tracking-wide">테스트케이스 (zip)</label>
             <div className="mt-1.5 flex items-center gap-3">
+              <FileDropZone inputRef={fileInputRef} disabled={uploadingTestCase} label="zip 놓기">
               <button
                 onClick={() => fileInputRef.current?.click()}
                 disabled={uploadingTestCase}
@@ -303,6 +305,7 @@ export const OjAdminProblemWrite = ({ loginId }: { loginId?: string }) => {
                 <Upload size={16} /> {uploadingTestCase ? "업로드 중..." : "zip 파일 선택"}
               </button>
               <input ref={fileInputRef} type="file" accept=".zip" onChange={handleTestCaseFile} className="hidden" />
+              </FileDropZone>
               {testCaseInfo.length > 0 && (
                 <span className="flex items-center gap-1.5 text-[13px] font-medium text-green-600">
                   <Check size={15} /> {testCaseInfo.length}개 파일 ({testCaseInfo.map((f) => f.input_name).join(", ")})

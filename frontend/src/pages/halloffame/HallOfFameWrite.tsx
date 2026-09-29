@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Link as LinkIcon, X, Upload, Search, UserPlus, Trophy, Plus } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { FileDropZone } from "../../components/ui/FileDropZone";
 
 const formatStudentId = (id?: string) => {
   if (!id) return "??";
@@ -308,6 +309,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
           {/* 대표 사진 */}
           <div className="space-y-4">
             <label className="text-[10px] font-black text-slate-400 ml-1 uppercase tracking-widest">대표 사진</label>
+            <FileDropZone inputRef={fileInputRef} label="사진을 놓으면 올라가요">
             <div className="flex flex-col gap-4">
               <div className="flex gap-3">
                 <Button
@@ -315,7 +317,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
                   variant="outline"
                   className="flex-1 h-14 rounded-2xl border-dashed border-2 border-slate-200 text-slate-500 font-bold flex items-center gap-2 hover:bg-slate-50 transition-all"
                 >
-                  <Upload size={18} /> 파일 선택
+                  <Upload size={18} /> 파일 선택 · 끌어다 놓기
                 </Button>
                 <input
                   type="file"
@@ -364,6 +366,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
                 )}
               </AnimatePresence>
             </div>
+            </FileDropZone>
           </div>
 
           <div className="pt-6 border-t border-slate-50">

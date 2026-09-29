@@ -6,6 +6,7 @@ import {
   ImagePlus, Trash2, CheckCircle2, Paperclip, FileText
 } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { FileDropZone } from "../../components/ui/FileDropZone";
 
 type AttachmentItem = { name: string; url?: string };
 
@@ -243,6 +244,7 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
               <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest flex items-center gap-1.5 md:gap-2">
                 <ImagePlus className="w-3.5 h-3.5 md:w-4 md:h-4" /> 사진 첨부
               </label>
+              <FileDropZone inputRef={fileInputRef} label="사진을 놓으면 추가돼요">
               <div className="grid grid-cols-3 sm:grid-cols-4 gap-2 md:gap-4">
                 <AnimatePresence>
                   {images.map((img, index) => (
@@ -273,6 +275,7 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
                   <span className="text-[8px] md:text-[10px] font-black uppercase">Add Photo</span>
                 </button>
               </div>
+              </FileDropZone>
               <input
                 type="file"
                 multiple
@@ -288,6 +291,7 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
               <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest flex items-center gap-1.5 md:gap-2">
                 <Paperclip className="w-3.5 h-3.5 md:w-4 md:h-4" /> 파일 첨부
               </label>
+              <FileDropZone inputRef={attachmentInputRef} label="파일을 놓으면 첨부돼요">
               <div className="flex flex-col gap-2 md:gap-3">
                 <AnimatePresence>
                   {attachments.map((att, index) => (
@@ -318,9 +322,10 @@ export const NoticeWrite = ({ onNavigate, notice, user, fetchNotices }: any) => 
                   className="flex items-center justify-center gap-2 py-3 md:py-4 rounded-xl md:rounded-2xl border-2 border-dashed border-slate-200 text-slate-300 hover:border-indigo-300 hover:text-indigo-400 hover:bg-indigo-50/30 transition-all"
                 >
                   <Paperclip className="w-4 h-4 md:w-5 md:h-5" />
-                  <span className="text-[10px] md:text-xs font-black uppercase">파일 추가</span>
+                  <span className="text-[10px] md:text-xs font-black uppercase">파일 추가 · 끌어다 놓기</span>
                 </button>
               </div>
+              </FileDropZone>
               <input
                 type="file"
                 multiple
