@@ -354,6 +354,9 @@ function AppContent() {
 
   const hideLayoutPaths = ["/login", "/signup", "/find-account", "/signup-success", "/contact-admin"];
   const isLayoutHidden = hideLayoutPaths.some(path => window.location.pathname.startsWith(path));
+  // ✨ [2026-09-30] 앱처럼 쓰는 화면(총회·OJ·관리·개인 프로필)에서는 하단 푸터를 숨긴다 (하위 경로 포함)
+  const hideFooterPaths = ["/assembly", "/oj", "/admin", "/profile"];
+  const isFooterHidden = hideFooterPaths.some(path => location.pathname === path || location.pathname.startsWith(path + "/"));
 
   return (
     <>
@@ -437,7 +440,7 @@ function AppContent() {
         </Routes>
       </main>
 
-      {!isLayoutHidden && <Footer onNavigate={handleNavigateCompat} isAdmin={isAdmin && isLoggedIn} />}
+      {!isLayoutHidden && !isFooterHidden && <Footer onNavigate={handleNavigateCompat} isAdmin={isAdmin && isLoggedIn} />}
     </>
   );
 }
