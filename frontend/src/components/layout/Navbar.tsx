@@ -335,38 +335,53 @@ export const Navbar = ({
                   </Button>
                 </>
               ) : (
-                <div className="flex items-center gap-3">
-                  <div
-                    className="flex items-center gap-2.5 px-2.5 py-1.5 bg-slate-100/70 rounded-full border border-black/[0.035] hover:bg-white hover:shadow-sm transition-all cursor-pointer group"
+                // ✨ [2026-09-29] 리퀴드 글라스 프로필 — 메뉴의 유리 알약과 같은 재질. 프로필은 떠 있는 알약(사진+이름),
+                // 로그아웃은 옆의 동그란 유리 버튼. 마우스를 올리면 살짝 떠오르고, 누르면 살짝 눌린다.
+                <div className="flex items-center gap-2">
+                  <motion.button
+                    type="button"
                     onClick={() => handleNavigate("profile")}
+                    aria-label="내 프로필"
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className={`relative glass-lens flex items-center gap-2 h-10 pl-1 pr-3.5 rounded-full ${
+                      currentPage === "profile" ? "ring-2 ring-[#0071E3]/25" : ""
+                    }`}
                   >
-                    <div className="w-7 h-7 lg:w-8 lg:h-8 rounded-xl overflow-hidden border-2 border-white shadow-sm group-hover:scale-105 transition-transform">
+                    <span className="relative z-[1] w-8 h-8 rounded-full overflow-hidden ring-2 ring-white shadow-[0_1px_3px_rgb(0_0_0/0.15)] bg-[#F2F2F7] shrink-0">
                       {user?.avatarUrl || user?.profileImage ? (
                         <img
                           src={user.avatarUrl || user.profileImage}
-                          alt={user.name}
+                          alt=""
                           className="w-full h-full object-cover"
                           onError={(e: any) => {
                             e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png";
                           }}
                         />
                       ) : (
-                        <div className="w-full h-full bg-indigo-100 flex items-center justify-center text-indigo-500 font-bold text-xs">
+                        <span className="w-full h-full flex items-center justify-center text-[#0071E3] font-semibold text-xs">
                           {user?.name?.[0] || "U"}
-                        </div>
+                        </span>
                       )}
-                    </div>
-                    <span className="text-xs lg:text-sm font-black text-slate-700">
-                      {user?.name || "사용자"} 님
                     </span>
-                  </div>
-                  <Button
-                    variant="ghost"
-                    className="font-bold text-slate-400 hover:text-red-500 flex items-center gap-2 text-xs lg:text-sm"
+                    <span className="relative z-[1] text-[13px] lg:text-sm font-semibold tracking-[-0.01em] text-[#1D1D1F] max-w-[9rem] truncate">
+                      {user?.name || "사용자"}
+                    </span>
+                    <ChevronRight size={14} className="relative z-[1] -ml-0.5 text-[#1D1D1F]/35 shrink-0" />
+                  </motion.button>
+                  <motion.button
+                    type="button"
                     onClick={handleLogoutClick}
+                    aria-label="로그아웃"
+                    title="로그아웃"
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.94 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className="relative glass-lens w-10 h-10 rounded-full flex items-center justify-center text-[#1D1D1F]/55 hover:text-[#FF3B30] transition-colors duration-200"
                   >
-                    <LogOut size={14} className="lg:w-4 lg:h-4" /> 로그아웃
-                  </Button>
+                    <LogOut size={16} className="relative z-[1]" />
+                  </motion.button>
                 </div>
               )}
             </div>
@@ -440,30 +455,33 @@ export const Navbar = ({
                   </>
                 ) : (
                   <div className="space-y-2.5">
-                    <div
-                      className="px-3 py-3 bg-slate-50 rounded-xl border border-slate-100 flex items-center justify-between group cursor-pointer"
+                    <button
+                      type="button"
+                      className="relative glass-lens w-full px-3 py-3 rounded-2xl flex items-center justify-between active:scale-[0.98] transition-transform"
                       onClick={() => handleNavigate("profile")}
                     >
-                      <div className="flex items-center gap-2.5">
-                        <div className="w-8 h-8 rounded-lg overflow-hidden border-2 border-white shadow-sm">
+                      <span className="relative z-[1] flex items-center gap-3 min-w-0">
+                        <span className="w-10 h-10 rounded-full overflow-hidden ring-2 ring-white shadow-[0_1px_3px_rgb(0_0_0/0.15)] shrink-0">
                           <img
                             src={user?.avatarUrl || user?.profileImage || "https://cdn.discordapp.com/embed/avatars/0.png"}
-                            alt="profile"
+                            alt=""
                             className="w-full h-full object-cover"
                           />
-                        </div>
-                        <span className="font-bold text-slate-700 text-[13px]">
-                          {user?.name || "사용자"} 님
                         </span>
-                      </div>
-                      <ChevronRight size={16} className="text-slate-300" />
-                    </div>
-                    <Button 
-                      className="w-full py-3.5 bg-red-50 text-red-500 rounded-xl font-bold flex items-center justify-center gap-2 text-sm" 
+                        <span className="min-w-0 text-left">
+                          <span className="block font-semibold text-[#1D1D1F] text-[15px] tracking-[-0.01em] truncate">{user?.name || "사용자"}</span>
+                          <span className="block text-[12px] text-[#6E6E73]">내 프로필 보기</span>
+                        </span>
+                      </span>
+                      <ChevronRight size={16} className="relative z-[1] text-[#1D1D1F]/30 shrink-0" />
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full py-3.5 rounded-2xl bg-[#FF3B30]/[0.08] text-[#FF3B30] font-semibold flex items-center justify-center gap-2 text-[15px] active:scale-[0.98] transition-transform"
                       onClick={handleLogoutClick}
                     >
                       <LogOut size={16} /> 로그아웃
-                    </Button>
+                    </button>
                   </div>
                 )}
               </div>
