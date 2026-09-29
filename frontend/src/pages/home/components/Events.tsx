@@ -3,11 +3,11 @@ import { Calendar, MapPin, Sparkles, ArrowRight, Eye, Heart } from "lucide-react
 
 export const Events = ({ onNavigate, events }: { onNavigate: (page: string, id?: number) => void; events: any[] }) => {
   return (
-    <section id="events" className="py-10 md:py-16 bg-white">
+    <section id="events" className="py-10 md:py-16 bg-[#F4F6FA]">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
         
         {/* ✨ 상단 헤더 영역: 모바일에서도 전체보기 버튼이 우측 끝에 오도록 flex-row 고정 */}
-        <div className="flex flex-row justify-between items-end mb-8 md:mb-16 gap-4 md:gap-6">
+        <div className="flex flex-row justify-between items-end mb-6 md:mb-8 gap-4 md:gap-6">
           <div>
             <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs md:text-sm mb-3 md:mb-4">
               <Sparkles className="w-4 h-4 md:w-5 md:h-5" /> Events

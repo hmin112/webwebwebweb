@@ -29,11 +29,11 @@ export const FAQ = () => {
   const [openIndex, setOpenIndex] = useState<number | null>(null);
 
   return (
-    <section id="faq" className="pt-8 pb-16 md:py-24 bg-white">
+    <section id="faq" className="py-12 md:py-20 bg-[#F5F5F7]">
       <div className="max-w-3xl mx-auto px-4 md:px-6">
         
         {/* 헤더 영역 */}
-        <div className="text-center mb-8 md:mb-16">
+        <div className="text-center mb-6 md:mb-10">
           <motion.div 
             initial={{ opacity: 0, y: 20 }}
             whileInView={{ opacity: 1, y: 0 }}

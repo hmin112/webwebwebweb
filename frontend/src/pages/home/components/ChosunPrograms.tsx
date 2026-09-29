@@ -20,9 +20,9 @@ export const ChosunPrograms = ({ programs }: { programs: ChosunProgram[] }) => {
   // ✨ [2026-09-08 수정] 원래 상하 대칭 패딩(py-10/16)이라 히어로 배너 바로 아래에 배경색만
   // 있는 빈 여백이 크게 남아있었음 — 위쪽 패딩만 줄여서 그 여백을 없앰
   return (
-    <section className="pt-8 md:pt-10 pb-10 md:pb-16 bg-slate-50">
+    <section className="pt-8 md:pt-10 pb-10 md:pb-16 bg-[#F5F5F7]">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
-        <div className="flex flex-row justify-between items-end mb-8 md:mb-16 gap-4 md:gap-6">
+        <div className="flex flex-row justify-between items-end mb-6 md:mb-8 gap-4 md:gap-6">
           <div>
             <div className="inline-flex items-center gap-1.5 md:gap-2 px-3 py-1.5 md:px-4 md:py-2 rounded-full bg-indigo-50 text-indigo-600 font-bold text-xs md:text-sm mb-3 md:mb-4">
               <GraduationCap className="w-4 h-4 md:w-5 md:h-5" /> 조선대 SW중심대학

@@ -7,7 +7,7 @@ export const About = () => {
   return (
     <div className="bg-[#fdfeff]">
       {/* 1. 기존 동아리 소개 섹션 */}
-      <section id="about" className="py-16 md:py-24 overflow-hidden border-b border-slate-50">
+      <section id="about" className="py-16 md:py-24 overflow-hidden bg-[#FAFAFC]">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12">
           <div className="flex flex-col lg:flex-row items-center gap-8 lg:gap-20">
             
@@ -76,9 +76,9 @@ export const About = () => {
       </section>
 
       {/* 2. 스마트 시스템 소개 섹션 */}
-      <section className="py-16 md:py-32 bg-white overflow-hidden">
+      <section className="pt-4 pb-16 md:pt-8 md:pb-24 bg-[#FAFAFC] overflow-hidden">
         <div className="max-w-[1400px] mx-auto px-6 md:px-12">
-          <div className="mb-12 md:mb-20">
+          <div className="mb-8 md:mb-10">
             <motion.div 
               initial={{ opacity: 0, y: 20 }}
               whileInView={{ opacity: 1, y: 0 }}
