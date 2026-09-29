@@ -12,16 +12,16 @@ const formatStudentId = (id?: string) => {
 };
 
 // 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
-// ✨ [2026-09-30] 상 배지 — 색을 채우지 않고 테두리만 있는 알약(첫 화면 배너와 같은 스타일).
-// 사진 위(onPhoto)는 밝은 색 + 글자 그림자로 어떤 사진에서도 읽히게, 흰 카드 위는 진한 색으로.
+// ✨ [2026-09-30] 상 배지 — 사진 위는 흰 테두리 유리, 흰 카드 위는 진한 색 테두리 알약
 const getAwardBadgeStyle = (awardName?: string, onPhoto = true) => {
+  // 사진 위: 흐린 유리 + 흰 테두리(award-glass, index.css) — 홈·첫 화면 배너와 동일
+  if (onPhoto) return "award-glass";
   const name = awardName || "";
-  const photo = "bg-transparent border-[1.5px] backdrop-blur-[2px] [text-shadow:0_1px_3px_rgb(0_0_0/0.45)] shadow-[0_1px_3px_rgb(0_0_0/0.18)]";
   const light = "bg-transparent border-[1.5px]";
-  if (name.includes("금")) return onPhoto ? `${photo} border-[#FFDD66] text-[#FFDD66]` : `${light} border-[#C9A227] text-[#A8841A]`;
-  if (name.includes("은")) return onPhoto ? `${photo} border-white text-white` : `${light} border-[#AEAEB2] text-[#6E6E73]`;
-  if (name.includes("동")) return onPhoto ? `${photo} border-[#F0A868] text-[#F0A868]` : `${light} border-[#C98547] text-[#A6662C]`;
-  return onPhoto ? `${photo} border-amber-300 text-amber-300` : `${light} border-amber-500 text-amber-600`;
+  if (name.includes("금")) return `${light} border-[#C9A227] text-[#A8841A]`;
+  if (name.includes("은")) return `${light} border-[#AEAEB2] text-[#6E6E73]`;
+  if (name.includes("동")) return `${light} border-[#C98547] text-[#A6662C]`;
+  return `${light} border-amber-500 text-amber-600`;
 };
 
 export const HallOfFamePage = ({ onNavigate, isAdmin, isLoggedIn, entries }: any) => {

@@ -16,13 +16,8 @@ const formatStudentId = (id?: string) => {
 };
 
 // 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조 — 히어로 배너에서는 채움 없이 테두리만
-const getAwardBadgeStyle = (awardName?: string) => {
-  const name = awardName || "";
-  if (name.includes("금")) return "bg-transparent border-[1.5px] border-[#FFDD66] text-[#FFDD66]";
-  if (name.includes("은")) return "bg-transparent border-[1.5px] border-white text-white";
-  if (name.includes("동")) return "bg-transparent border-[1.5px] border-[#E0985A] text-[#E0985A]";
-  return "bg-transparent border-[1.5px] border-amber-300 text-amber-300";
-};
+// ✨ [2026-09-30] 사진 위 상 배지는 금·은·동 구분 없이 흐린 유리 + 흰 테두리(award-glass, index.css)
+const getAwardBadgeStyle = (_awardName?: string) => "award-glass";
 
 interface HeroProps {
   isAdmin: boolean;

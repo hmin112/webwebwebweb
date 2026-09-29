@@ -11,17 +11,8 @@ const formatStudentId = (id?: string) => {
 };
 
 // 금상/은상/동상은 실제 메달 색상으로, 그 외(대상 등)는 기본 앰버 색상으로 강조
-// ✨ [2026-09-30] 상 배지 — 색을 채우지 않고 테두리만 있는 알약(첫 화면 배너와 같은 스타일).
-// 사진 위(onPhoto)는 밝은 색 + 글자 그림자로 어떤 사진에서도 읽히게, 흰 카드 위는 진한 색으로.
-const getAwardBadgeStyle = (awardName?: string, onPhoto = true) => {
-  const name = awardName || "";
-  const photo = "bg-transparent border-[1.5px] backdrop-blur-[2px] [text-shadow:0_1px_3px_rgb(0_0_0/0.45)] shadow-[0_1px_3px_rgb(0_0_0/0.18)]";
-  const light = "bg-transparent border-[1.5px]";
-  if (name.includes("금")) return onPhoto ? `${photo} border-[#FFDD66] text-[#FFDD66]` : `${light} border-[#C9A227] text-[#A8841A]`;
-  if (name.includes("은")) return onPhoto ? `${photo} border-white text-white` : `${light} border-[#AEAEB2] text-[#6E6E73]`;
-  if (name.includes("동")) return onPhoto ? `${photo} border-[#F0A868] text-[#F0A868]` : `${light} border-[#C98547] text-[#A6662C]`;
-  return onPhoto ? `${photo} border-amber-300 text-amber-300` : `${light} border-amber-500 text-amber-600`;
-};
+// ✨ [2026-09-30] 사진 위 상 배지 — 흐린 유리 + 흰 테두리(award-glass, index.css). 첫 화면 배너와 동일.
+const getAwardBadgeStyle = (_awardName?: string) => "award-glass";
 
 export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string, id?: number) => void; entries: any[] }) => {
   // 홈 미리보기는 항상 네 칸만 쓴다. 여러 상 게시글은 가로 두 칸을 점유하므로,
@@ -91,20 +82,21 @@ export const HallOfFame = ({ onNavigate, entries }: { onNavigate: (page: string,
                   {awardGroups.some((award: any) => award.participants?.length) && (
                     <div className="absolute bottom-2 right-2 md:bottom-4 md:right-4 flex flex-col items-end gap-1">
                       {awardGroups.flatMap((award: any) => award.participants || []).map((p: any) => (
+                        // ✨ [2026-09-30] 첫 화면 배너와 같은 투명 유리 프로필 알약(hero-glass)
                         <div
                           key={p.loginId}
-                          className="flex items-center gap-1 md:gap-1.5 bg-white/60 backdrop-blur-md shadow-md rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1 border border-white/40"
+                          className="hero-glass flex items-center gap-1 md:gap-1.5 rounded-full pl-0.5 pr-2 md:pr-2.5 py-0.5 md:py-1"
                         >
-                          <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-indigo-100 shrink-0">
+                          <div className="w-5 h-5 md:w-6 md:h-6 rounded-full overflow-hidden bg-white/20 shrink-0">
                             {p.profileImage ? (
                               <img src={p.profileImage} alt={p.name} className="w-full h-full object-cover" />
                             ) : (
-                              <div className="w-full h-full flex items-center justify-center text-indigo-500 font-bold text-[8px]">
+                              <div className="w-full h-full flex items-center justify-center text-white font-bold text-[8px]">
                                 {p.name?.[0] || "?"}
                               </div>
                             )}
                           </div>
-                          <span className="text-[10px] md:text-[11px] font-bold text-slate-700 whitespace-nowrap">
+                          <span className="text-[10px] md:text-[11px] font-bold text-white whitespace-nowrap [text-shadow:0_1px_2px_rgb(0_0_0/0.35)]">
                             {formatStudentId(p.studentId)} {p.name}
                           </span>
                         </div>
