@@ -91,7 +91,9 @@ export const Navbar = ({
   useEffect(() => {
     // 메인 페이지가 아닐 때는 부모가 주는 currentPage를 그대로 따름
     if (location.pathname !== "/") {
-      setActiveTab(currentPage);
+      // ✨ [2026-09-30] /oj/12, /assembly/member/3 같은 하위 페이지에서도 상위 메뉴에 선택 표시가 남도록 첫 경로만 본다
+      const section = currentPage.split("/")[0];
+      setActiveTab(section === "hall-of-fame" ? "halloffame" : section);
       return;
     }
 
@@ -165,7 +167,9 @@ export const Navbar = ({
   // 라이브러리의 공유 레이아웃(layoutId)은 페이지 전환 때 스크롤 변화를 위치 계산에 섞어 알약이 아래에서
   // 튀어나오는 것처럼 보였다 — 메뉴 줄 기준 좌표만 쓰면 스크롤과 무관하게 좌우로만 움직인다.
   const menuItemRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const [indicator, setIndicator] = useState<{ x: number; w: number; visible: boolean } | null>(null);
+  const [indicator, setIndicator] = useState<{ x: number; w: number; h: number; visible: boolean } | null>(null);
+  // 첫 위치는 애니메이션 없이 바로 놓고, 그 다음부터 미끄러지게 (새로고침 때 왼쪽 끝에서 날아오지 않도록)
+  const [indicatorReady, setIndicatorReady] = useState(false);
   const visibleLinkKey = navLinks
     .filter((link) => (link.id === "assembly" || link.id === "oj") ? isLoggedIn : link.id === "admin" ? isLoggedIn && userRole === "ADMIN" : true)
     .map((link) => link.id)
@@ -177,8 +181,14 @@ export const Navbar = ({
       setIndicator((prev) => (prev ? { ...prev, visible: false } : prev));
       return;
     }
-    setIndicator({ x: el.offsetLeft, w: el.offsetWidth, visible: true });
+    setIndicator({ x: el.offsetLeft, w: el.offsetWidth, h: el.offsetHeight, visible: true });
   }, [activeTab]);
+
+  useEffect(() => {
+    if (!indicator || indicatorReady) return;
+    const id = setTimeout(() => setIndicatorReady(true), 80);
+    return () => clearTimeout(id);
+  }, [indicator, indicatorReady]);
 
   useLayoutEffect(() => {
     measureIndicator();
@@ -217,6 +227,7 @@ export const Navbar = ({
       }
     } else {
       // ✨ 총회, 관리, 로그인 등 "새 페이지"로 이동할 때는 스크롤을 최상단으로 리셋
+      setActiveTab(id); // 새 페이지를 그리는 것과 같은 순간에 알약도 출발
       onNavigate(id);
       // 새 페이지는 즉시 맨 위에서 시작 (CSS의 scroll-behavior: smooth 때문에 기본값이면 쫘라락 올라감)
       window.scrollTo({ top: 0, left: 0, behavior: "instant" });
@@ -277,18 +288,25 @@ export const Navbar = ({
               좌우로 미끄러져 이어서 이동한다. 거리와 상관없이 같은 시간(duration 기반 스프링)에 도착해서
               맨 끝 ↔ 맨 앞처럼 멀리 가도 과하게 튕기지 않는다. 누름 효과는 글자에만 준다. */}
           <div className="relative hidden lg:flex items-center gap-0.5 xl:gap-1">
+            {/* ✨ [2026-09-30] 선택 알약을 GPU 합성(transform)만으로 움직인다 — 총회·OJ·관리처럼 새 페이지를 그리는 동안
+                메인 스레드가 바빠도 끊기지 않게. 폭 변화도 transform으로 하려고 알약을 [왼쪽 원 | 가운데 막대 | 오른쪽 원]
+                세 조각으로 나눠, 같은 시간·같은 곡선으로 옮긴다(가운데는 scaleX로 늘이고 줄임). */}
             {indicator && (
-              <motion.span
+              <span
                 aria-hidden
-                className="absolute left-0 top-0 bottom-0 rounded-full glass-lens pointer-events-none"
-                initial={false}
-                animate={{ x: indicator.x, width: indicator.w, y: -1, opacity: indicator.visible ? 1 : 0 }}
-                transition={{
-                  x: { type: "spring", bounce: 0.18, duration: 0.5 },
-                  width: { type: "spring", bounce: 0.18, duration: 0.5 },
-                  opacity: { duration: 0.2 },
-                }}
-              />
+                className={`nav-pill pointer-events-none absolute left-0 top-0 ${indicatorReady ? "is-ready" : ""}`}
+                style={{ height: indicator.h, opacity: indicator.visible ? 1 : 0 }}
+              >
+                <span className="nav-pill-cap" style={{ width: indicator.h, height: indicator.h, transform: `translate3d(${indicator.x}px,-1px,0)` }} />
+                <span className="nav-pill-cap" style={{ width: indicator.h, height: indicator.h, transform: `translate3d(${indicator.x + indicator.w - indicator.h}px,-1px,0)` }} />
+                <span
+                  className="nav-pill-mid"
+                  style={{
+                    height: indicator.h,
+                    transform: `translate3d(${indicator.x + indicator.h / 2}px,-1px,0) scaleX(${Math.max(indicator.w - indicator.h, 0.5) / 100})`,
+                  }}
+                />
+              </span>
             )}
             {visibleLinks.map((link) => {
               const isActive = activeTab === link.id;

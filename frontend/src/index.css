@@ -114,6 +114,41 @@
       0 1px 2px rgb(0 0 0 / 0.05);
   }
 
+  /* ✨ [2026-09-30] 상단 바 선택 알약 — 세 조각(원·막대·원)을 transform으로만 옮겨 GPU에서 부드럽게 움직인다.
+     메인 스레드가 새 페이지를 그리느라 바빠도 끊기지 않는다. 모양은 위 .glass-lens와 같다(흰 단색 + 얇은 테두리). */
+  .nav-pill {
+    transition: opacity 200ms ease;
+  }
+
+  .nav-pill > span {
+    position: absolute;
+    left: 0;
+    top: 0;
+    background: #ffffff;
+    transform-origin: 0 50%;
+    backface-visibility: hidden;
+  }
+
+  .nav-pill.is-ready > span {
+    transition: transform 520ms cubic-bezier(0.3, 1.12, 0.5, 1);
+  }
+
+  .nav-pill-cap {
+    border-radius: 9999px;
+    box-shadow:
+      0 0 0 0.5px rgb(0 0 0 / 0.08),
+      0 1px 2px rgb(0 0 0 / 0.05);
+  }
+
+  /* 가운데 막대: 기준 폭 100px을 scaleX로 늘이고 줄인다. 위·아래 테두리만 그려서 양 끝 원과 이음매 없이 붙는다 */
+  .nav-pill-mid {
+    width: 100px;
+    box-shadow:
+      0 -0.5px 0 rgb(0 0 0 / 0.08),
+      0 0.5px 0 rgb(0 0 0 / 0.08),
+      0 1.5px 1px -0.5px rgb(0 0 0 / 0.04);
+  }
+
   /* 로그인처럼 강조가 필요한 버튼 — 애플 블루 단색 */
   .glass-lens-blue {
     color: white;
