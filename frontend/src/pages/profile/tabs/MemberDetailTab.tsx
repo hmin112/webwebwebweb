@@ -6,8 +6,15 @@ import {
   ArrowLeft, FileText, X,
   Download, Presentation, CalendarDays, MessageCircle,
   FileArchive, ExternalLink, Loader2, ChevronDown, Eye,
-  Layers, Crown, Link2, User,
+  Layers, Crown, Link2, User, Star,
 } from "lucide-react";
+
+// 대표 프로젝트 표시 — 마이페이지 "내 프로젝트" 아이콘의 별과 같은 모양
+const RepStar = () => (
+  <span title="대표 프로젝트" className="inline-flex items-center justify-center w-4 h-4 ml-1.5 -mt-0.5 align-middle rounded-full bg-[#FF9F0A]">
+    <Star className="w-2.5 h-2.5 text-white" fill="currentColor" strokeWidth={0} />
+  </span>
+);
 
 // MyPageTab/TeamTab과 동일한 규칙: 2~7월=1학기, 8월~다음해 1월=2학기
 const getCurrentTerm = () => {
@@ -44,6 +51,8 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
   const [teamList, setTeamList] = useState<any[]>([]);
   // "personal" 또는 teamId — 무엇을 보고 있는지. 카드와 아래 타임라인이 함께 바뀐다.
   const [selectedProjectKey, setSelectedProjectKey] = useState<"personal" | number>("personal");
+  // ✨ [2026-09-30] 부원이 마이페이지에서 고른 대표 프로젝트(안 골랐으면 서버가 자동으로 정한 것) — 들어오면 이걸 먼저 보여준다
+  const [representativeKey, setRepresentativeKey] = useState<"personal" | number | null>(null);
   const [teamSubmissionsByTeam, setTeamSubmissionsByTeam] = useState<Record<number, any[]>>({});
 
   // 학기 선택 상태 — 예전엔 { year: 2026, semester: 1 }로 고정되어 있어서, 실제로 2학기가
@@ -156,15 +165,25 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         setProjectLinks(submissionRes.data.projectLinks || []);
 
         // 4. 이번 학기 팀 프로젝트 소속 여부 (기존 팀 프로젝트 기능이 이미 쓰던 엔드포인트 재사용)
+        let teams: any[] = [];
         try {
           const teamRes = await api.get("/teams/my", {
             params: { loginId: targetMember.loginId, year: selectedTerm.year, semester: selectedTerm.semester },
           });
-          setTeamList(teamRes.data?.teams || []);
+          teams = teamRes.data?.teams || [];
         } catch {
-          setTeamList([]);
+          teams = [];
         }
-        setSelectedProjectKey("personal");
+        setTeamList(teams);
+
+        const rep = submissionRes.data.representative;
+        const repTeamId = rep?.type === "TEAM" ? Number(String(rep.key).split(":")[1]) : NaN;
+        const repKey: "personal" | number | null =
+          rep?.type === "TEAM"
+            ? (teams.some((t: any) => Number(t.teamId) === repTeamId) ? repTeamId : null)
+            : rep?.type === "PERSONAL" ? "personal" : null;
+        setRepresentativeKey(repKey);
+        setSelectedProjectKey(repKey ?? "personal");
         setTeamSubmissionsByTeam({});
 
       } catch (e) {
@@ -386,6 +405,7 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
             }`}
           >
             <User size={12} className="inline mr-1.5 -mt-0.5" /> 개인 프로젝트
+            {representativeKey === "personal" && <RepStar />}
           </button>
           {teamList.map((t: any) => (
             <button
@@ -396,6 +416,7 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
               }`}
             >
               <Layers size={12} className="inline mr-1.5 -mt-0.5" /> {t.teamName}
+              {representativeKey === Number(t.teamId) && <RepStar />}
             </button>
           ))}
         </div>
