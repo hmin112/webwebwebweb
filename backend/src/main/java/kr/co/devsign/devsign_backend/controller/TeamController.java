@@ -60,6 +60,20 @@ public class TeamController {
         }
     }
 
+    // ✨ [2026-09-30] 팀 관련 링크 저장 — 팀원만(아니면 403)
+    @PostMapping("/{teamId}/links")
+    public ResponseEntity<?> saveLinks(Authentication authentication, @PathVariable Long teamId,
+                                       @RequestBody kr.co.devsign.devsign_backend.dto.team.SaveTeamLinksRequest request) {
+        AuthGuard.requireSelf(authentication, request.requesterLoginId());
+        try {
+            return ResponseEntity.ok(teamService.saveLinks(teamId, request));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
+        } catch (RuntimeException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
     @PostMapping("/{teamId}/title")
     public ResponseEntity<?> updateTitle(Authentication authentication, @PathVariable Long teamId, @RequestBody UpdateTeamTitleRequest request) {
         AuthGuard.requireSelf(authentication, request.requesterLoginId());

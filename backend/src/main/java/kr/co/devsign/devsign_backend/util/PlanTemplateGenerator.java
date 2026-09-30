@@ -57,9 +57,6 @@ public class PlanTemplateGenerator {
                     : "(팀 없이 혼자 하는 프로젝트라면 비워두세요.)");
             table(doc, List.of("이름", "역할", "담당 업무"), team ? 4 : 2, List.of());
 
-            heading(doc, "■ 관련 링크 (선택)");
-            table(doc, List.of("이름", "링크"), 2, List.of("Git", "Notion"));
-
             heading(doc, "■ 기타 참고사항 (선택)");
             hint(doc, "(그 외 자유롭게 남기고 싶은 내용을 적어주세요.)");
             doc.createParagraph();

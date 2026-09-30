@@ -356,16 +356,7 @@ export function mergeExtractedPlan<S extends PlanFormLike>(
     next.planRoles = roles;
     filled++;
   }
-  if (ex.planLinks?.length) {
-    const links = prev.planLinks.map((l) => ({ label: l.label || "", url: l.url || "" }));
-    ex.planLinks.forEach((l) => {
-      const slot = links.find((x) => !x.url.trim() && x.label.trim().toLowerCase() === l.label.trim().toLowerCase());
-      if (slot) slot.url = l.url;
-      else if (!links.some((x) => x.url.trim() === l.url.trim())) links.push({ label: l.label, url: l.url });
-    });
-    next.planLinks = links;
-    filled++;
-  }
+  // ✨ [2026-09-30] 관련 링크는 계획서에서 뺐다(마이페이지·팀 탭에서 관리) — 파일에 링크가 있어도 계획서 칸으로 옮기지 않는다
   if (ex.planNotes?.trim()) {
     next.planNotes = ex.planNotes;
     filled++;

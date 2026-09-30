@@ -2,11 +2,13 @@ import { api } from "../../../api/axios";
 import { useState, useMemo, useEffect, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileText, X, Download, Presentation, MessageCircle, Upload, FileArchive, Loader2, Lock, Link2, Plus
+  FileText, X, Download, Presentation, MessageCircle, Upload, FileArchive, Loader2, Lock
 } from "lucide-react";
 import { FileDropZone } from "../../../components/ui/FileDropZone";
 import { CARD, MonthCard, PageHeader, SectionTitle, TermSelect, reportKind, submitStateOf } from "../../assembly/assemblyUi";
 import { MyProjectsPicker } from "../../assembly/components/MyProjectsPicker";
+import { LinksEditor } from "../../assembly/components/LinksEditor";
+import { PlanSummaryCard } from "../../assembly/components/PlanSummary";
 
 // 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 별도 페이지(AssemblyPlanPage)에서 웹으로 작성.
 const isPlanMonth = (month: number) => month === 3 || month === 9;
@@ -133,6 +135,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   // ✨ [2026-09-30] 프로젝트 명은 서버가 정해서 내려준다 — 웹 계획서가 있으면 그 "프로젝트 명", 없으면(예: 파일로
   // 계획서를 냈던 2026년 1학기) 그때 마이페이지에서 따로 저장했던 프로젝트명.
   const projectTitle = serverProjectTitle;
+  const planReport = displayReports.find((r) => isPlanMonth(r.month));
 
   const canSubmit = useMemo(() => {
     if (!selectedReport || !selectedReport.isWithinPeriod) return false;
@@ -204,14 +207,6 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
       alert("파일 다운로드 중 오류가 발생했습니다.");
     }
   };
-
-  const updateLinkField = (idx: number, field: "label" | "url", value: string) => {
-    setProjectLinks((prev) => prev.map((l, i) => (i === idx ? { ...l, [field]: value } : l)));
-  };
-
-  const addLinkRow = () => setProjectLinks((prev) => [...prev, { label: "", url: "" }]);
-
-  const removeLinkRow = (idx: number) => setProjectLinks((prev) => prev.filter((_, i) => i !== idx));
 
   const handleSaveLinks = async () => {
     if (!loginId || loginId === "undefined") return;
@@ -371,49 +366,26 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
         ))}
       </div>
 
-      {/* 관련 링크 — 커뮤니티에서 내 페이지를 연 사람에게 버튼으로 보여요 */}
-      <SectionTitle
-        right={
-          <button
-            onClick={handleSaveLinks}
-            disabled={isLinksSaving}
-            className="h-8 px-3.5 rounded-full bg-[#0071E3] text-white text-xs font-semibold hover:bg-[#0077ED] disabled:opacity-50 transition-colors"
-          >
-            {isLinksSaving ? "저장 중..." : "저장"}
-          </button>
-        }
-      >
-        관련 링크
-      </SectionTitle>
-      <div className={`${CARD} rounded-3xl p-4 md:p-5`}>
-        <p className="text-xs text-[#8E8E93] mb-3 px-1 flex items-center gap-1.5"><Link2 size={13} /> Git, Notion 등 — 커뮤니티의 내 페이지에 버튼으로 보여요.</p>
-        <div className="space-y-2">
-          {projectLinks.map((link, idx) => (
-            <div key={idx} className="flex items-center gap-2">
-              <input
-                type="text"
-                value={link.label}
-                onChange={(e) => updateLinkField(idx, "label", e.target.value)}
-                placeholder="이름"
-                className="w-24 md:w-36 shrink-0 h-10 px-3 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-semibold text-sm text-[#1D1D1F]"
-              />
-              <input
-                type="text"
-                value={link.url}
-                onChange={(e) => updateLinkField(idx, "url", e.target.value)}
-                placeholder="https://..."
-                className="flex-1 min-w-0 h-10 px-3 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 text-sm text-[#1D1D1F]"
-              />
-              <button onClick={() => removeLinkRow(idx)} aria-label="링크 삭제" className="w-8 h-8 rounded-full flex items-center justify-center text-[#C7C7CC] hover:text-[#FF3B30] hover:bg-[#FF3B30]/[0.06] shrink-0 transition-colors">
-                <X size={15} />
-              </button>
-            </div>
-          ))}
+      {/* 관련 링크 — 커뮤니티에서 내 페이지를 연 사람에게 버튼으로 보여요 (계획서에는 링크 칸이 없음) */}
+      <LinksEditor
+        links={projectLinks}
+        onChange={setProjectLinks}
+        onSave={handleSaveLinks}
+        saving={isLinksSaving}
+        hint="Git, Notion 등 — 커뮤니티의 내 페이지에 버튼으로 보여요."
+      />
+
+      {/* ✨ [2026-09-30] 계획서 요약 — 이번 학기 계획서(3·9월) 내용을 정리해서 보여준다 */}
+      {planReport && (
+        <div className="mt-10 md:mt-12">
+          <SectionTitle>계획서 요약</SectionTitle>
+          <PlanSummaryCard
+            plan={planReport}
+            title={planReport.memo || projectTitle}
+            emptyText={`아직 계획서를 작성하지 않았어요. 위의 ${planReport.month}월 계획서 카드를 눌러 작성해 보세요.`}
+          />
         </div>
-        <button onClick={addLinkRow} className="flex items-center gap-1 mt-3 px-1 text-xs font-semibold text-[#0071E3] hover:underline">
-          <Plus size={13} /> 링크 추가
-        </button>
-      </div>
+      )}
 
       <AnimatePresence>
         {selectedReport && (

@@ -228,6 +228,27 @@ public class TeamService {
                 .orElseThrow(() -> new IllegalArgumentException("팀을 찾을 수 없습니다."));
     }
 
+    // ✨ [2026-09-30] 팀 관련 링크 저장 — 공유 자료처럼 수락한 팀원 누구나. 이름·주소가 둘 다 있는 줄만 저장한다.
+    @Transactional
+    public TeamResponse saveLinks(Long teamId, kr.co.devsign.devsign_backend.dto.team.SaveTeamLinksRequest req) {
+        Team team = getTeamOrThrow(teamId);
+        boolean isMember = teamMemberRepository.findByTeam_IdAndLoginId(teamId, req.requesterLoginId())
+                .filter(m -> STATUS_ACCEPTED.equals(m.getStatus()))
+                .isPresent();
+        if (!isMember) {
+            throw new IllegalStateException("이 팀의 팀원만 링크를 바꿀 수 있습니다.");
+        }
+        team.getLinks().clear();
+        if (req.links() != null) {
+            req.links().stream()
+                    .filter(l -> l != null && l.label() != null && !l.label().isBlank() && l.url() != null && !l.url().isBlank())
+                    .limit(20)
+                    .forEach(l -> team.getLinks().add(new kr.co.devsign.devsign_backend.entity.PlanLink(l.label().trim(), l.url().trim())));
+        }
+        teamRepository.save(team);
+        return toTeamResponse(team);
+    }
+
     private void requireLeader(Team team, String requesterLoginId) {
         if (!team.getLeaderLoginId().equals(requesterLoginId)) {
             throw new IllegalStateException("팀장만 수행할 수 있는 작업입니다.");
@@ -266,7 +287,10 @@ public class TeamService {
                 team.getLeaderLoginId(),
                 team.getYear(),
                 team.getSemester(),
-                members
+                members,
+                team.getLinks().stream()
+                        .map(l -> new kr.co.devsign.devsign_backend.dto.assembly.PlanLinkDto(l.getLabel(), l.getUrl()))
+                        .toList()
         );
     }
 }

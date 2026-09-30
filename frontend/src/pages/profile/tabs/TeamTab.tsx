@@ -5,7 +5,9 @@ import {
   Layers, Crown, UserPlus, X, LogOut, Trash2, Loader2, Mail, Search, PlusCircle, Save, Edit2, Users, FileText, Presentation, Download, Upload, FileArchive, MessageCircle, Lock
 } from "lucide-react";
 import { FileDropZone } from "../../../components/ui/FileDropZone";
-import { MonthCard, PageHeader, TermSelect, reportKind, submitStateOf } from "../../assembly/assemblyUi";
+import { MonthCard, PageHeader, SectionTitle, TermSelect, reportKind, submitStateOf } from "../../assembly/assemblyUi";
+import { LinksEditor, type LinkRow } from "../../assembly/components/LinksEditor";
+import { PlanSummaryCard } from "../../assembly/components/PlanSummary";
 
 // ✨ CommunityTab과 동일한 학번 포맷 규칙 (8자리 학번 -> 2자리 연도 등)
 const formatStudentId = (id?: string) => {
@@ -76,6 +78,11 @@ export const TeamTab = ({
 
   const [allTeams, setAllTeams] = useState<any[]>([]);
   const [teamSearch, setTeamSearch] = useState("");
+  // ✨ [2026-09-30] 다른 팀 둘러보기 — 페이지 맨 아래 큰 섹션 대신 오른쪽 위 작은 버튼 → 팝업
+  const [isOtherTeamsOpen, setIsOtherTeamsOpen] = useState(false);
+  // ✨ [2026-09-30] 팀 관련 링크 — 계획서에서 빼고 여기서 팀원 누구나 관리
+  const [teamLinks, setTeamLinks] = useState<LinkRow[]>([]);
+  const [isTeamLinksSaving, setIsTeamLinksSaving] = useState(false);
 
   // ✨ [신규] 팀 공유 자료 — 개인 마이페이지와 완전히 독립된 별도 제출 트랙
   const [teamSubmissions, setTeamSubmissions] = useState<any[]>([]);
@@ -309,6 +316,34 @@ export const TeamTab = ({
       });
   }, [allTeams, team, teamSearch]);
 
+  const otherTeamCount = useMemo(
+    () => allTeams.filter((t) => !team || t.teamId !== team.teamId).length,
+    [allTeams, team]
+  );
+
+  useEffect(() => {
+    setTeamLinks(team?.links && team.links.length > 0 ? team.links : [{ label: "Git", url: "" }, { label: "Notion", url: "" }]);
+  }, [team?.teamId, team?.links]);
+
+  const handleSaveTeamLinks = async () => {
+    if (!team) return;
+    setIsTeamLinksSaving(true);
+    try {
+      await api.post(`/teams/${team.teamId}/links`, {
+        requesterLoginId: loginId,
+        links: teamLinks.filter((l) => l.label.trim() && l.url.trim()),
+      });
+      alert("팀 링크가 저장되었습니다.");
+      await fetchStatus();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "팀 링크를 저장하지 못했어요.");
+    } finally {
+      setIsTeamLinksSaving(false);
+    }
+  };
+
+  const teamPlan = displaySubmissions.find((sub: any) => sub.month === 3 || sub.month === 9);
+
   const handleCreateTeam = async () => {
     if (createTeamLockRef.current) return;
     if (!newTeamName.trim()) {
@@ -447,7 +482,19 @@ export const TeamTab = ({
       <PageHeader
         title="팀 프로젝트"
         desc="팀을 만들고 팀원과 함께 팀 자료를 제출해요. 개인 마이 페이지 제출과는 따로 관리돼요."
-        right={<TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />}
+        right={
+          <div className="flex items-center gap-2 flex-wrap">
+            <TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />
+            <button
+              type="button"
+              onClick={() => setIsOtherTeamsOpen(true)}
+              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] text-sm font-semibold text-[#1D1D1F]/80 hover:text-[#1D1D1F] transition-colors"
+            >
+              <Users size={15} className="text-[#0071E3]" /> 다른 팀 둘러보기
+              <span className="text-[#AEAEB2]">{otherTeamCount}</span>
+            </button>
+          </div>
+        }
       />
 
       {isLoading ? (
@@ -667,63 +714,97 @@ export const TeamTab = ({
             </div>
           )}
 
-          {/* ✨ 다른 팀 둘러보기 — 초대 대기중인 인원은 백엔드에서부터 제외되어 내려온다 */}
-          <div className="mt-10 md:mt-14">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 md:mb-6">
-              <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] flex items-center gap-2">
-                <Users size={16} className="text-[#0071E3]" /> 다른 팀 둘러보기 <span className="text-[#C7C7CC]">({otherTeams.length})</span>
-              </h3>
-              <div className="relative w-full sm:w-72">
+          {team && (
+            <div className="mt-10 md:mt-12">
+              <LinksEditor
+                links={teamLinks}
+                onChange={setTeamLinks}
+                onSave={handleSaveTeamLinks}
+                saving={isTeamLinksSaving}
+                hint="Git, Notion 등 팀 링크 — 팀원 누구나 고칠 수 있고, 커뮤니티에서 이 팀을 볼 때 버튼으로 보여요."
+              />
+            </div>
+          )}
+
+          {team && teamPlan && (
+            <div className="mt-10 md:mt-12">
+              <SectionTitle>계획서 요약</SectionTitle>
+              <PlanSummaryCard
+                plan={teamPlan}
+                title={teamPlan.memo || team.projectTitle}
+                emptyText={`아직 팀 계획서를 작성하지 않았어요. 위의 ${teamPlan.month}월 계획서 카드를 눌러 팀원 누구나 작성할 수 있어요.`}
+              />
+            </div>
+          )}
+
+        </>
+      )}
+
+      <AnimatePresence>
+        {isOtherTeamsOpen && (
+          <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setIsOtherTeamsOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ type: "spring", stiffness: 400, damping: 34 }}
+              className="relative w-full max-w-3xl bg-[#fff] rounded-[28px] p-5 md:p-7 shadow-[0_20px_60px_rgb(0_0_0/0.18)] overflow-y-auto max-h-[85vh]"
+            >
+              <div className="flex items-start justify-between gap-3 mb-4">
+                <div>
+                  <p className="text-xs font-semibold text-[#8E8E93]">{selectedTerm.year}년 {selectedTerm.semester}학기</p>
+                  <h3 className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em] mt-0.5">다른 팀 둘러보기 <span className="text-[#C7C7CC]">{otherTeamCount}</span></h3>
+                </div>
+                <button onClick={() => setIsOtherTeamsOpen(false)} aria-label="닫기" className="w-8 h-8 rounded-full bg-black/[0.05] text-[#6E6E73] flex items-center justify-center hover:bg-black/[0.08] shrink-0"><X size={16} /></button>
+              </div>
+              <div className="relative mb-4">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[#C7C7CC]" size={14} />
                 <input
                   value={teamSearch}
                   onChange={(e) => setTeamSearch(e.target.value)}
                   placeholder="팀명, 프로젝트명 또는 팀원 이름 검색"
-                  className="w-full pl-9 pr-3 py-2.5 bg-[#fff] border border-black/[0.08] rounded-xl outline-none font-bold text-xs shadow-sm focus:ring-2 focus:ring-[#0071E3]/20 transition-all"
+                  className="w-full pl-9 pr-3 py-2.5 bg-[#F5F5F7] rounded-xl outline-none font-semibold text-sm focus:ring-2 focus:ring-[#0071E3]/20 transition-all"
                 />
               </div>
-            </div>
-
             {otherTeams.length === 0 ? (
-              <div className="bg-[#fff] rounded-3xl border border-dashed border-black/[0.08] p-8 md:p-12 text-center">
-                <p className="text-[#C7C7CC] font-bold text-sm">
-                  {allTeams.length === 0 ? `${selectedTerm.year}년 ${selectedTerm.semester}학기에 만들어진 팀이 아직 없습니다.` : "검색 결과가 없습니다."}
-                </p>
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
-                {otherTeams.map((t) => (
-                  <div key={t.teamId} className="bg-[#fff] p-4 md:p-6 rounded-3xl border border-black/[0.06] shadow-sm">
-                    <p className="font-bold text-[#1D1D1F] text-sm md:text-base truncate">{t.teamName}</p>
-                    <p className="text-[11px] md:text-xs font-bold text-[#8E8E93] truncate mb-3">프로젝트: {t.projectTitle || "아직 정해지지 않았어요"}</p>
-                    <div className="flex flex-wrap gap-2">
-                      {t.members.map((m: any) => (
-                        <button
-                          type="button"
-                          key={m.teamMemberId}
-                          onClick={() => onNavigate && onNavigate("member-detail", m.loginId)}
-                          className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-[#F5F5F7] rounded-full border border-black/[0.06] hover:bg-[#0071E3]/10 hover:border-[#0071E3]/20 transition-colors"
-                        >
-                          <img
-                            src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
-                        onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
-                            className="w-5 h-5 rounded-full object-cover shrink-0"
-                            alt={m.name}
-                          />
-                          <span className="text-[11px] font-bold text-[#3A3A3C]">{formatStudentId(m.studentId)} {m.name}</span>
-                          {m.isLeader && <Crown size={11} className="text-[#FF9500] shrink-0" />}
-                        </button>
-                      ))}
+                <div className="bg-[#fff] rounded-3xl border border-dashed border-black/[0.08] p-8 md:p-12 text-center">
+                  <p className="text-[#C7C7CC] font-bold text-sm">
+                    {allTeams.length === 0 ? `${selectedTerm.year}년 ${selectedTerm.semester}학기에 만들어진 팀이 아직 없습니다.` : "검색 결과가 없습니다."}
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 md:gap-4">
+                  {otherTeams.map((t) => (
+                    <div key={t.teamId} className="bg-[#fff] p-4 md:p-6 rounded-3xl border border-black/[0.06] shadow-sm">
+                      <p className="font-bold text-[#1D1D1F] text-sm md:text-base truncate">{t.teamName}</p>
+                      <p className="text-[11px] md:text-xs font-bold text-[#8E8E93] truncate mb-3">프로젝트: {t.projectTitle || "아직 정해지지 않았어요"}</p>
+                      <div className="flex flex-wrap gap-2">
+                        {t.members.map((m: any) => (
+                          <button
+                            type="button"
+                            key={m.teamMemberId}
+                            onClick={() => onNavigate && onNavigate("member-detail", m.loginId)}
+                            className="flex items-center gap-1.5 pl-1 pr-2.5 py-1 bg-[#F5F5F7] rounded-full border border-black/[0.06] hover:bg-[#0071E3]/10 hover:border-[#0071E3]/20 transition-colors"
+                          >
+                            <img
+                              src={m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`}
+                          onError={(e: any) => { e.target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`; }}
+                              className="w-5 h-5 rounded-full object-cover shrink-0"
+                              alt={m.name}
+                            />
+                            <span className="text-[11px] font-bold text-[#3A3A3C]">{formatStudentId(m.studentId)} {m.name}</span>
+                            {m.isLeader && <Crown size={11} className="text-[#FF9500] shrink-0" />}
+                          </button>
+                        ))}
+                      </div>
                     </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </motion.div>
           </div>
-        </>
-      )}
-
-      <AnimatePresence>
+        )}
         {isInviteOpen && (
           <div className="fixed inset-0 z-[300] flex items-center justify-center px-4 md:px-6">
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={() => setIsInviteOpen(false)} />

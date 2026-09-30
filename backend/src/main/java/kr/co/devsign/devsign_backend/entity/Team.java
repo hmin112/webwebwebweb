@@ -5,6 +5,8 @@ import lombok.Getter;
 import lombok.Setter;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Getter @Setter
@@ -26,4 +28,10 @@ public class Team {
     private int semester;
 
     private LocalDateTime createdAt = LocalDateTime.now();
+
+    // ✨ [2026-09-30 추가] 팀 관련 링크(Git/Notion 등) — 계획서 양식에서 빼고 팀 탭에서 팀원 누구나 관리.
+    // 커뮤니티 부원 상세에서 이 팀을 볼 때 버튼으로 보인다.
+    @ElementCollection
+    @CollectionTable(name = "team_links", joinColumns = @JoinColumn(name = "team_id"))
+    private List<PlanLink> links = new ArrayList<>();
 }

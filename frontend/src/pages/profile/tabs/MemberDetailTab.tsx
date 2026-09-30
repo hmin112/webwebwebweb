@@ -2,6 +2,7 @@ import { api } from "../../../api/axios";
 import { useState, useEffect, useRef, useMemo } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { reportKind } from "../../assembly/assemblyUi";
+import { PlanContentView, PlanSummaryCard } from "../../assembly/components/PlanSummary";
 import {
   ArrowLeft, FileText, X,
   Download, Presentation, CalendarDays, MessageCircle,
@@ -89,6 +90,11 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
 
   const isSubmittedStatus = (status?: string) =>
     status === "SUBMITTED" || status === "제출완료";
+
+  // 지금 보고 있는 프로젝트의 관련 링크 — 개인은 마이페이지 링크, 팀은 팀 탭 링크
+  const visibleLinks: any[] = isPersonalView ? projectLinks : (selectedTeam?.links || []);
+  // 지금 보고 있는 프로젝트의 제출된 계획서(3·9월)
+  const visiblePlan = timelineItems.find((r: any) => (r.month === 3 || r.month === 9) && isSubmittedStatus(r.status));
 
   // 2026년 1학기부터 현재 학기까지 전부 선택 가능하게(MyPageTab의 semesterOptions와 동일 규칙)
   const termOptions = useMemo(() => {
@@ -375,11 +381,12 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
       </div>
 
       {/* ✨ [2026-09-07 추가] 이번 학기 관련 링크(깃/노션 등) — 마이페이지에서 등록한 것을 읽기 전용으로 노출 */}
-      {isPersonalView && projectLinks.length > 0 && (
+      {/* ✨ [2026-09-30] 팀을 보고 있으면 팀 탭에서 등록한 팀 링크 */}
+      {visibleLinks.length > 0 && (
         <div className="mb-6 bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-4 md:p-5 rounded-3xl">
           <p className="flex items-center gap-1.5 mb-3 text-xs font-semibold text-[#6E6E73]"><Link2 size={13} /> 관련 링크</p>
           <div className="flex flex-wrap gap-2">
-            {projectLinks.map((link, idx) => (
+            {visibleLinks.map((link: any, idx: number) => (
               <a
                 key={idx}
                 href={link.url}
@@ -528,6 +535,19 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
         )}
       </div>
 
+      {/* ✨ [2026-09-30] 계획서 요약 — 보고 있는 프로젝트(개인/팀)의 제출된 계획서를 정리해서 보여준다 */}
+      {visiblePlan && (
+        <div className="mt-10 md:mt-12">
+          <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] mb-3 md:mb-4 px-1">계획서 요약</h3>
+          <PlanSummaryCard
+            plan={visiblePlan}
+            title={visiblePlan.memo || (isPersonalView ? memberInfo?.projectTitle : selectedTeam?.projectTitle)}
+            emptyText="계획서를 파일로 제출해서 정리된 내용이 없어요. 위 기록에서 계획서를 눌러 파일을 확인해 보세요."
+            showStatus={false}
+          />
+        </div>
+      )}
+
       {/* 🔮 상세 정보 모달 */}
       <AnimatePresence>
         {selectedReport && (
@@ -544,7 +564,7 @@ export const MemberDetailTab = ({ loginId, onBack }: MemberDetailProps) => {
               {isWebPlan(selectedReport) ? (
                 // ✨ [2026-09-30] 웹으로 작성한 계획서 — 파일 칸 대신 계획서 내용을 그대로 보여주고 PDF로 미리보기/다운로드
                 <>
-                  <PlanContentView plan={selectedReport} />
+                  <div className="mb-6"><PlanContentView plan={selectedReport} /></div>
                   <div className="grid grid-cols-2 gap-2 mb-2">
                     <button onClick={() => openPlanPdf(true)} className="h-11 rounded-2xl bg-[#0071E3]/10 text-[#0071E3] text-sm font-semibold flex items-center justify-center gap-1.5 hover:bg-[#0071E3]/15">
                       <Eye className="w-4 h-4" /> PDF 미리보기
@@ -652,93 +672,3 @@ const isWebPlan = (r: any) =>
   Boolean((r?.planOverview && String(r.planOverview).trim()) || r?.planGoals?.length || r?.planRoadmapItems?.length);
 
 // 커뮤니티에서 보는 계획서 내용 — 계획서 작성 화면과 같은 항목 순서
-const PlanContentView = ({ plan }: { plan: any }) => {
-  const goals: string[] = (plan.planGoals || []).filter((g: string) => g && g.trim());
-  const roadmap: any[] = plan.planRoadmapItems || [];
-  const roles: any[] = (plan.planRoles || []).filter((r: any) => r.name || r.role || r.duties);
-  const links: any[] = (plan.planLinks || []).filter((l: any) => l.url);
-  const times = roadmap.flatMap((r) => [new Date(r.startDate).getTime(), new Date(r.endDate).getTime()]).filter((t) => !isNaN(t));
-  const min = times.length ? Math.min(...times) : 0;
-  const span = times.length ? Math.max(Math.max(...times) - min, 86400000) : 1;
-  const Label = ({ children }: { children: React.ReactNode }) => (
-    <p className="text-xs font-semibold text-[#6E6E73] ml-1 mb-2">{children}</p>
-  );
-  return (
-    <div className="space-y-5 mb-6">
-      {plan.planOverview && (
-        <div>
-          <Label>배경 및 목표 개요</Label>
-          <div className="p-4 bg-[#F5F5F7] rounded-2xl text-sm text-[#1D1D1F] whitespace-pre-wrap leading-relaxed">{plan.planOverview}</div>
-        </div>
-      )}
-      {goals.length > 0 && (
-        <div>
-          <Label>핵심 목표</Label>
-          <ol className="space-y-1.5">
-            {goals.map((g, i) => (
-              <li key={i} className="flex items-start gap-2.5 p-3 bg-[#F5F5F7] rounded-xl">
-                <span className="w-5 h-5 rounded-full bg-[#0071E3]/10 text-[#0071E3] text-[11px] font-bold flex items-center justify-center shrink-0 mt-px">{i + 1}</span>
-                <span className="text-sm text-[#1D1D1F]">{g}</span>
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-      {roadmap.length > 0 && (
-        <div>
-          <Label>로드맵</Label>
-          <div className="space-y-3 p-4 bg-[#F5F5F7] rounded-2xl">
-            {roadmap.map((r, i) => {
-              const st = new Date(r.startDate).getTime();
-              const en = new Date(r.endDate).getTime();
-              return (
-                <div key={i}>
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className="text-[13px] font-semibold text-[#1D1D1F] truncate">{r.title}</span>
-                    <span className="text-[11px] text-[#8E8E93] shrink-0">{r.startDate} ~ {r.endDate}</span>
-                  </div>
-                  <div className="relative h-2 bg-black/[0.06] rounded-full overflow-hidden">
-                    <div className="absolute top-0 h-full bg-[#0071E3] rounded-full" style={{ left: `${isNaN(st) ? 0 : ((st - min) / span) * 100}%`, width: `${isNaN(st) || isNaN(en) ? 100 : Math.max(((en - st) / span) * 100, 3)}%` }} />
-                  </div>
-                  {r.detail && <p className="text-xs text-[#6E6E73] mt-1.5 whitespace-pre-wrap">{r.detail}</p>}
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-      {roles.length > 0 && (
-        <div>
-          <Label>역할 및 담당</Label>
-          <div className="divide-y divide-black/[0.05] bg-[#F5F5F7] rounded-2xl">
-            {roles.map((r, i) => (
-              <div key={i} className="flex items-center gap-3 px-4 py-2.5 text-sm">
-                <span className="font-semibold text-[#1D1D1F] w-20 shrink-0 truncate">{r.name}</span>
-                <span className="text-[#0071E3] font-semibold shrink-0">{r.role}</span>
-                <span className="text-[#6E6E73] truncate">{r.duties}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
-      {links.length > 0 && (
-        <div>
-          <Label>관련 링크</Label>
-          <div className="flex flex-wrap gap-2">
-            {links.map((l, i) => (
-              <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 px-3.5 h-9 bg-[#F5F5F7] rounded-full text-sm font-semibold text-[#1D1D1F] hover:bg-[#0071E3]/10 hover:text-[#0071E3]">
-                {l.label || "링크"} <ExternalLink className="w-3 h-3 opacity-60" />
-              </a>
-            ))}
-          </div>
-        </div>
-      )}
-      {plan.planNotes && (
-        <div>
-          <Label>기타 참고사항</Label>
-          <div className="p-4 bg-[#F5F5F7] rounded-2xl text-sm text-[#1D1D1F] whitespace-pre-wrap leading-relaxed">{plan.planNotes}</div>
-        </div>
-      )}
-    </div>
-  );
-};

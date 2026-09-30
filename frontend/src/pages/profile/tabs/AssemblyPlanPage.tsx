@@ -3,7 +3,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { motion } from "framer-motion";
 import {
   ArrowLeft, Check, Loader2, Lock, Plus, Send, Target, ListChecks,
-  Route, Users, Link2, StickyNote, X, UserPlus,
+  Route, Users, StickyNote, X, UserPlus,
 } from "lucide-react";
 import { PlanFileUploader, mergeExtractedPlan, hasPlanContent, type PlanFileUploadResult } from "./PlanFileUploader";
 
@@ -26,7 +26,6 @@ const MAX_GOALS = 10;
 
 const isSubmittedStatus = (status?: string) => status === "SUBMITTED" || status === "제출완료";
 
-const emptyRow = (keys: string[]): Row => Object.fromEntries(keys.map((k) => [k, ""]));
 
 // 총회 "계획서"(3월/9월) 전용 웹 작성 페이지. 상단 왼쪽 사이드바(총회 탭 메뉴)는 그대로 둔 채
 // 메인 영역만 이 페이지로 전환된다(MemberDetailTab과 동일한 방식).
@@ -47,7 +46,7 @@ export const AssemblyPlanPage = ({
     planGoals: report.planGoals && report.planGoals.length >= MIN_GOALS ? report.planGoals : ["", ""],
     planRoadmapItems: report.planRoadmapItems || [],
     planRoles: report.planRoles || [],
-    planLinks: report.planLinks && report.planLinks.length > 0 ? report.planLinks : [{ label: "Git", url: "" }, { label: "Notion", url: "" }],
+    planLinks: report.planLinks || [],
     planNotes: report.planNotes || "",
   });
 
@@ -493,19 +492,7 @@ export const AssemblyPlanPage = ({
           </section>
         )}
 
-        {/* 관련 링크 */}
-        <DynamicTableSection
-          icon={<Link2 size={14} />}
-          label="관련 링크"
-          addLabel="링크 추가"
-          rows={state.planLinks}
-          disabled={disabled}
-          fields={[
-            { key: "label", label: "이름", placeholder: "예: Git, Notion" },
-            { key: "url", label: "링크", placeholder: "https://..." },
-          ]}
-          onChange={(rows) => setState((p) => ({ ...p, planLinks: rows }))}
-        />
+        {/* ✨ [2026-09-30] 관련 링크는 계획서에서 뺐다 — 마이페이지(개인)·팀 프로젝트 탭(팀)에서 관리 */}
 
         <section>
           <SectionHeader icon={<StickyNote size={14} />} label="기타 참고사항" />
@@ -549,63 +536,3 @@ const SectionHeader = ({ icon, label, required, noMargin }: { icon: React.ReactN
   </div>
 );
 
-const DynamicTableSection = ({
-  icon,
-  label,
-  addLabel,
-  fields,
-  rows,
-  disabled,
-  onChange,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  addLabel: string;
-  fields: { key: string; label: string; placeholder?: string }[];
-  rows: Row[];
-  disabled: boolean;
-  onChange: (rows: Row[]) => void;
-}) => {
-  const gridClass = fields.length === 3 ? "sm:grid-cols-3" : fields.length === 2 ? "sm:grid-cols-2" : "sm:grid-cols-1";
-
-  const updateCell = (idx: number, key: string, value: string) => {
-    onChange(rows.map((r, i) => (i === idx ? { ...r, [key]: value } : r)));
-  };
-  const addRow = () => onChange([...rows, emptyRow(fields.map((f) => f.key))]);
-  const removeRow = (idx: number) => onChange(rows.filter((_, i) => i !== idx));
-
-  return (
-    <section>
-      <SectionHeader icon={icon} label={label} />
-      <div className="space-y-2.5">
-        {rows.map((row, idx) => (
-          <div key={idx} className={`grid grid-cols-1 ${gridClass} gap-2 p-3 md:p-3.5 bg-slate-50 rounded-xl border border-slate-100 relative`}>
-            {fields.map((f) => (
-              <input
-                key={f.key}
-                value={row[f.key] || ""}
-                onChange={(e) => updateCell(idx, f.key, e.target.value)}
-                disabled={disabled}
-                placeholder={f.placeholder || f.label}
-                className="px-3 py-2 bg-white rounded-lg border border-slate-200 outline-none focus:ring-2 focus:ring-indigo-500 text-xs md:text-sm font-medium disabled:opacity-50 min-w-0"
-              />
-            ))}
-            {!disabled && rows.length > 1 && (
-              <button
-                onClick={() => removeRow(idx)}
-                className="absolute -top-2 -right-2 w-5 h-5 rounded-full bg-white border border-slate-200 text-slate-400 hover:text-red-500 flex items-center justify-center shadow-sm"
-              >
-                <X size={11} />
-              </button>
-            )}
-          </div>
-        ))}
-      </div>
-      {!disabled && (
-        <button onClick={addRow} className="flex items-center gap-1 mt-3 text-xs font-bold text-indigo-500 hover:text-indigo-700">
-          <Plus size={13} /> {addLabel}
-        </button>
-      )}
-    </section>
-  );
-};
