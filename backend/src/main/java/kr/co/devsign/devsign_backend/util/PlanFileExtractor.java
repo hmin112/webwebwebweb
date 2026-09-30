@@ -102,6 +102,9 @@ public class PlanFileExtractor {
     private static final Pattern DATE_SHORT = Pattern.compile(
             "(?<![\\d.])(\\d{1,2})\\s*[./월]\\s*(\\d{1,2})(?![\\d])\\s*일?\\.?");
 
+    // ✨ [2026-09-30] 역할 줄 맨 앞의 "학번 이름(직책)" — 예: "22 김형민(회장)", "LAB 김철수", "24 박도윤 (부회장)", "김형민"
+    private static final Pattern ROLE_NAME_PREFIX = Pattern.compile(
+            "^((?:\\d{2}|LAB)\\s*)?[가-힣]{2,5}(?:\\s*[(（][^)）]{1,10}[)）])?(?=\\s|$|[-–—:：,])");
     private static final Pattern URL = Pattern.compile("(https?://[^\\s<>\"'|]+|www\\.[^\\s<>\"'|]+)");
 
     public record Result(ExtractedPlanDto plan, boolean templateRecognized, List<String> warnings) {}
@@ -772,9 +775,23 @@ public class PlanFileExtractor {
                 cells.add(line.substring(0, colon).trim());
                 cells.addAll(splitCells(line.substring(colon + 1), "\\s[-–—]\\s|,"));
             } else {
-                cells = splitCells(line, "\\s+");
-                if (cells.size() > 3) {
-                    cells = new ArrayList<>(List.of(cells.get(0), cells.get(1), String.join(" ", cells.subList(2, cells.size()))));
+                // 구분자 없이 띄어쓰기만 있는 줄 — 맨 앞 "학번 이름(직책)"을 한 덩어리 이름으로 떼어낸다.
+                // (예전엔 띄어쓰기로만 잘라서 "22 김형민(회장) 팀장 …"의 이름이 "22"로, 역할이 "김형민(회장)"으로 읽혔다)
+                java.util.regex.Matcher nm = ROLE_NAME_PREFIX.matcher(line);
+                if (nm.find()) {
+                    String rest = line.substring(nm.end()).replaceFirst("^[\\s\\-–—:：,]+", "");
+                    cells = new ArrayList<>();
+                    cells.add(nm.group().replaceAll("\\s+", " ").trim());
+                    List<String> restCells = rest.matches(".*\\s[-–—]\\s.*")
+                            ? splitCells(rest, "\\s[-–—]\\s")
+                            : splitCells(rest, "\\s+");
+                    if (!restCells.isEmpty()) cells.add(restCells.get(0));
+                    if (restCells.size() > 1) cells.add(String.join(" ", restCells.subList(1, restCells.size())));
+                } else {
+                    cells = splitCells(line, "\\s+");
+                    if (cells.size() > 3) {
+                        cells = new ArrayList<>(List.of(cells.get(0), cells.get(1), String.join(" ", cells.subList(2, cells.size()))));
+                    }
                 }
             }
             if (cells.isEmpty() || Set.of("이름", "성명", "팀원", "구분", "번호").contains(cells.get(0))) continue;

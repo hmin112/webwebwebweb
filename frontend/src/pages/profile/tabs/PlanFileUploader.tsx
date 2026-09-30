@@ -341,10 +341,12 @@ export function mergeExtractedPlan<S extends PlanFormLike>(
     filled++;
   }
   if (ex.planRoles?.length) {
-    const compact = (s: string) => (s || "").replace(/\s/g, "");
+    // ✨ [2026-09-30] 간부진은 이름이 "김형민(회장)"처럼 직책이 괄호로 붙어 있어서, 파일에 "22 김형민"이라고 쓰면 연결되지 않았다 —
+    // 양쪽 모두 괄호 부분과 띄어쓰기를 빼고 비교한다.
+    const baseName = (s: string) => (s || "").replace(/\([^)]*\)|（[^）]*）/g, "").replace(/\s/g, "");
     const used = new Set<string>();
     const roles = ex.planRoles.map((r) => {
-      const member = teamMembers.find((m: any) => !used.has(m.loginId) && compact(r.name).includes(compact(m.name)) && compact(m.name));
+      const member = teamMembers.find((m: any) => !used.has(m.loginId) && baseName(m.name) && baseName(r.name).includes(baseName(m.name)));
       if (member) used.add(member.loginId);
       return { loginId: member?.loginId || "", name: member?.name || r.name || "", role: r.role || "", duties: r.duties || "" };
     });
