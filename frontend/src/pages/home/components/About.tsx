@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion, AnimatePresence, useInView } from "framer-motion";
 import { Power, Cpu, Snowflake, Flame, LockOpen } from "lucide-react";
+import { ClubTimeline } from "./ClubTimeline";
 
 // ✨ [2026-09-30] 동아리 기수 — 2010년 창단이 1기. 해가 바뀌면 자동으로 올라간다 (2026년 = 17th).
 const FOUNDED_YEAR = 2010;
@@ -98,7 +99,12 @@ const DoorLockFeed = () => {
   );
 };
 
-export const About = () => {
+export const About = ({ events = [], hallOfFame = [], onNavigate, isAdmin = false }: {
+  events?: any[];
+  hallOfFame?: any[];
+  onNavigate?: (page: string, id?: number) => void;
+  isAdmin?: boolean;
+}) => {
   return (
     <div className="bg-[#fdfeff]">
       {/* 1. 기존 동아리 소개 섹션 */}
@@ -169,6 +175,9 @@ export const About = () => {
           </div>
         </div>
       </section>
+
+      {/* ✨ [2026-09-30] DEVSIGN 연대기 — 명예의 전당·주요 행사·역대 임원진이 자동으로 쌓인다 */}
+      <ClubTimeline events={events} hallOfFame={hallOfFame} onNavigate={onNavigate} isAdmin={isAdmin} />
 
       {/* 2. 스마트 시스템 소개 섹션 */}
       <section className="pt-4 pb-16 md:pt-8 md:pb-24 bg-[#FAFAFC] overflow-hidden">

@@ -93,7 +93,7 @@ export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, 
                 <Board onNavigate={onNavigate} posts={homeDisplayPosts} isLoggedIn={isLoggedIn} />
             </div>
             <div id="about" className="scroll-mt-20">
-                <About />
+                <About events={events} hallOfFame={hallOfFame} onNavigate={onNavigate} isAdmin={isAdmin && isLoggedIn} />
             </div>
             <div id="faq" className="scroll-mt-20">
                 <FAQ />
