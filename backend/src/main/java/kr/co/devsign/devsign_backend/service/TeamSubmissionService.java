@@ -72,7 +72,26 @@ public class TeamSubmissionService {
             subs = submissionRepository.findByTeam_IdAndYearAndSemesterOrderByMonthAsc(teamId, year, semester);
         }
 
+        subs.forEach(this::normalizeIncompletePlan);
         return subs.stream().map(this::toResponse).toList();
+    }
+
+    private static boolean isTeamPlanComplete(TeamSubmission sub) {
+        return kr.co.devsign.devsign_backend.util.PlanCompleteness.isComplete(
+                sub.getPlanOverview(), sub.getPlanGoals(), sub.getPlanRoadmapItems());
+    }
+
+    // 계획서 달(3·9월)인데 "제출됨"이면서 필수 항목이 빠진 것 → 미제출(작성 중)로. 파일로 낸 예전 자료는 그대로.
+    private void normalizeIncompletePlan(TeamSubmission sub) {
+        boolean planMonth = sub.getMonth() == 3 || sub.getMonth() == 9;
+        boolean hasFiles = StringUtils.hasText(sub.getPresentationPath())
+                || StringUtils.hasText(sub.getPdfPath())
+                || StringUtils.hasText(sub.getOtherPath());
+        if (planMonth && STATUS_SUBMITTED.equals(sub.getStatus()) && !hasFiles && !isTeamPlanComplete(sub)) {
+            sub.setStatus("DRAFT");
+            sub.setDate(null);
+            submissionRepository.save(sub);
+        }
     }
 
     // ✨ "팀원 누구나" 업로드/수정 가능 — ACCEPTED 상태인 팀원인지만 확인
@@ -91,7 +110,9 @@ public class TeamSubmissionService {
         TeamSubmission sub = findOrCreate(req.teamId(), req.submissionId(), req.year(), req.semester(), req.month());
         applyPlanFields(sub, req);
         sub.setUpdatedBy(req.loginId());
-        if (!STATUS_SUBMITTED.equals(sub.getStatus())) {
+        // ✨ [2026-09-30] 제출한 뒤 필수 항목을 지우면 작성 중(미제출)으로 되돌린다
+        if (!STATUS_SUBMITTED.equals(sub.getStatus()) || !isTeamPlanComplete(sub)) {
+            if (STATUS_SUBMITTED.equals(sub.getStatus())) sub.setDate(null);
             sub.setStatus("DRAFT");
         }
         return toResponse(submissionRepository.save(sub));
@@ -103,6 +124,10 @@ public class TeamSubmissionService {
         TeamSubmission sub = findOrCreate(req.teamId(), req.submissionId(), req.year(), req.semester(), req.month());
         applyPlanFields(sub, req);
         sub.setUpdatedBy(req.loginId());
+        if (!isTeamPlanComplete(sub)) {
+            throw new IllegalArgumentException(kr.co.devsign.devsign_backend.util.PlanCompleteness.MISSING_MESSAGE
+                    .replace("프로젝트 명·", ""));
+        }
         sub.setStatus(STATUS_SUBMITTED);
         sub.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));
         return toResponse(submissionRepository.save(sub));

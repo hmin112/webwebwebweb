@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { motion } from "framer-motion";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, X } from "lucide-react";
 
 // ✨ [2026-09-30] 총회 탭 공통 UI — 애플 스타일(흰 카드 + 얇은 테두리 + 옅은 그림자, #1D1D1F / #6E6E73 글자, #0071E3 강조).
 // 전역 CSS(.apple-app main .bg-white → 유리)에 걸리지 않도록 흰색은 bg-[#fff] 임의값을 쓴다.
@@ -47,6 +47,7 @@ export const MonthCard = ({
   endDate,
   extra,
   onClick,
+  onDelete,
 }: {
   month: number;
   title?: string;
@@ -56,6 +57,8 @@ export const MonthCard = ({
   endDate?: string;
   extra?: string;
   onClick?: () => void;
+  // ✨ [2026-09-30] 있으면 카드 오른쪽 위 모서리에 삭제(X) 버튼 — 마이페이지에서 제출 기간 중 내가 올린 자료만
+  onDelete?: () => void;
 }) => {
   const kind = reportKind(month);
   const heading = state === "done" && title ? title : state === "done" ? `${kind} 제출됨` : `${kind} 미제출`;
@@ -68,11 +71,14 @@ export const MonthCard = ({
           ? "제출 기간이 끝났어요"
           : startDate ? `${shortDate(startDate)}부터 제출할 수 있어요` : "제출 기간이 아직 정해지지 않았어요";
   return (
-    <motion.button
-      type="button"
-      onClick={onClick}
+    <motion.div
+      className="relative"
       whileHover={{ y: -2 }}
       transition={{ type: "spring", stiffness: 400, damping: 30 }}
+    >
+    <button
+      type="button"
+      onClick={onClick}
       className={`${CARD} group w-full text-left rounded-2xl md:rounded-3xl p-4 md:p-5 flex items-center gap-4 hover:shadow-[0_8px_24px_rgb(0_0_0/0.06)] transition-shadow`}
     >
       <div className={`w-14 h-14 md:w-16 md:h-16 rounded-2xl flex flex-col items-center justify-center shrink-0 ${
@@ -91,7 +97,19 @@ export const MonthCard = ({
         <p className="text-[12px] text-[#8E8E93] mt-0.5 truncate">{sub}</p>
       </div>
       <ChevronRight className="w-4 h-4 text-[#C7C7CC] group-hover:text-[#8E8E93] shrink-0 transition-colors" />
-    </motion.button>
+    </button>
+    {onDelete && (
+      <button
+        type="button"
+        onClick={onDelete}
+        aria-label={`${month}월 ${kind} 삭제`}
+        title={`${month}월 ${kind} 삭제`}
+        className="absolute -top-2 -right-2 w-7 h-7 rounded-full bg-[#fff] border border-black/[0.08] shadow-[0_1px_3px_rgb(0_0_0/0.12)] flex items-center justify-center text-[#8E8E93] hover:text-[#FF3B30] hover:border-[#FF3B30]/30 transition-colors"
+      >
+        <X className="w-3.5 h-3.5" strokeWidth={2.5} />
+      </button>
+    )}
+    </motion.div>
   );
 };
 

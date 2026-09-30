@@ -6,6 +6,7 @@ import {
 } from "lucide-react";
 import { FileDropZone } from "../../../components/ui/FileDropZone";
 import { CARD, MonthCard, PageHeader, SectionTitle, TermSelect, reportKind, submitStateOf } from "../../assembly/assemblyUi";
+import { MyProjectsPicker } from "../../assembly/components/MyProjectsPicker";
 
 // 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 별도 페이지(AssemblyPlanPage)에서 웹으로 작성.
 const isPlanMonth = (month: number) => month === 3 || month === 9;
@@ -21,6 +22,8 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   const [projectLinks, setProjectLinks] = useState<{ label: string; url: string }[]>([]);
   const [serverProjectTitle, setServerProjectTitle] = useState("");
   const [isLinksSaving, setIsLinksSaving] = useState(false);
+  // 자료를 지우면 개인 프로젝트 유무(대표 자동 선택)가 바뀔 수 있어 내 프로젝트 목록도 다시 읽는다
+  const [projectsRefreshKey, setProjectsRefreshKey] = useState(0);
 
   const [uploadedFiles, setUploadedFiles] = useState<{
     presentation: File | null;
@@ -270,6 +273,24 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
     }
   };
 
+  // ✨ [2026-09-30] 내가 올린 달 자료 삭제 — 제출 기간 안에서만 (서버도 기간·본인 여부를 다시 확인)
+  const canDeleteReport = (report: any) =>
+    report.isWithinPeriod &&
+    !String(report.id).startsWith("temp") &&
+    (isSubmittedStatus(report.status) || report.status === "DRAFT");
+
+  const handleDeleteReport = async (report: any) => {
+    const label = `${report.month}월 ${reportKind(report.month)}`;
+    if (!window.confirm(`${label}를 삭제할까요?\n올린 파일과 작성한 내용이 모두 지워지고 되돌릴 수 없어요.`)) return;
+    try {
+      await api.delete("/assembly/report", { params: { loginId, reportId: report.id } });
+      await fetchSubmissions();
+      setProjectsRefreshKey((k) => k + 1);
+    } catch (e: any) {
+      alert(e.response?.data?.message || "삭제하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    }
+  };
+
   // ✨ [2026-09-30] 애플 스타일로 재배치 — 머리말(학기 선택) → 요약 카드(프로젝트 명 + 제출 진행) → 달 카드 2열 → 관련 링크.
   // 달 카드는 PLAN/PROGRESS/RESULT 배지 대신 "계획서 / 진행 보고 / 결과 보고"로 표시 (assemblyUi.MonthCard).
   const submittedCount = displayReports.filter((r) => isSubmittedStatus(r.status)).length;
@@ -288,7 +309,12 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
       <PageHeader
         title="마이 페이지"
         desc="이번 학기 내 총회 자료를 달마다 제출하고 관리해요."
-        right={<TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />}
+        right={
+          <div className="flex items-start gap-4 flex-wrap">
+            <TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />
+            <MyProjectsPicker loginId={loginId} year={selectedTerm.year} semester={selectedTerm.semester} refreshKey={projectsRefreshKey} />
+          </div>
+        }
       />
 
       {/* 요약 카드 — 프로젝트 명(계획서에서 입력) + 제출 진행 */}
@@ -340,6 +366,7 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
             startDate={report.startDate}
             endDate={report.endDate}
             onClick={() => openReport(report)}
+            onDelete={canDeleteReport(report) ? () => handleDeleteReport(report) : undefined}
           />
         ))}
       </div>

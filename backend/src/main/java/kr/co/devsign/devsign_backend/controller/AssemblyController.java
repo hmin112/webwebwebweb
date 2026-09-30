@@ -3,6 +3,8 @@ package kr.co.devsign.devsign_backend.controller;
 import kr.co.devsign.devsign_backend.service.AssemblyService;
 import kr.co.devsign.devsign_backend.dto.assembly.AssemblyReportResponse;
 import kr.co.devsign.devsign_backend.dto.assembly.MySubmissionsResponse;
+import kr.co.devsign.devsign_backend.dto.assembly.MyProjectsResponse;
+import kr.co.devsign.devsign_backend.dto.assembly.SaveRepresentativeRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SavePlanRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectTitleRequest;
 import kr.co.devsign.devsign_backend.dto.assembly.SaveProjectLinksRequest;
@@ -41,6 +43,42 @@ public class AssemblyController {
     ) {
         MySubmissionsResponse result = assemblyService.getMySubmissions(loginId, year, semester);
         return ResponseEntity.ok(result);
+    }
+
+    // ✨ [2026-09-30] 마이페이지 "내 프로젝트" 아이콘 목록 + 대표 프로젝트
+    @GetMapping("/my-projects")
+    public ResponseEntity<MyProjectsResponse> getMyProjects(
+            @RequestParam String loginId,
+            @RequestParam int year,
+            @RequestParam int semester
+    ) {
+        return ResponseEntity.ok(assemblyService.getMyProjects(loginId, year, semester));
+    }
+
+    @PostMapping("/representative")
+    public ResponseEntity<?> saveRepresentative(Authentication authentication, @RequestBody SaveRepresentativeRequest request) {
+        AuthGuard.requireSelf(authentication, request.loginId());
+        try {
+            return ResponseEntity.ok(assemblyService.saveRepresentative(request));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
+    // ✨ [2026-09-30] 내가 올린 달 자료 삭제 — 본인 것만, 제출 기간 안에서만 (다른 부원 것이면 403)
+    @DeleteMapping("/report")
+    public ResponseEntity<StatusResponse> deleteReport(
+            Authentication authentication,
+            @RequestParam String loginId,
+            @RequestParam Long reportId
+    ) {
+        AuthGuard.requireSelf(authentication, loginId);
+        try {
+            assemblyService.deleteMyReport(loginId, reportId);
+            return ResponseEntity.ok(StatusResponse.success());
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
     }
 
     @GetMapping("/periods/{year}")
@@ -112,6 +150,12 @@ public class AssemblyController {
     public ResponseEntity<AssemblyReportResponse> submitPlan(Authentication authentication, @RequestBody SavePlanRequest request) {
         AuthGuard.requireSelf(authentication, request.loginId());
         return ResponseEntity.ok(assemblyService.submitPlan(request));
+    }
+
+    // ✨ [2026-09-30] 필수 항목이 빠진 계획서 제출 등 잘못된 요청 — 400과 안내 문구로 돌려준다
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<StatusResponse> handleBadRequest(IllegalArgumentException e) {
+        return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
     }
 
     // 다른 부원의 리포트 id를 넣어 보낸 경우(AssemblyService.findOrCreateReport) — 403으로 돌려준다

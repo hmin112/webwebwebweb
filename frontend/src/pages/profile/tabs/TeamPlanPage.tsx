@@ -125,8 +125,9 @@ export const TeamPlanPage = ({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleBack = () => {
-    if (!disabled) saveNow(stateRef.current);
+  // ✨ [2026-09-30] 저장이 끝난 뒤에 돌아간다 — 기다리지 않으면 마이페이지가 저장 전 값(예전 프로젝트 명)을 먼저 읽어 왔다
+  const handleBack = async () => {
+    if (!disabled) await saveNow(stateRef.current);
     onBack();
   };
 

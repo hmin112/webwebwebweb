@@ -130,7 +130,9 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
               return {
                 ...m,
                 year: yearValue,
-                projectName: projectRes.data.projectTitle || "",
+                // ✨ [2026-09-30] 부원이 마이페이지에서 고른 대표 프로젝트(안 골랐으면 팀 → 자료 올린 개인 순 자동)
+                projectName: projectRes.data.representative?.title || projectRes.data.projectTitle || "",
+                projectIsTeam: projectRes.data.representative?.type === "TEAM",
                 avatar: m.profileImage || `https://ui-avatars.com/api/?name=${encodeURIComponent(m.name)}&background=random&color=6366f1`
               };
             } catch (err) {
@@ -239,8 +241,11 @@ export const CommunityTab = ({ onNavigate = () => { } }: { onNavigate?: (page: s
                         {member.year}학번
                       </span>
                     </div>
-                    <p className={`text-[13px] truncate ${member.projectName ? "text-[#6E6E73]" : "text-[#C7C7CC]"}`}>
-                      {member.projectName || "프로젝트 미등록"}
+                    <p className={`text-[13px] truncate flex items-center gap-1 ${member.projectName ? "text-[#6E6E73]" : "text-[#C7C7CC]"}`}>
+                      {member.projectName && member.projectIsTeam && (
+                        <Users className="w-3.5 h-3.5 shrink-0 text-[#34C759]" aria-label="팀 프로젝트" />
+                      )}
+                      <span className="truncate">{member.projectName || "프로젝트 미등록"}</span>
                     </p>
                   </div>
                   <ChevronRight className="text-[#C7C7CC] group-hover:text-[#8E8E93] transition-colors shrink-0 w-4 h-4" />

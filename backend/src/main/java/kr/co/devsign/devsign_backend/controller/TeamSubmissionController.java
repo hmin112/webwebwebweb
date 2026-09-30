@@ -78,6 +78,8 @@ public class TeamSubmissionController {
             return ResponseEntity.ok(teamSubmissionService.submitPlan(request));
         } catch (IllegalStateException e) {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
         }
     }
 
