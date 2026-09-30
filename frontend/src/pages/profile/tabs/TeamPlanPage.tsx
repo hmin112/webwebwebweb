@@ -12,6 +12,7 @@ type RoadmapItem = { title: string; startDate: string; endDate: string; detail: 
 type RoleRow = { loginId: string; name: string; role: string; duties: string };
 
 type PlanState = {
+  memo: string; // ✨ [2026-09-30] 프로젝트 명 — 팀 프로젝트 명과 같은 값(저장하면 팀 프로젝트 명도 바뀜)
   planOverview: string;
   planGoals: string[];
   planRoadmapItems: RoadmapItem[];
@@ -57,6 +58,7 @@ export const TeamPlanPage = ({
   );
 
   const [state, setState] = useState<PlanState>({
+    memo: team?.projectTitle || submission.memo || "",
     planOverview: submission.planOverview || "",
     planGoals: submission.planGoals && submission.planGoals.length >= MIN_GOALS ? submission.planGoals : ["", ""],
     planRoadmapItems: submission.planRoadmapItems || [],
@@ -85,7 +87,7 @@ export const TeamPlanPage = ({
     year: submission.year,
     semester: submission.semester,
     month: submission.month,
-    memo: "",
+    memo: s.memo,
     planOverview: s.planOverview,
     planGoals: s.planGoals.filter((g) => g.trim()),
     planRoadmapItems: s.planRoadmapItems.filter((r) => r.title?.trim() || r.startDate || r.endDate || r.detail?.trim()),
@@ -152,6 +154,7 @@ export const TeamPlanPage = ({
     (r) => r.title?.trim() && r.startDate && r.endDate && r.startDate <= r.endDate
   );
   const canSubmit =
+    state.memo.trim() &&
     state.planOverview.trim() &&
     state.planGoals.filter((g) => g.trim()).length >= MIN_GOALS &&
     state.planRoadmapItems.length > 0 &&
@@ -253,7 +256,7 @@ export const TeamPlanPage = ({
           {submission.month}월 팀 계획서
         </span>
         <h1 className="text-2xl md:text-4xl font-black text-slate-900 tracking-tight mt-2">
-          {team?.projectTitle || "팀 계획서"}
+          {state.memo.trim() || team?.projectTitle || "팀 계획서"}
         </h1>
         <p className="text-xs md:text-sm text-slate-400 font-bold mt-1">{team?.teamName}</p>
       </div>
@@ -278,6 +281,24 @@ export const TeamPlanPage = ({
       )}
 
       <div className="bg-white rounded-2xl md:rounded-[2.5rem] border border-slate-100 shadow-sm p-5 md:p-10 space-y-10">
+        <section>
+          <div className="flex items-center gap-1.5 mb-2">
+            <StickyNote size={14} className="text-indigo-500" />
+            <p className="text-[10px] md:text-xs font-bold text-slate-400 uppercase tracking-widest">
+              프로젝트 명<span className="text-indigo-400"> *</span>
+            </p>
+          </div>
+          <input
+            type="text"
+            value={state.memo}
+            onChange={(e) => setState((p) => ({ ...p, memo: e.target.value }))}
+            disabled={disabled}
+            placeholder="예: 동아리 웹 프로젝트"
+            className="w-full p-3.5 bg-slate-50 rounded-xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm disabled:opacity-50"
+          />
+          <p className="text-[11px] text-slate-400 mt-1.5">저장하면 팀 프로젝트 명도 이 이름으로 바뀌어요. 팀 탭·커뮤니티에도 같이 보여요.</p>
+        </section>
+
         <section>
           <SectionHeader icon={<Target size={14} />} label="배경 및 목표 개요" required />
           <textarea

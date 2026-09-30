@@ -108,9 +108,22 @@ public class TeamSubmissionService {
         submissionRepository.save(sub);
     }
 
+    // 팀 계획서는 프로젝트 명이 비어 있어도 팀에 이미 정해진 프로젝트 명이 있으면 된다(예전 팀 계획서엔 칸이 없었음)
     private static boolean isTeamPlanComplete(TeamSubmission sub) {
-        return kr.co.devsign.devsign_backend.util.PlanCompleteness.isComplete(
+        boolean hasTitle = StringUtils.hasText(sub.getMemo())
+                || (sub.getTeam() != null && StringUtils.hasText(sub.getTeam().getProjectTitle()));
+        return hasTitle && kr.co.devsign.devsign_backend.util.PlanCompleteness.isComplete(
                 sub.getPlanOverview(), sub.getPlanGoals(), sub.getPlanRoadmapItems());
+    }
+
+    // ✨ [2026-09-30] 팀 계획서의 "프로젝트 명"을 바꾸면(직접 입력하거나 파일에서 읽어오거나) 팀 프로젝트 명도 같이 바꾼다 —
+    // 팀 탭·마이페이지 "내 프로젝트"·커뮤니티가 모두 팀 프로젝트 명을 보기 때문. 비워두면 팀 프로젝트 명은 그대로 둔다.
+    private void syncTeamProjectTitle(TeamSubmission sub) {
+        String title = sub.getMemo() == null ? "" : sub.getMemo().trim();
+        Team team = sub.getTeam();
+        if (title.isEmpty() || team == null || title.equals(team.getProjectTitle())) return;
+        team.setProjectTitle(title);
+        teamRepository.save(team);
     }
 
     // 계획서 달(3·9월)인데 "제출됨"이면서 필수 항목이 빠진 것 → 미제출(작성 중)로. 파일로 낸 예전 자료는 그대로.
@@ -142,6 +155,7 @@ public class TeamSubmissionService {
         TeamSubmission sub = findOrCreate(req.teamId(), req.submissionId(), req.year(), req.semester(), req.month());
         applyPlanFields(sub, req);
         sub.setUpdatedBy(req.loginId());
+        syncTeamProjectTitle(sub);
         // ✨ [2026-09-30] 제출한 뒤 필수 항목을 지우면 작성 중(미제출)으로 되돌린다
         if (!STATUS_SUBMITTED.equals(sub.getStatus()) || !isTeamPlanComplete(sub)) {
             if (STATUS_SUBMITTED.equals(sub.getStatus())) sub.setDate(null);
@@ -156,9 +170,9 @@ public class TeamSubmissionService {
         TeamSubmission sub = findOrCreate(req.teamId(), req.submissionId(), req.year(), req.semester(), req.month());
         applyPlanFields(sub, req);
         sub.setUpdatedBy(req.loginId());
+        syncTeamProjectTitle(sub);
         if (!isTeamPlanComplete(sub)) {
-            throw new IllegalArgumentException(kr.co.devsign.devsign_backend.util.PlanCompleteness.MISSING_MESSAGE
-                    .replace("프로젝트 명·", ""));
+            throw new IllegalArgumentException(kr.co.devsign.devsign_backend.util.PlanCompleteness.MISSING_MESSAGE);
         }
         sub.setStatus(STATUS_SUBMITTED);
         sub.setDate(LocalDate.now().format(DateTimeFormatter.ofPattern("yyyy.MM.dd")));

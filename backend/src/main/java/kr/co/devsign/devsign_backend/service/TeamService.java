@@ -210,6 +210,15 @@ public class TeamService {
         }
         if (hasProjectTitle) {
             team.setProjectTitle(req.projectTitle());
+            // ✨ [2026-09-30] 팀 계획서(3·9월)의 프로젝트 명도 같이 맞춘다 — 계획서 프로젝트 명과 팀 프로젝트 명은 같은 값
+            teamSubmissionRepository.findByTeam_IdAndYearAndSemesterOrderByMonthAsc(team.getId(), team.getYear(), team.getSemester())
+                    .stream()
+                    .filter(s -> s.getMonth() == 3 || s.getMonth() == 9)
+                    .filter(s -> s.getMemo() != null && !s.getMemo().isBlank())
+                    .forEach(s -> {
+                        s.setMemo(req.projectTitle());
+                        teamSubmissionRepository.save(s);
+                    });
         }
         teamRepository.save(team);
 

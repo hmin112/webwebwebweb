@@ -76,7 +76,7 @@ public class PlanFileExtractor {
     private static final Map<PlanSection, List<String>> ALIASES = new EnumMap<>(PlanSection.class);
 
     static {
-        ALIASES.put(PlanSection.TITLE, List.of("프로젝트명", "프로젝트이름", "프로젝트제목", "과제명"));
+        ALIASES.put(PlanSection.TITLE, List.of("프로젝트명", "프로젝트이름", "프로젝트제목", "과제명", "팀프로젝트명", "팀프로젝트이름", "팀프로젝트제목"));
         ALIASES.put(PlanSection.OVERVIEW, List.of("배경및목표개요", "개요", "프로젝트개요", "배경", "추진배경", "배경및목적", "프로젝트소개"));
         ALIASES.put(PlanSection.GOALS, List.of("핵심목표", "목표", "세부목표", "프로젝트목표", "주요목표"));
         ALIASES.put(PlanSection.ROADMAP, List.of("로드맵", "일정", "추진일정", "개발일정", "세부일정", "진행일정"));

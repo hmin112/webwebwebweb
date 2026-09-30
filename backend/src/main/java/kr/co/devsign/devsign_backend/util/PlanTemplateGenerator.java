@@ -31,11 +31,12 @@ public class PlanTemplateGenerator {
             guide(doc, "※ ■ 로 시작하는 항목 제목은 지우거나 바꾸지 마세요. 웹에 파일을 올리면 항목별로 자동으로 채워집니다.");
             guide(doc, "※ 괄호로 된 안내 문구는 지워도 되고, 남겨두어도 추출되지 않습니다.");
 
-            if (!team) {
-                heading(doc, "■ 프로젝트 명 (필수)");
-                hint(doc, "(예: 스마트홈 IoT 프로젝트)");
-                doc.createParagraph();
-            }
+            // ✨ [2026-09-30] 팀 양식에도 프로젝트 명 — 파일을 올리면 팀 프로젝트 명까지 자동으로 채워진다
+            heading(doc, "■ 프로젝트 명 (필수)");
+            hint(doc, team
+                    ? "(예: 스마트홈 IoT 프로젝트 — 팀 프로젝트 명도 이 이름으로 바뀌어요)"
+                    : "(예: 스마트홈 IoT 프로젝트)");
+            doc.createParagraph();
 
             heading(doc, "■ 배경 및 목표 개요 (필수)");
             hint(doc, "(이 프로젝트를 왜 하는지, 무엇을 이루고 싶은지 자유롭게 적어주세요.)");
