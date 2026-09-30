@@ -2,8 +2,7 @@ import { api } from "../../../api/axios";
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  ArrowRight, Users2, Pencil, Check, Link as LinkIcon, Type,
-  Trophy, CalendarDays, Pause, Play, ChevronLeft, ChevronRight
+  ArrowRight, Users2, Pencil, Check, Link as LinkIcon, Type, Trophy, CalendarDays, Pause, Play, ChevronLeft, ChevronRight, X
 } from "lucide-react";
 
 const formatStudentId = (id?: string) => {
@@ -119,6 +118,14 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
     if (isEditingLink) return;
     window.open(applyLink, "_blank");
   };
+
+  // ✨ [2026-09-30] 편집을 시작할 때 값을 기억해 두고, 취소(✕·Esc)하면 되돌린다
+  const [textBackup, setTextBackup] = useState("");
+  const [linkBackup, setLinkBackup] = useState({ text: "", link: "" });
+  const startTextEdit = () => { setTextBackup(recruitmentText); setIsEditing(true); };
+  const cancelTextEdit = () => { setRecruitmentText(textBackup); setIsEditing(false); };
+  const startLinkEdit = () => { setLinkBackup({ text: applyButtonText, link: applyLink }); setIsEditingLink(true); };
+  const cancelLinkEdit = () => { setApplyButtonText(linkBackup.text); setApplyLink(linkBackup.link); setIsEditingLink(false); };
 
   // 문구 수정 완료 핸들러
   const handleTextSubmit = () => {
@@ -303,23 +310,29 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                 <div className="flex items-center justify-center gap-2 whitespace-nowrap">
                   <span className="w-1.5 h-1.5 md:w-2 md:h-2 rounded-full bg-indigo-400 animate-pulse shrink-0" />
                   {isEditing ? (
-                    <div className="flex items-center gap-2">
+                    // ✨ [2026-09-30] 사진 위에서도 잘 보이도록 어두운 유리 알약 입력칸 + 저장/취소 (전역 흰 유리 입력칸 규칙 대신 .hero-field)
+                    <div className="flex items-center gap-1.5">
                       <input
                         type="text" value={recruitmentText}
                         onChange={(e) => setRecruitmentText(e.target.value)}
-                        onKeyDown={(e) => e.key === "Enter" && handleTextSubmit()}
-                        className="text-sm md:text-base font-bold text-white outline-none border-b border-white/30 bg-transparent w-auto placeholder:text-white/40"
+                        onKeyDown={(e) => { if (e.key === "Enter") handleTextSubmit(); if (e.key === "Escape") cancelTextEdit(); }}
+                        size={Math.max(12, Math.min(40, recruitmentText.length + 2))}
+                        placeholder="가운데에 보일 문구"
+                        className="hero-field h-9 md:h-10 px-4 rounded-full text-sm md:text-base font-semibold text-white outline-none max-w-[70vw]"
                         autoFocus
                       />
-                      <button onClick={handleTextSubmit} className="text-green-400 hover:text-green-300">
-                        <Check className="w-3.5 h-3.5 md:w-4 md:h-4" />
+                      <button onClick={handleTextSubmit} aria-label="저장" className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-[#fff] text-[#1D1D1F] flex items-center justify-center hover:bg-white/90 shrink-0">
+                        <Check className="w-4 h-4" strokeWidth={2.6} />
+                      </button>
+                      <button onClick={cancelTextEdit} aria-label="취소" className="w-8 h-8 md:w-9 md:h-9 rounded-full bg-black/35 text-white border border-white/25 flex items-center justify-center hover:bg-black/50 shrink-0">
+                        <X className="w-4 h-4" strokeWidth={2.4} />
                       </button>
                     </div>
                   ) : (
                     <div className="flex items-center gap-2">
                       <span className="text-sm md:text-base font-bold text-white">{recruitmentText}</span>
                       {isAdmin && (
-                        <button onClick={() => setIsEditing(true)} className="text-white/40 hover:text-white transition-colors">
+                        <button onClick={startTextEdit} aria-label="문구 수정" className="text-white/40 hover:text-white transition-colors">
                           <Pencil className="w-3.5 h-3.5 md:w-4 md:h-4" />
                         </button>
                       )}
@@ -339,7 +352,7 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
                     <button
                       onClick={() => {
                         if (isEditingLink) handleLinkSubmit();
-                        else setIsEditingLink(true);
+                        else startLinkEdit();
                       }}
                       className={`transition-colors ${isEditingLink ? "text-white" : "text-white/40 hover:text-white"}`}
                     >
@@ -367,30 +380,34 @@ export const Hero = ({ isAdmin, hallOfFame = [], onNavigate }: HeroProps) => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
-              className="w-full max-w-[280px] md:max-w-md md:ml-auto bg-white p-3 md:p-4 rounded-xl md:rounded-2xl border border-indigo-100 shadow-xl shadow-indigo-100/20 flex flex-col gap-2.5 md:gap-3 mt-4 mb-4 md:mb-8"
+              className="w-full max-w-md md:ml-auto bg-[#fff] rounded-3xl border border-black/[0.06] shadow-[0_12px_40px_rgb(0_0_0/0.10)] mt-4 mb-4 md:mb-8"
             >
-              <div className="flex items-center gap-2 md:gap-3">
-                <Type className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
-                <input
-                  type="text"
-                  value={applyButtonText}
-                  onChange={(e) => setApplyButtonText(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
-                  placeholder="버튼 문구 입력 (예: 지원하기)"
-                  className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
-                  autoFocus
-                />
+              <div className="write-page rounded-3xl p-4 md:p-5">
+              {/* ✨ [2026-09-30] 흰 카드 + 회색 입력칸(.write-page) — 전역 유리 규칙 때문에 흐릿하게 겹쳐 보이던 것 정리 */}
+              <p className="text-[15px] font-bold text-[#1D1D1F] tracking-[-0.01em] mb-3">지원 버튼 수정</p>
+              <label className="block text-xs font-semibold text-[#6E6E73] mb-1.5 ml-1 flex items-center gap-1.5"><Type className="w-3.5 h-3.5" /> 버튼 문구</label>
+              <input
+                type="text"
+                value={applyButtonText}
+                onChange={(e) => setApplyButtonText(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleLinkSubmit(); if (e.key === "Escape") cancelLinkEdit(); }}
+                placeholder="예: 지원하기"
+                className="w-full h-11 px-4 rounded-xl text-sm font-semibold text-[#1D1D1F] outline-none mb-3"
+                autoFocus
+              />
+              <label className="block text-xs font-semibold text-[#6E6E73] mb-1.5 ml-1 flex items-center gap-1.5"><LinkIcon className="w-3.5 h-3.5" /> 링크</label>
+              <input
+                type="text"
+                value={applyLink}
+                onChange={(e) => setApplyLink(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleLinkSubmit(); if (e.key === "Escape") cancelLinkEdit(); }}
+                placeholder="카카오톡 오픈채팅 링크"
+                className="w-full h-11 px-4 rounded-xl text-sm text-[#1D1D1F] outline-none"
+              />
+              <div className="flex gap-2 mt-4">
+                <button onClick={cancelLinkEdit} className="flex-1 h-10 rounded-full bg-black/[0.05] text-sm font-semibold text-[#1D1D1F] hover:bg-black/[0.08] transition-colors">취소</button>
+                <button onClick={handleLinkSubmit} className="flex-1 h-10 rounded-full bg-[#0071E3] text-white text-sm font-semibold hover:bg-[#0077ED] transition-colors">저장</button>
               </div>
-              <div className="flex items-center gap-2 md:gap-3">
-                <LinkIcon className="text-indigo-500 w-4 h-4 md:w-5 md:h-5 shrink-0" />
-                <input
-                  type="text"
-                  value={applyLink}
-                  onChange={(e) => setApplyLink(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && handleLinkSubmit()}
-                  placeholder="카카오톡 오픈채팅 링크 입력"
-                  className="flex-1 text-xs md:text-sm font-bold text-slate-600 outline-none placeholder:text-slate-300"
-                />
               </div>
             </motion.div>
           )}

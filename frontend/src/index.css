@@ -218,6 +218,25 @@
     box-shadow: none !important;
   }
 
+  /* ✨ [2026-09-30] 홈 배너(사진) 위 문구 편집 칸 — 흰 유리 입력칸 대신 어두운 유리 알약이라 흰 글자가 잘 보인다 */
+  .apple-app main input.hero-field,
+  .apple-app main input.hero-field:focus {
+    background-color: rgb(0 0 0 / 0.38) !important;
+    border: 1px solid rgb(255 255 255 / 0.35) !important;
+    box-shadow: 0 4px 16px rgb(0 0 0 / 0.18) !important;
+    -webkit-backdrop-filter: blur(14px) saturate(140%);
+    backdrop-filter: blur(14px) saturate(140%);
+    color: #fff;
+  }
+
+  .apple-app main input.hero-field:focus {
+    border-color: rgb(255 255 255 / 0.7) !important;
+  }
+
+  .apple-app main input.hero-field::placeholder {
+    color: rgb(255 255 255 / 0.5);
+  }
+
   /* 로그인처럼 강조가 필요한 버튼 — 애플 블루 단색 */
   .glass-lens-blue {
     color: white;
