@@ -3,7 +3,7 @@ import { ClubCalendar } from "../../../components/calendar/ClubCalendar";
 
 // ✨ [2026-09-30] 주요 행사 → 캘린더로. 왼쪽 월 달력(날짜에 색 점, 누르면 그날 일정), 오른쪽 다가오는 일정(D-day).
 // 로그인한 부원에게는 총회 제출 시작·마감일도 같이 보인다. 행사 사진 카드는 "모든 일정 보기"(행사 페이지)에서.
-export const Events = ({ onNavigate, events, isLoggedIn }: { onNavigate: (page: string, id?: number) => void; events: any[]; isLoggedIn: boolean }) => {
+export const Events = ({ onNavigate, events, isLoggedIn, isAdmin }: { onNavigate: (page: string, id?: number) => void; events: any[]; isLoggedIn: boolean; isAdmin?: boolean }) => {
   return (
     <section id="events" className="py-10 md:py-16 bg-[#F4F6FA]">
       <div className="max-w-7xl mx-auto px-4 md:px-6">
@@ -19,7 +19,7 @@ export const Events = ({ onNavigate, events, isLoggedIn }: { onNavigate: (page: 
             모든 일정 보기 <ArrowRight className="w-4 h-4 md:w-5 md:h-5 group-hover:translate-x-1 transition-transform" />
           </button>
         </div>
-        <ClubCalendar events={events} isLoggedIn={isLoggedIn} onOpenEvent={(id) => onNavigate("event-detail", id)} />
+        <ClubCalendar events={events} isLoggedIn={isLoggedIn} isAdmin={isAdmin && isLoggedIn} onOpenEvent={(id) => onNavigate("event-detail", id)} />
       </div>
     </section>
   );

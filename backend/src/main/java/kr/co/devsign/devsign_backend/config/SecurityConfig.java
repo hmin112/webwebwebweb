@@ -87,7 +87,9 @@ public class SecurityConfig {
                                 "/api/admin/settings", // ✨ 핵심 수정: 메인 화면 설정 조회(GET)는 누구나 가능하도록 예외 허용!
                                 "/api/guild/**", // ✨ [신규] 네비게이션바 로고(디스코드 서버 아이콘)는 누구나 조회 가능
                                 "/api/chosun-programs/**", // ✨ [신규] 조선대 SW중심대학 지원프로그램 목록은 누구나 조회 가능
-                                "/api/members/officers" // ✨ [신규] 홈 화면 하단 연락처(회장/부회장/총무)는 누구나 조회 가능
+                                "/api/members/officers", // ✨ [신규] 홈 화면 하단 연락처(회장/부회장/총무)는 누구나 조회 가능
+                                "/api/schedules", // ✨ [2026-09-30] 캘린더 일정 — 비로그인은 공개 일정만(서버에서 걸러서 줌)
+                                "/api/schedules/**" // ✨ 조선대 학사일정·SW 지원 프로그램(바깥 일정)
                         ).permitAll()
                         // ✨ [신규] 공지사항/행사/명예의 전당은 관리자만 작성·수정·삭제 가능 (기존엔 프론트에서만 막고 있었음)
                         .requestMatchers(HttpMethod.POST, "/api/notices/**", "/api/events/**", "/api/hall-of-fame/**").hasRole("ADMIN")

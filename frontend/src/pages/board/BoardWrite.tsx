@@ -187,7 +187,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
   };
 
   return (
-    <div className="min-h-screen bg-slate-50 pt-24 md:pt-32 pb-16 md:pb-20 font-sans">
+    <div className="write-page min-h-screen bg-slate-50 pt-24 md:pt-32 pb-16 md:pb-20 font-sans">
       <div className="max-w-4xl mx-auto px-4 md:px-6">
 
         <div className="flex items-center justify-between mb-8 md:mb-12">

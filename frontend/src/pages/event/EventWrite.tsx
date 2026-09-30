@@ -1,28 +1,12 @@
 import { api } from "../../api/axios";
 import { useState, useEffect, useRef } from "react";
+import { DATE_MASK, DateMaskInput, isValidDate, splitDateRange } from "../../components/ui/DateMaskInput";
 import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, Save, Type, Image as ImageIcon, Link as LinkIcon, X, Upload } from "lucide-react";
 import { Button } from "../../components/ui/button";
 import { FileDropZone } from "../../components/ui/FileDropZone";
 
 // ✨ user, fetchEvents 프롭을 추가하여 로그 연동 및 목록 갱신을 처리합니다.
-// ✨ [2026-09-30] 행사 날짜는 "2026.04.27" 한 가지 형식으로 — 숫자만 받아 점은 자동으로
-const DATE_MASK = "YYYY.MM.DD";
-const formatEventDateInput = (raw: string) => {
-  const d = raw.replace(/\D/g, "").slice(0, 8);
-  return [d.slice(0, 4), d.slice(4, 6), d.slice(6, 8)].filter(Boolean).join(".");
-};
-const normalizeEventDate = (raw?: string) => {
-  const m = (raw || "").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
-  return m ? `${m[1]}.${m[2].padStart(2, "0")}.${m[3].padStart(2, "0")}` : formatEventDateInput(raw || "");
-};
-const isValidEventDate = (s: string) => {
-  const m = s.match(/^(\d{4})\.(\d{2})\.(\d{2})$/);
-  if (!m) return false;
-  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-  return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
-};
-
 export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -41,9 +25,16 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
   const [isSubmitting, setIsSubmitting] = useState(false);
   const submitLockRef = useRef(false);
 
+  // ✨ [2026-09-30] 여러 날 행사면 종료일 — 저장할 때 "2026.04.27 ~ 2026.04.29"로 합쳐서 date에 넣는다
+  const [dateEnd, setDateEnd] = useState("");
+
   useEffect(() => {
     // 예전에 "2026.4.27"처럼 한 자리로 적힌 날짜도 수정 화면에서는 "2026.04.27"로 맞춰 보여준다
-    if (event) setFormData({ ...event, date: normalizeEventDate(event.date) });
+    if (event) {
+      const [start, end] = splitDateRange(event.date);
+      setFormData({ ...event, date: start });
+      setDateEnd(end);
+    }
   }, [event]);
 
   // ✨ 로컬 파일 선택 시 호출되는 핸들러
@@ -64,8 +55,11 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
     if (!formData.title || !formData.date || !formData.location || !formData.content) {
       return alert("정보를 모두 입력해주세요. ⚠️");
     }
-    if (!isValidEventDate(formData.date)) {
-      return alert("날짜를 2026.04.27처럼 숫자 8자리로 입력해주세요. (없는 날짜는 안 돼요)");
+    if (!isValidDate(formData.date)) {
+      return alert("시작일을 2026.04.27처럼 숫자 8자리로 입력해주세요. (없는 날짜는 안 돼요)");
+    }
+    if (dateEnd && (!isValidDate(dateEnd) || dateEnd < formData.date)) {
+      return alert("종료일을 확인해주세요. 하루 행사면 비워두면 돼요.");
     }
 
     submitLockRef.current = true;
@@ -75,7 +69,7 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
       const submitData = new FormData();
       submitData.append("category", formData.category);
       submitData.append("title", formData.title);
-      submitData.append("date", formData.date);
+      submitData.append("date", dateEnd && dateEnd !== formData.date ? `${formData.date} ~ ${dateEnd}` : formData.date);
       submitData.append("location", formData.location);
       submitData.append("content", formData.content);
 
@@ -110,7 +104,7 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20 pt-32">
+    <div className="write-page min-h-screen bg-white pb-20 pt-32">
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex justify-between items-center mb-12">
           <button
@@ -147,31 +141,27 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="행사 제목을 입력하세요"
-            className="w-full py-4 text-4xl font-black text-slate-900 border-none outline-none tracking-tight placeholder:text-slate-200"
+            className="bare-field w-full py-4 text-3xl md:text-4xl font-bold text-[#1D1D1F] border-none outline-none tracking-[-0.02em] placeholder:text-[#D1D1D6]"
           />
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-6">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Date</label>
-              {/* ✨ [2026-09-30] 숫자만 입력하면 2026.04.27 모양으로 점이 자동으로 들어간다. 남은 자리는 흐린 YYYY.MM.DD로 보여서
-                  몇 칸 남았는지 한눈에 보인다 (캘린더가 이 형식으로 날짜를 읽는다) */}
-              <div className="relative bg-slate-50 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
-                <div aria-hidden className="absolute inset-0 px-6 py-4 font-bold tabular-nums pointer-events-none whitespace-pre">
-                  <span className="invisible">{formData.date}</span>
-                  <span className="text-slate-300">{DATE_MASK.slice(formData.date.length)}</span>
-                </div>
-                <input
-                  type="text"
-                  inputMode="numeric"
-                  value={formData.date}
-                  onChange={(e) => setFormData({ ...formData, date: formatEventDateInput(e.target.value) })}
-                  className="relative w-full px-6 py-4 bg-transparent rounded-2xl outline-none font-bold tabular-nums !border-0 !shadow-none !bg-transparent"
-                />
+              {/* ✨ [2026-09-30] 숫자만 입력하면 2026.04.27 모양으로 점이 자동으로 들어간다. 여러 날 행사면 종료일도 */}
+              <div className="grid grid-cols-[1fr_auto_1fr] items-center gap-2">
+                <DateMaskInput size="lg" value={formData.date} onChange={(v) => setFormData({ ...formData, date: v })} />
+                <span className="text-slate-300 font-bold">~</span>
+                <DateMaskInput size="lg" value={dateEnd} onChange={setDateEnd} />
               </div>
-              <p className={`text-[11px] ml-1 ${formData.date && !isValidEventDate(formData.date) && formData.date.length === DATE_MASK.length ? "text-rose-500" : "text-slate-400"}`}>
-                {formData.date && !isValidEventDate(formData.date) && formData.date.length === DATE_MASK.length
+              <p className={`text-[11px] ml-1 ${
+                (formData.date.length === DATE_MASK.length && !isValidDate(formData.date)) || (dateEnd.length === DATE_MASK.length && (!isValidDate(dateEnd) || dateEnd < formData.date))
+                  ? "text-rose-500" : "text-slate-400"
+              }`}>
+                {formData.date.length === DATE_MASK.length && !isValidDate(formData.date)
                   ? "없는 날짜예요. 다시 확인해 주세요."
-                  : "숫자 8자리만 입력하면 돼요 (예: 20260427 → 2026.04.27)"}
+                  : dateEnd.length === DATE_MASK.length && (!isValidDate(dateEnd) || dateEnd < formData.date)
+                    ? "종료일을 확인해 주세요. (시작일보다 빠르거나 없는 날짜)"
+                    : "숫자 8자리만 입력하면 돼요 (예: 20260427). 하루 행사면 오른쪽(종료일)은 비워두세요."}
               </p>
             </div>
             <div className="space-y-2">
@@ -254,7 +244,7 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               placeholder="행사에 대한 상세 내용을 자유롭게 입력하세요..."
-              className="w-full min-h-[400px] text-lg font-medium outline-none resize-none leading-relaxed placeholder:text-slate-200"
+              className="bare-field w-full min-h-[400px] text-lg font-medium outline-none resize-none leading-relaxed placeholder:text-[#D1D1D6]"
             />
           </div>
         </div>

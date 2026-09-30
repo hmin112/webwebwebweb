@@ -83,7 +83,7 @@ export function Home({ isAdmin, isLoggedIn, events, notices, posts, hallOfFame, 
             </div>
             <div id="events" className="scroll-mt-20">
                 {/* ✨ [2026-09-30] 최근 3개 카드 대신 전체 행사로 캘린더를 그린다 */}
-                <Events onNavigate={onNavigate} events={events} isLoggedIn={isLoggedIn} />
+                <Events onNavigate={onNavigate} events={events} isLoggedIn={isLoggedIn} isAdmin={isAdmin} />
             </div>
             <div id="notice" className="scroll-mt-20">
                 <Notice onNavigate={onNavigate} notices={notices} />

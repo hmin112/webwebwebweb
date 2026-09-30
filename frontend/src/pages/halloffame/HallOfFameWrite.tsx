@@ -169,7 +169,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
   };
 
   return (
-    <div className="min-h-screen bg-white pb-20 pt-32">
+    <div className="write-page min-h-screen bg-white pb-20 pt-32">
       <div className="max-w-4xl mx-auto px-6">
         <div className="flex justify-between items-center mb-12">
           <button
@@ -206,7 +206,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
             value={formData.title}
             onChange={(e) => setFormData({ ...formData, title: e.target.value })}
             placeholder="게시물 제목을 입력하세요"
-            className="w-full py-4 text-4xl font-black text-slate-900 border-none outline-none tracking-tight placeholder:text-slate-200"
+            className="bare-field w-full py-4 text-3xl md:text-4xl font-bold text-[#1D1D1F] border-none outline-none tracking-[-0.02em] placeholder:text-[#D1D1D6]"
           />
 
           <div className="space-y-2">
@@ -374,7 +374,7 @@ export const HallOfFameWrite = ({ onNavigate, entry, fetchHallOfFame }: any) => 
               value={formData.content}
               onChange={(e) => setFormData({ ...formData, content: e.target.value })}
               placeholder="수상 소식에 대한 상세 내용을 자유롭게 입력하세요..."
-              className="w-full min-h-[300px] text-lg font-medium outline-none resize-none leading-relaxed placeholder:text-slate-200"
+              className="bare-field w-full min-h-[300px] text-lg font-medium outline-none resize-none leading-relaxed placeholder:text-[#D1D1D6]"
             />
           </div>
         </div>

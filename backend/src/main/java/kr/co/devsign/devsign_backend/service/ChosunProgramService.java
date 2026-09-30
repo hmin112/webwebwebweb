@@ -20,6 +20,15 @@ import java.util.concurrent.atomic.AtomicReference;
 @Service
 public class ChosunProgramService {
 
+    // ✨ [2026-09-30] 캘린더용 — 모든 프로그램(마감된 것 포함)의 신청기간을 DB에 쌓는다. 원본 목록에서 빠져도 캘린더에는 남는다.
+    private final ExternalScheduleService externalScheduleService;
+    private static final java.util.regex.Pattern YMD = java.util.regex.Pattern.compile("(\\d{2})\\.(\\d{2})\\.(\\d{2})");
+    private static final java.util.regex.Pattern PROGRAM_ID = java.util.regex.Pattern.compile("program_id=([A-Za-z0-9]+)");
+
+    public ChosunProgramService(ExternalScheduleService externalScheduleService) {
+        this.externalScheduleService = externalScheduleService;
+    }
+
     private static final String SOURCE_URL = "https://sw.chosun.ac.kr/main/menu?gc=Program";
     private static final String USER_AGENT =
             "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36";
@@ -67,9 +76,42 @@ public class ChosunProgramService {
             }
 
             cache.set(parsed);
+            archivePrograms(doc);
+            for (int page = 2; page <= 3; page++) {
+                try {
+                    archivePrograms(Jsoup.connect(SOURCE_URL + "&page=" + page).userAgent(USER_AGENT).timeout(10_000).get());
+                } catch (Exception ignored) {
+                    // 뒤쪽 페이지 실패는 다음 주기에 다시
+                }
+            }
         } catch (Exception e) {
             // 스크래핑 실패해도 기존 캐시(마지막으로 성공한 결과)는 그대로 유지 — 홈 화면이 빈 화면이 되지 않게
             System.err.println("조선대 SW중심대학 지원프로그램 스크래핑 실패: " + e.getMessage());
+        }
+    }
+
+    // 목록 한 페이지의 모든 프로그램(신청 중·마감·종료)을 신청기간과 함께 저장
+    private void archivePrograms(Document doc) {
+        for (Element item : doc.select("ul.class_list_wrap > li")) {
+            Element link = item.selectFirst("a");
+            Element titleEl = item.selectFirst(".info .tit");
+            if (link == null || titleEl == null) continue;
+            String href = link.attr("abs:href");
+            java.util.regex.Matcher idm = PROGRAM_ID.matcher(href);
+            if (!idm.find()) continue;
+            java.util.regex.Matcher dm = YMD.matcher(extractByLabel(item, "신청기간"));
+            java.time.LocalDate start = null, end = null;
+            if (dm.find()) start = java.time.LocalDate.of(2000 + Integer.parseInt(dm.group(1)), Integer.parseInt(dm.group(2)), Integer.parseInt(dm.group(3)));
+            if (dm.find()) end = java.time.LocalDate.of(2000 + Integer.parseInt(dm.group(1)), Integer.parseInt(dm.group(2)), Integer.parseInt(dm.group(3)));
+            if (start == null) continue;
+            Element categoryEl = item.selectFirst(".info .cate");
+            try {
+                externalScheduleService.upsert(ExternalScheduleService.SOURCE_SW_PROGRAM, idm.group(1),
+                        titleEl.text().trim(), categoryEl != null ? categoryEl.text().trim() : "SW사업단",
+                        start, end, href);
+            } catch (RuntimeException e) {
+                System.err.println("SW 지원 프로그램 저장 실패: " + e.getMessage());
+            }
         }
     }
 

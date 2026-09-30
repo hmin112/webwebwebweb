@@ -55,7 +55,7 @@ export const EventPage = ({ onNavigate, isAdmin, isLoggedIn, events, user, setEv
 
         {/* ✨ [2026-09-30] 동아리 캘린더 — 큰 달력(날짜 칸에 일정 제목) + 선택한 날/다가오는 일정 */}
         <div className="mb-12 md:mb-16">
-          <ClubCalendar events={events || []} isLoggedIn={isLoggedIn} onOpenEvent={(id) => onNavigate("event-detail", id)} large upcomingCount={8} />
+          <ClubCalendar events={events || []} isLoggedIn={isLoggedIn} isAdmin={isAdmin && isLoggedIn} onOpenEvent={(id) => onNavigate("event-detail", id)} large upcomingCount={8} />
         </div>
 
         <h2 className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em] mb-4 md:mb-6">행사 기록</h2>
