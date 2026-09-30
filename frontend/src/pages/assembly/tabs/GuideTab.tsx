@@ -680,7 +680,7 @@ const PlanSection = () => {
               <div className="px-4 py-3 border-b border-black/[0.06] flex items-center gap-2"><FileText size={14} className="text-[#0071E3]" /><p className="text-sm font-bold text-[#1D1D1F]">계획서 필수 항목</p></div>
               <div className="divide-y divide-black/[0.04] text-xs">
                 {[
-                  ["■ 프로젝트 명", "필수 (개인만)", "팀은 팀 탭의 프로젝트명을 써요"],
+                  ["■ 프로젝트 명", "필수", "팀은 이 이름이 팀 프로젝트 명이 돼요"],
                   ["■ 배경 및 목표 개요", "필수", "자유롭게"],
                   ["■ 핵심 목표", "필수", "최소 2개 · 최대 10개"],
                   ["■ 로드맵", "필수", "1개 이상 · 제목/시작일/종료일"],
@@ -917,7 +917,6 @@ type DemoTeamMember = { name: string; leader?: boolean; status: "ACCEPTED" | "PE
 const TeamSection = () => {
   const [stage, setStage] = useState<"empty" | "form" | "team">("empty");
   const [teamName, setTeamName] = useState("길찾기팀");
-  const [projectTitle, setProjectTitle] = useState("캠퍼스 길찾기 앱");
   const [creating, setCreating] = useState(false);
   const [members, setMembers] = useState<DemoTeamMember[]>([{ name: "김데브", leader: true, status: "ACCEPTED" }]);
   const [inviteOpen, setInviteOpen] = useState(false);
@@ -929,14 +928,13 @@ const TeamSection = () => {
     timers.current.forEach(clearTimeout);
     setStage("empty");
     setTeamName("길찾기팀");
-    setProjectTitle("캠퍼스 길찾기 앱");
     setCreating(false);
     setMembers([{ name: "김데브", leader: true, status: "ACCEPTED" }]);
     setInviteOpen(false);
     setInvitation("pending");
   };
   const create = () => {
-    if (!teamName.trim() || !projectTitle.trim() || creating) return;
+    if (!teamName.trim() || creating) return;
     setCreating(true);
     timers.current.push(setTimeout(() => { setCreating(false); setStage("team"); }, 700));
   };
@@ -962,7 +960,7 @@ const TeamSection = () => {
                 ) : (
                   <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="max-w-xs mx-auto space-y-2">
                     <input value={teamName} onChange={(e) => setTeamName(e.target.value)} placeholder="팀 이름" className="w-full px-3.5 py-3 bg-[#F8FAFC] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-xs" />
-                    <input value={projectTitle} onChange={(e) => setProjectTitle(e.target.value)} placeholder="프로젝트 명" className="w-full px-3.5 py-3 bg-[#F8FAFC] rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-xs" />
+                    <p className="text-[10px] text-[#8E8E93] text-left">프로젝트 명은 팀 계획서에서 정해져요.</p>
                     <button onClick={create} disabled={creating} className="w-full px-4 py-3 rounded-xl bg-[#4F46E5] text-white font-bold text-xs disabled:opacity-60">{creating ? "생성 중..." : "팀 생성"}</button>
                   </motion.div>
                 )}
@@ -983,7 +981,7 @@ const TeamSection = () => {
                       </div>
                       <div>
                         <span className="text-[9px] font-bold text-[#8E8E93] uppercase tracking-wide">Project Title</span>
-                        <div className="flex items-center gap-1.5"><p className="text-xs md:text-sm font-bold text-[#6E6E73] truncate">{projectTitle}</p><Edit2 size={11} className="text-[#C7C7CC] shrink-0" /></div>
+                        <p className="text-xs md:text-sm font-semibold text-[#C7C7CC] truncate">팀 계획서를 쓰면 자동으로 채워져요</p>
                       </div>
                     </div>
                     <span className="shrink-0 flex items-center gap-1 px-3 py-2 rounded-xl bg-[#FDF2F8] text-[#FF3B30] font-bold text-[11px]"><Trash2 size={12} /> 팀 해체</span>
@@ -1049,8 +1047,8 @@ const TeamSection = () => {
           <div className="space-y-5">
             <Steps
               items={[
-                { title: "새 팀 만들기", body: "팀 이름과 프로젝트 명을 넣고 '팀 생성'을 누르면 내가 팀장(👑)이 돼요. 한 학기에 여러 팀에 속할 수 있어서, 팀이 있어도 위쪽 '새 팀'으로 더 만들 수 있어요." },
-                { title: "팀 정보 고치기 (팀장)", body: "연필 아이콘으로 팀 이름·프로젝트 명을 바꿀 수 있어요. 팀장은 '팀 해체', 팀원은 '팀 나가기' 버튼이 보여요." },
+                { title: "새 팀 만들기", body: "팀 이름을 넣고 '팀 생성'을 누르면 내가 팀장(👑)이 돼요. 한 학기에 여러 팀에 속할 수 있어서, 팀이 있어도 위쪽 '새 팀'으로 더 만들 수 있어요." },
+                { title: "팀 정보 고치기 (팀장)", body: "연필 아이콘으로 팀 이름을 바꿀 수 있어요. 프로젝트 명은 팀 계획서의 '프로젝트 명'에서 정해지고 바꿔요. 팀장은 '팀 해체', 팀원은 '팀 나가기' 버튼이 보여요." },
                 { title: "팀원 초대 (팀장)", body: "이름이나 학번으로 찾아 '초대'를 누르면 상대 화면에 초대가 가요. 수락 전까지 '대기중'으로 보이고, 팀장은 X로 내보낼 수도 있어요." },
                 { title: "팀 공유 자료 제출", body: "마이 페이지와 같은 방식이에요. 팀원 누구나 올리거나 고칠 수 있고, 마지막으로 고친 사람이 카드에 표시돼요. 3월·9월은 팀 계획서 페이지가 열려요." },
               ]}

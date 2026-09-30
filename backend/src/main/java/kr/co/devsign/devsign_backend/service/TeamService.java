@@ -43,13 +43,11 @@ public class TeamService {
         if (req.teamName() == null || req.teamName().isBlank()) {
             throw new IllegalArgumentException("팀 이름을 입력해주세요.");
         }
-        if (req.projectTitle() == null || req.projectTitle().isBlank()) {
-            throw new IllegalArgumentException("프로젝트 명을 입력해주세요.");
-        }
-
+        // ✨ [2026-09-30] 팀을 만들 때는 프로젝트 명을 받지 않는다 — 팀 계획서(3·9월)의 "프로젝트 명"에서 정해진다
+        // (계획서를 쓰거나 계획서 파일을 올리면 TeamSubmissionService가 팀 프로젝트 명을 채운다)
         Team team = new Team();
-        team.setTeamName(req.teamName());
-        team.setProjectTitle(req.projectTitle());
+        team.setTeamName(req.teamName().trim());
+        team.setProjectTitle(req.projectTitle() == null || req.projectTitle().isBlank() ? null : req.projectTitle().trim());
         team.setLeaderLoginId(loginId);
         team.setYear(year);
         team.setSemester(semester);

@@ -63,7 +63,6 @@ export const TeamTab = ({
   const [invitations, setInvitations] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [newTeamName, setNewTeamName] = useState("");
-  const [newProjectTitle, setNewProjectTitle] = useState("");
   const [isCreating, setIsCreating] = useState(false); // 팀 생성 요청이 진행 중인지
   const [showCreateForm, setShowCreateForm] = useState(false); // 팀 이름/프로젝트 명 입력 폼 열림 여부
   const createTeamLockRef = useRef(false);
@@ -74,8 +73,6 @@ export const TeamTab = ({
 
   const [isEditingTeamName, setIsEditingTeamName] = useState(false);
   const [teamNameDraft, setTeamNameDraft] = useState("");
-  const [isEditingProjectTitle, setIsEditingProjectTitle] = useState(false);
-  const [projectTitleDraft, setProjectTitleDraft] = useState("");
 
   const [allTeams, setAllTeams] = useState<any[]>([]);
   const [teamSearch, setTeamSearch] = useState("");
@@ -318,10 +315,6 @@ export const TeamTab = ({
       alert("팀 이름을 입력해주세요.");
       return;
     }
-    if (!newProjectTitle.trim()) {
-      alert("프로젝트 명을 입력해주세요.");
-      return;
-    }
     createTeamLockRef.current = true;
     setIsCreating(true);
     try {
@@ -330,10 +323,8 @@ export const TeamTab = ({
         year: selectedTerm.year,
         semester: selectedTerm.semester,
         teamName: newTeamName.trim(),
-        projectTitle: newProjectTitle.trim()
       });
       setNewTeamName("");
-      setNewProjectTitle("");
       setShowCreateForm(false);
       setIsCreatingNewTeam(false);
       await fetchStatus();
@@ -435,20 +426,6 @@ export const TeamTab = ({
     }
   };
 
-  const handleSaveProjectTitle = async () => {
-    if (!projectTitleDraft.trim()) {
-      alert("프로젝트 명을 입력해주세요.");
-      return;
-    }
-    try {
-      await api.post(`/teams/${team.teamId}/title`, { requesterLoginId: loginId, projectTitle: projectTitleDraft.trim() });
-      setIsEditingProjectTitle(false);
-      await fetchStatus();
-    } catch (e: any) {
-      alert(e.response?.data?.message || "수정에 실패했습니다.");
-    }
-  };
-
   const teamMemberLoginIds = useMemo(
     () => new Set((team?.members || []).map((m: any) => m.loginId)),
     [team]
@@ -489,7 +466,7 @@ export const TeamTab = ({
                 <div key={inv.teamMemberId} className="bg-[#fff] p-4 md:p-6 rounded-3xl border border-[#0071E3]/20 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                   <div className="min-w-0">
                     <p className="font-bold text-[#1D1D1F] text-sm md:text-base truncate">{inv.teamName}</p>
-                    <p className="text-[11px] md:text-xs text-[#8E8E93] font-bold truncate">프로젝트: {inv.projectTitle}</p>
+                    <p className="text-[11px] md:text-xs text-[#8E8E93] font-bold truncate">프로젝트: {inv.projectTitle || "아직 정해지지 않았어요"}</p>
                     <p className="text-xs md:text-sm text-[#8E8E93] font-bold mt-1">{inv.leaderName} 님이 팀에 초대했습니다.</p>
                   </div>
                   <div className="flex gap-2 shrink-0">
@@ -545,16 +522,11 @@ export const TeamTab = ({
                     autoFocus
                     value={newTeamName}
                     onChange={(e) => setNewTeamName(e.target.value)}
+                    onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
                     placeholder="팀 이름"
                     className="w-full px-4 py-3.5 bg-[#F5F5F7] rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
                   />
-                  <input
-                    value={newProjectTitle}
-                    onChange={(e) => setNewProjectTitle(e.target.value)}
-                    onKeyDown={(e) => e.key === "Enter" && handleCreateTeam()}
-                    placeholder="프로젝트 명"
-                    className="w-full px-4 py-3.5 bg-[#F5F5F7] rounded-2xl border-none outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm"
-                  />
+                  <p className="text-[11px] text-[#8E8E93]">프로젝트 명은 팀 계획서에서 정해져요. 계획서를 쓰거나 계획서 파일을 올리면 자동으로 채워져요.</p>
                   <button disabled={isCreating} onClick={handleCreateTeam} className="w-full px-5 py-3.5 rounded-2xl bg-[#0071E3] text-white font-bold text-sm shadow-md transition-all active:scale-95 disabled:opacity-60">{isCreating ? "생성 중..." : "팀 생성"}</button>
                   {teams.length > 0 && (
                     <button onClick={() => { setIsCreatingNewTeam(false); setShowCreateForm(false); }} className="w-full px-5 py-3 rounded-2xl bg-[#F5F5F7] text-[#8E8E93] font-bold text-sm">취소</button>
@@ -601,26 +573,11 @@ export const TeamTab = ({
 
                     <div>
                       <span className="text-xs font-semibold text-[#8E8E93]">프로젝트</span>
-                      {isEditingProjectTitle ? (
-                        <div className="flex items-center gap-2 mt-2">
-                          <input
-                            autoFocus
-                            value={projectTitleDraft}
-                            onChange={(e) => setProjectTitleDraft(e.target.value)}
-                            onKeyDown={(e) => e.key === "Enter" && handleSaveProjectTitle()}
-                            className="flex-1 bg-[#F5F5F7] px-3.5 py-2 rounded-xl outline-none focus:ring-2 focus:ring-[#0071E3]/30 font-bold text-sm md:text-base text-[#1D1D1F] min-w-0"
-                          />
-                          <button onClick={handleSaveProjectTitle} className="p-2 bg-[#0071E3] text-white rounded-xl shadow-md shrink-0"><Save size={15} /></button>
-                        </div>
+                      {/* ✨ [2026-09-30] 프로젝트 명은 팀 계획서의 "프로젝트 명"에서 정해진다(여기서 직접 고치지 않음) */}
+                      {team.projectTitle ? (
+                        <p className="text-sm md:text-base font-bold text-[#6E6E73] truncate mt-1">{team.projectTitle}</p>
                       ) : (
-                        <div className="flex items-center gap-2 mt-1">
-                          <p className="text-sm md:text-base font-bold text-[#6E6E73] truncate">{team.projectTitle}</p>
-                          {isLeader && (
-                            <button onClick={() => { setIsEditingProjectTitle(true); setProjectTitleDraft(team.projectTitle); }} className="text-[#C7C7CC] hover:text-[#0071E3] shrink-0 transition-colors">
-                              <Edit2 size={13} />
-                            </button>
-                          )}
-                        </div>
+                        <p className="text-sm font-semibold text-[#C7C7CC] mt-1">팀 계획서를 쓰면 자동으로 채워져요</p>
                       )}
                     </div>
                   </div>
@@ -738,7 +695,7 @@ export const TeamTab = ({
                 {otherTeams.map((t) => (
                   <div key={t.teamId} className="bg-[#fff] p-4 md:p-6 rounded-3xl border border-black/[0.06] shadow-sm">
                     <p className="font-bold text-[#1D1D1F] text-sm md:text-base truncate">{t.teamName}</p>
-                    <p className="text-[11px] md:text-xs font-bold text-[#8E8E93] truncate mb-3">프로젝트: {t.projectTitle}</p>
+                    <p className="text-[11px] md:text-xs font-bold text-[#8E8E93] truncate mb-3">프로젝트: {t.projectTitle || "아직 정해지지 않았어요"}</p>
                     <div className="flex flex-wrap gap-2">
                       {t.members.map((m: any) => (
                         <button
