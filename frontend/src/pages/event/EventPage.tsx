@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Sparkles, Calendar, MapPin, Plus, Eye, Heart } from "lucide-react";
 import { Button } from "../../components/ui/button";
+import { ClubCalendar } from "../../components/calendar/ClubCalendar";
 
 export const EventPage = ({ onNavigate, isAdmin, isLoggedIn, events, user, setEvents }: any) => {
 
@@ -52,6 +53,12 @@ export const EventPage = ({ onNavigate, isAdmin, isLoggedIn, events, user, setEv
           )}
         </div>
 
+        {/* ✨ [2026-09-30] 동아리 캘린더 — 큰 달력(날짜 칸에 일정 제목) + 선택한 날/다가오는 일정 */}
+        <div className="mb-12 md:mb-16">
+          <ClubCalendar events={events || []} isLoggedIn={isLoggedIn} onOpenEvent={(id) => onNavigate("event-detail", id)} large upcomingCount={8} />
+        </div>
+
+        <h2 className="text-xl md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em] mb-4 md:mb-6">행사 기록</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-10">
           {events && events.map((event: any) => (
             <motion.div

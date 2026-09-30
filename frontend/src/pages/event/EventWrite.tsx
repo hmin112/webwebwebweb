@@ -6,6 +6,23 @@ import { Button } from "../../components/ui/button";
 import { FileDropZone } from "../../components/ui/FileDropZone";
 
 // ✨ user, fetchEvents 프롭을 추가하여 로그 연동 및 목록 갱신을 처리합니다.
+// ✨ [2026-09-30] 행사 날짜는 "2026.04.27" 한 가지 형식으로 — 숫자만 받아 점은 자동으로
+const DATE_MASK = "YYYY.MM.DD";
+const formatEventDateInput = (raw: string) => {
+  const d = raw.replace(/\D/g, "").slice(0, 8);
+  return [d.slice(0, 4), d.slice(4, 6), d.slice(6, 8)].filter(Boolean).join(".");
+};
+const normalizeEventDate = (raw?: string) => {
+  const m = (raw || "").match(/(\d{4})\D+(\d{1,2})\D+(\d{1,2})/);
+  return m ? `${m[1]}.${m[2].padStart(2, "0")}.${m[3].padStart(2, "0")}` : formatEventDateInput(raw || "");
+};
+const isValidEventDate = (s: string) => {
+  const m = s.match(/^(\d{4})\.(\d{2})\.(\d{2})$/);
+  if (!m) return false;
+  const d = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+  return d.getFullYear() === Number(m[1]) && d.getMonth() === Number(m[2]) - 1 && d.getDate() === Number(m[3]);
+};
+
 export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -25,7 +42,8 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
   const submitLockRef = useRef(false);
 
   useEffect(() => {
-    if (event) setFormData(event);
+    // 예전에 "2026.4.27"처럼 한 자리로 적힌 날짜도 수정 화면에서는 "2026.04.27"로 맞춰 보여준다
+    if (event) setFormData({ ...event, date: normalizeEventDate(event.date) });
   }, [event]);
 
   // ✨ 로컬 파일 선택 시 호출되는 핸들러
@@ -45,6 +63,9 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
     if (submitLockRef.current) return;
     if (!formData.title || !formData.date || !formData.location || !formData.content) {
       return alert("정보를 모두 입력해주세요. ⚠️");
+    }
+    if (!isValidEventDate(formData.date)) {
+      return alert("날짜를 2026.04.27처럼 숫자 8자리로 입력해주세요. (없는 날짜는 안 돼요)");
     }
 
     submitLockRef.current = true;
@@ -132,13 +153,26 @@ export const EventWrite = ({ onNavigate, onSave, event, fetchEvents, user }: any
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Date</label>
-              <input
-                type="text"
-                placeholder="예: 2026.04.15"
-                value={formData.date}
-                onChange={(e) => setFormData({ ...formData, date: e.target.value })}
-                className="w-full px-6 py-4 bg-slate-50 rounded-2xl outline-none font-bold focus:ring-2 focus:ring-indigo-500 transition-all"
-              />
+              {/* ✨ [2026-09-30] 숫자만 입력하면 2026.04.27 모양으로 점이 자동으로 들어간다. 남은 자리는 흐린 YYYY.MM.DD로 보여서
+                  몇 칸 남았는지 한눈에 보인다 (캘린더가 이 형식으로 날짜를 읽는다) */}
+              <div className="relative bg-slate-50 rounded-2xl focus-within:ring-2 focus-within:ring-indigo-500 transition-all">
+                <div aria-hidden className="absolute inset-0 px-6 py-4 font-bold tabular-nums pointer-events-none whitespace-pre">
+                  <span className="invisible">{formData.date}</span>
+                  <span className="text-slate-300">{DATE_MASK.slice(formData.date.length)}</span>
+                </div>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={formData.date}
+                  onChange={(e) => setFormData({ ...formData, date: formatEventDateInput(e.target.value) })}
+                  className="relative w-full px-6 py-4 bg-transparent rounded-2xl outline-none font-bold tabular-nums !border-0 !shadow-none !bg-transparent"
+                />
+              </div>
+              <p className={`text-[11px] ml-1 ${formData.date && !isValidEventDate(formData.date) && formData.date.length === DATE_MASK.length ? "text-rose-500" : "text-slate-400"}`}>
+                {formData.date && !isValidEventDate(formData.date) && formData.date.length === DATE_MASK.length
+                  ? "없는 날짜예요. 다시 확인해 주세요."
+                  : "숫자 8자리만 입력하면 돼요 (예: 20260427 → 2026.04.27)"}
+              </p>
             </div>
             <div className="space-y-2">
               <label className="text-[10px] font-black text-slate-400 ml-1 uppercase">Location</label>
