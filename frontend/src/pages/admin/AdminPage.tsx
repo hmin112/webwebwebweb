@@ -13,6 +13,7 @@ import {
 import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
 import { FeeTab } from "./tabs/FeeTab";
+import { ActivityTab } from "./tabs/ActivityTab";
 import { FileDropZone } from "../../components/ui/FileDropZone";
 import { MiniCalendar } from "../../components/ui/MiniCalendar";
 
@@ -87,7 +88,7 @@ export const AdminPage = () => {
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [deletedMembers, setDeletedMembers] = useState<Member[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster" | "fee">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster" | "fee" | "activity">("members");
   const [sortBy, setSortBy] = useState<SortCriteria>("ID_DESC");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -620,6 +621,7 @@ export const AdminPage = () => {
           <button onClick={() => { setActiveTab("discord"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "discord" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>디스코드 확인</button>
           <button onClick={() => { setActiveTab("roster"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "roster" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>명단 대조</button>
           <button onClick={() => { setActiveTab("fee"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "fee" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>회비</button>
+          <button onClick={() => { setActiveTab("activity"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "activity" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>활동 현황</button>
           </div>
         </div>
 
@@ -1236,6 +1238,7 @@ export const AdminPage = () => {
 
         {/* ✨ [2026-09-09 신규] 회비 탭 */}
         {activeTab === "fee" && <FeeTab key="fee" />}
+        {activeTab === "activity" && <ActivityTab key="activity" />}
       </div>
 
       <AnimatePresence>

@@ -1,12 +1,9 @@
 import { api } from "../../api/axios";
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { 
-  User, Hash, GraduationCap, 
-  MessageSquare, Settings, Lock,
-  ArrowLeft, Check, X, ShieldCheck, Key
-} from "lucide-react";
-import { Button } from "../../components/ui/button";
+import { GraduationCap, MessageSquare, Lock, ChevronLeft, ChevronRight, ShieldCheck, Key, Loader2 } from "lucide-react";
+import { TermSelect } from "../assembly/assemblyUi";
+import { ActivityGrid, Ring, scoreColor, type MemberActivity } from "./activity/ActivityWidgets";
 
 const DEPARTMENTS = [
   "AI소프트웨어학부(컴퓨터공학전공)",
@@ -178,194 +175,210 @@ export const ProfilePage = ({ onNavigate, user, setUser, posts = [] }: any) => {
     }
   };
 
+  // ✨ [2026-09-30] 이번 학기 내 활동(출석·총회·OJ·회비) — 학기를 바꿔 지난 학기도 볼 수 있다
+  const termOptions = useMemo(() => {
+    const now = new Date();
+    const m = now.getMonth() + 1;
+    const curYear = m === 1 ? now.getFullYear() - 1 : now.getFullYear();
+    const curSem = m >= 2 && m <= 7 ? 1 : 2;
+    const opts: { year: number; semester: number }[] = [];
+    let y = 2026, sm = 1;
+    while (y < curYear || (y === curYear && sm <= curSem)) {
+      opts.push({ year: y, semester: sm });
+      sm++;
+      if (sm > 2) { sm = 1; y++; }
+    }
+    return opts.reverse();
+  }, []);
+  const [term, setTerm] = useState(termOptions[0]);
+  const [activity, setActivity] = useState<MemberActivity | null>(null);
+  const [activityState, setActivityState] = useState<"loading" | "ready" | "error">("loading");
+
+  useEffect(() => {
+    if (!user?.loginId) return;
+    let cancelled = false;
+    setActivityState("loading");
+    api.get("/activity/me", { params: { year: term.year, semester: term.semester } })
+      .then((res) => { if (!cancelled) { setActivity(res.data); setActivityState("ready"); } })
+      .catch(() => { if (!cancelled) setActivityState("error"); });
+    return () => { cancelled = true; };
+  }, [user?.loginId, term]);
+
+
+
   return (
-    <div className="min-h-screen bg-slate-50 pt-24 md:pt-32 pb-16 md:pb-20 font-sans">
-      <div className="max-w-7xl mx-auto px-4 md:px-6">
-        
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6 mb-8 md:mb-12">
-          <div>
-            <button 
-              onClick={() => onNavigate("home")}
-              className="flex items-center gap-1.5 md:gap-2 text-slate-400 font-black mb-4 md:mb-6 hover:text-indigo-600 transition-colors group text-xs md:text-sm"
-            >
-              <ArrowLeft className="w-4 h-4 md:w-[18px] md:h-[18px] group-hover:-translate-x-1 transition-transform" /> 
-              메인으로 돌아가기
-            </button>
-            <div className="flex items-center gap-3 md:gap-4">
-              <div className="w-10 h-10 md:w-12 md:h-12 bg-indigo-600 rounded-xl md:rounded-2xl flex items-center justify-center text-white shadow-lg shadow-indigo-100 shrink-0">
-                <Settings className="w-5 h-5 md:w-7 md:h-7" />
-              </div>
-              <h1 className="text-2xl md:text-4xl font-[900] text-slate-900 tracking-tighter uppercase truncate">프로필 설정</h1>
+    <div className="relative min-h-screen pt-24 md:pt-28 pb-20">
+      {/* ✨ [2026-09-30] 리퀴드 글라스 배경 — 유리 카드 뒤로 은은한 색이 비치도록 옅게 번진 색 덩어리 */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-32 -left-24 w-[520px] h-[520px] rounded-full blur-3xl opacity-70" style={{ background: "radial-gradient(circle, rgb(10 132 255 / 0.22), transparent 65%)" }} />
+        <div className="absolute top-1/3 -right-32 w-[560px] h-[560px] rounded-full blur-3xl opacity-70" style={{ background: "radial-gradient(circle, rgb(191 90 242 / 0.18), transparent 65%)" }} />
+        <div className="absolute -bottom-40 left-1/4 w-[520px] h-[520px] rounded-full blur-3xl opacity-60" style={{ background: "radial-gradient(circle, rgb(100 210 255 / 0.2), transparent 65%)" }} />
+      </div>
+
+      <div className="max-w-5xl mx-auto px-4 md:px-6">
+        <button
+          onClick={() => onNavigate("home")}
+          className="inline-flex items-center gap-0.5 text-[15px] text-[#0071E3] hover:opacity-70 transition-opacity mb-3"
+        >
+          <ChevronLeft size={18} /> 홈
+        </button>
+        <h1 className="text-[34px] md:text-[40px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight mb-6 md:mb-8">프로필</h1>
+
+        {/* 프로필 카드 */}
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
+          className="glass-card rounded-[32px] p-6 md:p-8 flex flex-col sm:flex-row sm:items-center gap-5 md:gap-7 mb-10 md:mb-12"
+        >
+          <img
+            src={userInfo.avatar}
+            alt="프로필 사진"
+            className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover ring-4 ring-white shadow-[0_8px_24px_rgb(0_0_0/0.12)] shrink-0"
+            onError={(e: any) => (e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png")}
+          />
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[28px] md:text-[32px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight truncate">{userInfo.name}</h2>
+            <p className="text-[15px] text-[#6E6E73] mt-1">
+              {userInfo.studentId ? `${userInfo.studentId}학번` : "학번 없음"} · {userInfo.userStatus}
+            </p>
+            <div className="flex flex-wrap items-center gap-1.5 mt-3">
+              {user?.role === "ADMIN" && (
+                <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-[#0071E3]/10 text-[#0071E3] text-xs font-semibold">
+                  <ShieldCheck size={13} /> 관리자
+                </span>
+              )}
+              <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-black/[0.05] text-[#3A3A3C] text-xs font-semibold">
+                <MessageSquare size={12} /> 작성글 {userPostsCount}개
+              </span>
             </div>
           </div>
+          {activity && activity.score != null && (
+            <div className="flex sm:flex-col items-center gap-3 sm:gap-1.5 shrink-0">
+              <Ring value={activity.score} color={scoreColor(activity.score)} size={84} stroke={8}>
+                <span className="text-[22px] font-bold text-[#1D1D1F] tracking-[-0.03em]">{activity.score}</span>
+              </Ring>
+              <span className="text-xs font-semibold text-[#8E8E93]">활동 점수</span>
+            </div>
+          )}
+        </motion.div>
+
+        {/* 활동 */}
+        <div className="flex items-end justify-between gap-3 mb-4 px-1">
+          <div>
+            <h2 className="text-[22px] md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em]">활동</h2>
+            <p className="text-[13px] text-[#8E8E93] mt-0.5">활동 점수는 출석·총회 제출·회비 비율의 평균이에요. OJ는 참고로 보여줘요.</p>
+          </div>
+          <TermSelect value={term} options={termOptions} onChange={setTerm} />
+        </div>
+        <div className="mb-10 md:mb-12">
+          {activityState === "loading" && !activity ? (
+            <div className="glass-card rounded-[26px] py-16 flex items-center justify-center gap-2 text-[#8E8E93] text-sm">
+              <Loader2 size={16} className="animate-spin" /> 활동을 불러오는 중이에요
+            </div>
+          ) : activityState === "error" || !activity ? (
+            <div className="glass-card rounded-[26px] py-16 text-center text-[#8E8E93] text-sm">활동 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>
+          ) : (
+            <ActivityGrid data={activity} />
+          )}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-6 md:gap-8 items-stretch">
-          
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-sm border border-slate-100 flex flex-col items-center text-center h-full justify-center">
-            <div className="mb-6 md:mb-8 relative">
-              <div className="w-24 h-24 md:w-40 md:h-40 bg-slate-100 rounded-2xl md:rounded-[2.5rem] flex items-center justify-center overflow-hidden border-4 border-white shadow-xl shrink-0">
-                <img 
-                  src={userInfo.avatar} 
-                  alt="Discord Profile" 
-                  className="w-full h-full object-cover"
-                  onError={(e: any) => e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"}
-                />
-              </div>
+        {/* 계정 — 설정 앱처럼 한 카드 안에 줄 목록 */}
+        <div className="flex items-end justify-between gap-3 mb-3 px-1">
+          <h2 className="text-[22px] md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em]">계정</h2>
+          {!isEditing ? (
+            <button onClick={() => setIsEditing(true)} className="text-[15px] font-semibold text-[#0071E3] hover:opacity-70 transition-opacity">편집</button>
+          ) : (
+            <div className="flex items-center gap-4">
+              <button onClick={handleCancel} className="text-[15px] text-[#0071E3] hover:opacity-70 transition-opacity">취소</button>
+              <button onClick={handleSave} className="text-[15px] font-semibold text-[#0071E3] hover:opacity-70 transition-opacity">완료</button>
             </div>
-            
-            <h2 className="text-xl md:text-3xl font-black text-slate-900 mb-1.5 md:mb-2">{userInfo.name}</h2>
-            
-            <div className="flex flex-col gap-1.5 md:gap-2 mb-6 md:mb-8 w-full max-w-[200px]">
-              <div className="flex items-center justify-center gap-1.5 px-3 py-1 bg-indigo-50 text-indigo-600 rounded-lg text-[10px] md:text-xs font-black">
-                <ShieldCheck className="w-3.5 h-3.5 md:w-[14px] md:h-[14px]" /> {userInfo.role}
-              </div>
-              
-              <div className="flex flex-col gap-1">
-                <div className="px-3 py-1 bg-slate-50 text-slate-400 rounded-md text-[9px] md:text-[10px] font-black uppercase tracking-widest border border-slate-100">
-                  {userInfo.userStatus}
-                </div>
-                <div className="px-3 py-1 bg-indigo-100 text-indigo-700 rounded-md text-[9px] md:text-[10px] font-black uppercase tracking-widest">
-                  {userInfo.studentId}학번
-                </div>
-              </div>
-            </div>
-
-            <div className="w-full pt-6 md:pt-8 border-t border-slate-50">
-              <div className="text-center">
-                <p className="text-[10px] md:text-xs font-black text-slate-400 uppercase mb-1 tracking-widest">활동 지수</p>
-                <div className="flex items-center justify-center gap-1.5 md:gap-2 text-indigo-600">
-                  <MessageSquare className="w-4 h-4 md:w-4 md:h-4" />
-                  <p className="text-lg md:text-2xl font-black text-slate-900">작성글 {userPostsCount}개</p>
-                </div>
-              </div>
-            </div>
-          </motion.div>
-
-          <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="lg:col-span-2 bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-14 shadow-sm border border-slate-100 flex flex-col">
-            <div className="flex items-center justify-between mb-8 md:mb-12">
-              <h3 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight">상세 정보</h3>
-              {!isEditing ? (
-                <Button onClick={() => setIsEditing(true)} className="bg-slate-900 text-white rounded-xl md:rounded-2xl px-4 md:px-8 font-black py-3 md:py-6 shadow-lg text-xs md:text-sm h-auto">정보 수정</Button>
-              ) : (
-                <div className="flex gap-2">
-                  <Button onClick={handleCancel} variant="outline" className="rounded-xl md:rounded-2xl px-3 md:px-6 py-3 md:py-6 font-black border-slate-200 text-slate-400 text-xs md:text-sm h-auto">취소</Button>
-                  <Button onClick={handleSave} className="bg-indigo-600 text-white rounded-xl md:rounded-2xl px-4 md:px-8 py-3 md:py-6 font-black shadow-lg text-xs md:text-sm h-auto">저장 완료</Button>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-6 md:gap-y-8 mb-8 md:mb-12 flex-grow">
-              <ProfileItem 
-                label="소속 학과" 
-                value={userInfo.major} 
-                icon={<GraduationCap className="w-4 h-4 md:w-[18px] md:h-[18px]" />} 
-                isEditing={isEditing} 
-                type="select" 
-                options={DEPARTMENTS} 
-                onChange={(val: string) => setUserInfo({...userInfo, major: val})} 
+          )}
+        </div>
+        <div className="glass-card rounded-[26px] overflow-hidden divide-y divide-black/[0.06]">
+          <SettingsRow icon={<GraduationCap size={16} />} color="#34C759" label="소속 학과">
+            {isEditing ? (
+              <select
+                value={userInfo.major}
+                onChange={(e) => setUserInfo({ ...userInfo, major: e.target.value })}
+                className="w-full sm:w-auto max-w-full h-9 px-3 rounded-xl text-sm font-medium text-[#1D1D1F] outline-none cursor-pointer"
+              >
+                {DEPARTMENTS.map((opt) => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+            ) : (
+              <span className="text-[15px] text-[#6E6E73] truncate">{userInfo.major}</span>
+            )}
+          </SettingsRow>
+          <SettingsRow icon={<MessageSquare size={16} />} color="#5865F2" label="디스코드">
+            {isEditing ? (
+              <input
+                type="text"
+                value={userInfo.discord}
+                onChange={(e) => { setUserInfo({ ...userInfo, discord: e.target.value }); setIsCodeSent(false); }}
+                className="w-full sm:w-60 h-9 px-3 rounded-xl text-sm font-medium text-[#1D1D1F] outline-none"
               />
-              <ProfileItem 
-                label="디스코드 태그" 
-                value={userInfo.discord} 
-                icon={<MessageSquare className="w-4 h-4 md:w-[18px] md:h-[18px]" />} 
-                isEditing={isEditing} 
-                onChange={(val: string) => {
-                  setUserInfo({...userInfo, discord: val});
-                  setIsCodeSent(false); // 태그가 한 글자라도 바뀌면 재인증 필요
-                }} 
-              />
-              
-              {/* ✨ 디스코드 태그가 변경되었을 때만 나타나는 인증 블록 */}
-              <AnimatePresence>
-                {isEditing && userInfo.discord !== (user?.discordTag || "디스코드 미연동") && (
-                  <motion.div
-                    initial={{ opacity: 0, y: -10, height: 0 }}
-                    animate={{ opacity: 1, y: 0, height: "auto" }}
-                    exit={{ opacity: 0, y: -10, height: 0 }}
-                    className="col-span-1 md:col-span-2 overflow-hidden"
-                  >
-                    <div className="bg-indigo-50/50 p-4 md:p-6 rounded-2xl md:rounded-[1.5rem] border border-indigo-100 flex flex-col md:flex-row gap-3 md:gap-4 items-end">
-                      <div className="flex-1 w-full space-y-2 md:space-y-3">
-                        <label className="text-[10px] md:text-xs font-black text-indigo-600 uppercase ml-1 tracking-widest flex items-center gap-1.5">
-                          <ShieldCheck className="w-3.5 h-3.5 md:w-4 md:h-4" /> 새로운 계정 본인 인증
-                        </label>
-                        <div className="flex flex-col sm:flex-row gap-2 md:gap-3">
-                          <input 
-                            type="text" 
-                            placeholder={isCodeSent ? "DM으로 받은 6자리 인증번호" : "먼저 우측 버튼을 눌러주세요"}
-                            value={authCode}
-                            onChange={e => setAuthCode(e.target.value)}
-                            disabled={!isCodeSent}
-                            maxLength={6}
-                            className="w-full sm:flex-1 p-3.5 md:p-4 bg-white rounded-xl md:rounded-2xl border border-slate-100 outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm disabled:bg-slate-50 disabled:text-slate-400 transition-all shadow-sm"
-                          />
-                          <Button 
-                            onClick={handleSendDiscordCode}
-                            type="button"
-                            className="w-full sm:w-auto bg-indigo-600 hover:bg-indigo-700 text-white font-black rounded-xl md:rounded-2xl px-6 py-3.5 md:py-4 shadow-md transition-all h-auto shrink-0"
-                          >
-                            {isCodeSent ? "재전송 요청" : "인증번호 받기"}
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </motion.div>
-                )}
-              </AnimatePresence>
-            </div>
+            ) : (
+              <span className="text-[15px] text-[#6E6E73] truncate">{userInfo.discord}</span>
+            )}
+          </SettingsRow>
 
-            <div className="p-5 md:p-8 bg-slate-50 rounded-2xl md:rounded-[2rem] border border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-4 md:gap-6 mt-auto">
-              <div className="flex items-center gap-3 md:gap-4 w-full sm:w-auto">
-                <div className="w-10 h-10 md:w-12 md:h-12 bg-white rounded-lg md:rounded-2xl flex items-center justify-center text-indigo-600 shadow-sm border border-slate-50 shrink-0">
-                  <Key className="w-5 h-5 md:w-6 md:h-6" />
+          {/* 디스코드 태그를 바꾸면 새 계정 본인 인증 */}
+          <AnimatePresence>
+            {isEditing && userInfo.discord !== (user?.discordTag || "디스코드 미연동") && (
+              <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: "auto" }} exit={{ opacity: 0, height: 0 }} className="overflow-hidden">
+                <div className="px-5 py-4 bg-[#0071E3]/[0.04]">
+                  <p className="flex items-center gap-1.5 text-xs font-semibold text-[#0071E3] mb-2.5"><ShieldCheck size={14} /> 새 디스코드 계정 본인 인증</p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="text"
+                      placeholder={isCodeSent ? "DM으로 받은 6자리 인증번호" : "먼저 '인증번호 받기'를 눌러주세요"}
+                      value={authCode}
+                      onChange={(e) => setAuthCode(e.target.value)}
+                      disabled={!isCodeSent}
+                      maxLength={6}
+                      className="flex-1 h-10 px-3.5 rounded-xl text-sm font-medium outline-none disabled:opacity-60"
+                    />
+                    <button onClick={handleSendDiscordCode} type="button" className="h-10 px-5 rounded-full bg-[#0071E3] text-white text-sm font-semibold hover:bg-[#0077ED] transition-colors shrink-0">
+                      {isCodeSent ? "다시 보내기" : "인증번호 받기"}
+                    </button>
+                  </div>
                 </div>
-                <div className="min-w-0">
-                  <p className="text-xs md:text-sm font-black text-slate-900">계정 보안</p>
-                  <p className="text-[10px] md:text-xs font-bold text-slate-400 truncate">비밀번호를 정기적으로 변경해 주세요.</p>
-                </div>
-              </div>
-              <Button onClick={() => setIsPwModalOpen(true)} className="w-full sm:w-auto bg-white text-slate-900 border border-slate-200 rounded-lg md:rounded-xl px-4 md:px-6 font-bold hover:bg-slate-100 shadow-sm transition-all text-xs md:text-sm py-2.5 md:py-3 h-auto shrink-0">비밀번호 변경</Button>
-            </div>
-          </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+          <button onClick={() => setIsPwModalOpen(true)} className="w-full text-left hover:bg-black/[0.025] transition-colors">
+            <SettingsRow icon={<Key size={16} />} color="#8E8E93" label="비밀번호 변경">
+              <ChevronRight size={18} className="text-[#C7C7CC]" />
+            </SettingsRow>
+          </button>
         </div>
       </div>
 
       <AnimatePresence>
         {isPwModalOpen && (
           <div className="fixed inset-0 z-[200] flex items-center justify-center px-4 md:px-6">
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-slate-900/40 backdrop-blur-md" onClick={() => setIsPwModalOpen(false)} />
-            <motion.div initial={{ opacity: 0, scale: 0.9, y: 20 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.9, y: 20 }} className="relative w-full max-w-md bg-white rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 shadow-2xl overflow-hidden">
-              <div className="flex items-center gap-2 md:gap-3 mb-6 md:mb-8">
-                <div className="w-8 h-8 md:w-10 md:h-10 bg-indigo-50 text-indigo-600 rounded-lg md:rounded-xl flex items-center justify-center shrink-0"><Lock size={18} /></div>
-                <h3 className="text-xl md:text-2xl font-[900] text-slate-900 tracking-tighter uppercase truncate">비밀번호 변경</h3>
+            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/25 backdrop-blur-sm" onClick={() => setIsPwModalOpen(false)} />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.96, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.96, y: 12 }}
+              transition={{ type: "spring", stiffness: 400, damping: 34 }}
+              className="glass-card relative w-full max-w-sm rounded-[28px] p-6 md:p-7"
+            >
+              <div className="flex flex-col items-center text-center mb-5">
+                <span className="w-12 h-12 rounded-2xl bg-[#0071E3]/10 text-[#0071E3] flex items-center justify-center mb-3"><Lock size={20} /></span>
+                <h3 className="text-xl font-bold text-[#1D1D1F] tracking-[-0.02em]">비밀번호 변경</h3>
+                <p className="text-[13px] text-[#8E8E93] mt-1">새 비밀번호는 8자 이상으로 정해 주세요.</p>
               </div>
-              <div className="space-y-3 md:space-y-5">
-                <input 
-                  type="password" 
-                  placeholder="현재 비밀번호" 
-                  className="w-full p-3.5 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
-                  value={pwForm.currentPassword}
-                  onChange={(e) => setPwForm({...pwForm, currentPassword: e.target.value})}
-                />
-                <input 
-                  type="password" 
-                  placeholder="새 비밀번호" 
-                  className="w-full p-3.5 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
-                  value={pwForm.newPassword}
-                  onChange={(e) => setPwForm({...pwForm, newPassword: e.target.value})}
-                />
-                <input 
-                  type="password" 
-                  placeholder="새 비밀번호 확인" 
-                  className="w-full p-3.5 md:p-4 bg-slate-50 rounded-xl md:rounded-2xl border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-sm" 
-                  value={pwForm.confirmPassword}
-                  onChange={(e) => setPwForm({...pwForm, confirmPassword: e.target.value})}
-                />
+              <div className="space-y-2.5">
+                <input type="password" placeholder="현재 비밀번호" className="w-full h-11 px-4 rounded-xl text-sm outline-none" value={pwForm.currentPassword} onChange={(e) => setPwForm({ ...pwForm, currentPassword: e.target.value })} />
+                <input type="password" placeholder="새 비밀번호" className="w-full h-11 px-4 rounded-xl text-sm outline-none" value={pwForm.newPassword} onChange={(e) => setPwForm({ ...pwForm, newPassword: e.target.value })} />
+                <input type="password" placeholder="새 비밀번호 확인" className="w-full h-11 px-4 rounded-xl text-sm outline-none" value={pwForm.confirmPassword} onChange={(e) => setPwForm({ ...pwForm, confirmPassword: e.target.value })} />
               </div>
-              <div className="flex gap-2 md:gap-3 mt-8 md:mt-10">
-                <Button onClick={() => setIsPwModalOpen(false)} variant="ghost" className="flex-1 py-4 md:py-7 rounded-xl md:rounded-2xl font-black text-slate-400 text-sm h-auto">취소</Button>
-                <Button onClick={handleChangePassword} className="flex-1 py-4 md:py-7 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black shadow-lg text-sm h-auto">변경 완료</Button>
+              <div className="flex gap-2 mt-6">
+                <button onClick={() => setIsPwModalOpen(false)} className="flex-1 h-11 rounded-full bg-black/[0.05] text-[15px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] transition-colors">취소</button>
+                <button onClick={handleChangePassword} className="flex-1 h-11 rounded-full bg-[#0071E3] text-white text-[15px] font-semibold hover:bg-[#0077ED] transition-colors">변경</button>
               </div>
             </motion.div>
           </div>
@@ -375,22 +388,13 @@ export const ProfilePage = ({ onNavigate, user, setUser, posts = [] }: any) => {
   );
 };
 
-const ProfileItem = ({ label, value, icon, isEditing, onChange, type = "text", options = [], placeholder = "" }: any) => (
-  <div className="space-y-2 md:space-y-3">
-    <label className="text-[10px] md:text-xs font-black text-slate-400 uppercase ml-1 tracking-widest">{label}</label>
-    <div className={`flex items-center gap-3 md:gap-4 p-3.5 md:p-4 rounded-xl md:rounded-2xl transition-all ${isEditing ? "bg-slate-50 ring-2 ring-indigo-100" : "bg-white border border-slate-50 shadow-sm"}`}>
-      <div className="text-indigo-400 shrink-0">{icon}</div>
-      {isEditing ? (
-        type === "select" ? (
-          <select value={value} onChange={(e) => onChange(e.target.value)} className="bg-transparent outline-none w-full font-bold cursor-pointer text-sm md:text-base">
-            {options.map((opt: string) => <option key={opt} value={opt}>{opt}</option>)}
-          </select>
-        ) : (
-          <input type="text" value={value} placeholder={placeholder} onChange={(e) => onChange(e.target.value)} className="bg-transparent outline-none w-full font-bold text-sm md:text-base" />
-        )
-      ) : (
-        <span className={`font-bold text-sm md:text-base truncate ${value ? "text-slate-700" : "text-slate-300"}`}>{value || "정보 없음"}</span>
-      )}
+// 설정 앱 스타일 한 줄 — 왼쪽 색 아이콘 + 이름, 오른쪽 값
+const SettingsRow = ({ icon, color, label, children }: { icon: ReactNode; color: string; label: string; children: ReactNode }) => (
+  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4 px-5 py-4 min-h-[60px]">
+    <div className="flex items-center gap-3 shrink-0">
+      <span className="w-7 h-7 rounded-[8px] flex items-center justify-center text-white" style={{ backgroundColor: color }}>{icon}</span>
+      <span className="text-[15px] text-[#1D1D1F]">{label}</span>
     </div>
+    <div className="min-w-0 flex sm:justify-end">{children}</div>
   </div>
 );

@@ -435,6 +435,19 @@ public class OjClient {
     }
 
     // 회원 본인의 OJ 프로필 — acm/oi_problems_status에 푼 문제(status 0 = 정답) 목록이 들어 있다
+    // ✨ [2026-09-30] 활동 대시보드용 — OJ 전체 사용자 순위표(맞힌 문제 수·제출 수)를 한 번에 받는다
+    @SuppressWarnings("unchecked")
+    public List<Map<String, Object>> getUserRank() {
+        String url = UriComponentsBuilder.fromUriString(ojBaseUrl + "/api/user_rank")
+                .queryParam("rule", "ACM").queryParam("offset", 0).queryParam("limit", 1000)
+                .toUriString();
+        ResponseEntity<Map> response = restTemplate.exchange(url, HttpMethod.GET, new HttpEntity<>(appkeyHeaders(serviceAppkey)), Map.class);
+        Map<String, Object> body = response.getBody();
+        Object data = body == null ? null : body.get("data");
+        Object results = data instanceof Map<?, ?> d ? d.get("results") : null;
+        return results instanceof List<?> l ? (List<Map<String, Object>>) l : List.of();
+    }
+
     public Map<String, Object> getProfile(String appkey) {
         HttpEntity<Void> entity = new HttpEntity<>(appkeyHeaders(appkey));
         ResponseEntity<Map> response = restTemplate.exchange(ojBaseUrl + "/api/profile/", HttpMethod.GET, entity, Map.class);
