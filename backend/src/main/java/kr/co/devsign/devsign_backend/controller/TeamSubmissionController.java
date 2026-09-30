@@ -61,6 +61,24 @@ public class TeamSubmissionController {
         }
     }
 
+    // ✨ [2026-09-30] 팀 공유 자료 삭제 — 팀원만(아니면 403), 제출 기간 안에서만(아니면 400)
+    @DeleteMapping("/submission")
+    public ResponseEntity<StatusResponse> deleteSubmission(
+            Authentication authentication,
+            @RequestParam String loginId,
+            @RequestParam Long submissionId
+    ) {
+        AuthGuard.requireSelf(authentication, loginId);
+        try {
+            teamSubmissionService.deleteSubmission(loginId, submissionId);
+            return ResponseEntity.ok(StatusResponse.success());
+        } catch (IllegalStateException e) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).body(StatusResponse.fail(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
     @PostMapping("/plan/save")
     public ResponseEntity<?> savePlanDraft(Authentication authentication, @RequestBody SaveTeamPlanRequest request) {
         AuthGuard.requireSelf(authentication, request.loginId());

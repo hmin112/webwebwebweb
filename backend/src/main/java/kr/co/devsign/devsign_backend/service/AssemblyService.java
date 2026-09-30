@@ -269,8 +269,8 @@ public class AssemblyService {
         reportRepository.save(report);
     }
 
-    // 마이페이지와 같은 기준 — 관리자가 정한 제출 기간(없으면 그 달 1일~28일) 안인지, 한국 날짜로 비교
-    private boolean isWithinSubmissionPeriod(int year, int month) {
+    // 마이페이지와 같은 기준 — 관리자가 정한 제출 기간(없으면 그 달 1일~28일) 안인지, 한국 날짜로 비교 (팀 자료 삭제도 같이 씀)
+    public boolean isWithinSubmissionPeriod(int year, int month) {
         LocalDate today = LocalDate.now(java.time.ZoneId.of("Asia/Seoul"));
         return getSubmissionPeriods(year).stream()
                 .filter(p -> p.month() == month)

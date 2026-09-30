@@ -48,6 +48,7 @@ public class TeamSubmissionService {
     private final TeamMemberRepository teamMemberRepository;
     private final PlanFileExtractor planFileExtractor;
     private final kr.co.devsign.devsign_backend.util.PlanPdfGenerator planPdfGenerator;
+    private final AssemblyService assemblyService;
 
     @Value("${app.upload.base-dir:uploads}")
     private String uploadBaseDir;
@@ -74,6 +75,37 @@ public class TeamSubmissionService {
 
         subs.forEach(this::normalizeIncompletePlan);
         return subs.stream().map(this::toResponse).toList();
+    }
+
+    // ✨ [2026-09-30] 팀 공유 자료 삭제 — 올리기와 같은 규칙으로 수락한 팀원 누구나, 그 달 제출 기간 안에서만.
+    // 올린 파일을 지우고 내용(메모·계획서 항목)을 비워 "미제출"로 되돌린다.
+    @Transactional
+    public void deleteSubmission(String loginId, Long submissionId) {
+        TeamSubmission sub = submissionRepository.findById(submissionId)
+                .orElseThrow(() -> new IllegalArgumentException("삭제할 자료를 찾을 수 없어요."));
+        requireAcceptedMember(sub.getTeam().getId(), loginId);
+        if (!assemblyService.isWithinSubmissionPeriod(sub.getYear(), sub.getMonth())) {
+            throw new IllegalArgumentException("제출 기간에만 삭제할 수 있어요.");
+        }
+        deleteStoredFileQuietly(sub.getPresentationPath());
+        deleteStoredFileQuietly(sub.getPdfPath());
+        deleteStoredFileQuietly(sub.getOtherPath());
+        deleteStoredFileQuietly(sub.getPlanFilePath());
+        sub.setPresentationPath(null);
+        sub.setPdfPath(null);
+        sub.setOtherPath(null);
+        sub.setPlanFilePath(null);
+        sub.setMemo(null);
+        sub.setDate(null);
+        sub.setPlanOverview(null);
+        sub.getPlanGoals().clear();
+        sub.getPlanRoadmapItems().clear();
+        sub.getPlanRoles().clear();
+        sub.getPlanLinks().clear();
+        sub.setPlanNotes(null);
+        sub.setUpdatedBy(loginId);
+        sub.setStatus("NOT_SUBMITTED");
+        submissionRepository.save(sub);
     }
 
     private static boolean isTeamPlanComplete(TeamSubmission sub) {

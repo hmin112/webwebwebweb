@@ -144,6 +144,23 @@ export const TeamTab = ({
 
   useEffect(() => { fetchTeamSubmissions(); }, [team?.teamId, selectedTerm]);
 
+  // ✨ [2026-09-30] 팀 공유 자료 삭제 — 팀원 누구나, 제출 기간 안에서만 (서버도 팀원 여부·기간을 다시 확인)
+  const canDeleteSubmission = (sub: any) =>
+    sub.isWithinPeriod &&
+    !String(sub.id).startsWith("temp") &&
+    (isSubmittedStatus(sub.status) || sub.status === "DRAFT");
+
+  const handleDeleteSubmission = async (sub: any) => {
+    const label = `${sub.month}월 ${reportKind(sub.month)}`;
+    if (!window.confirm(`팀 공유 자료 ${label}를 삭제할까요?\n팀원 모두의 화면에서 올린 파일과 작성한 내용이 지워지고 되돌릴 수 없어요.`)) return;
+    try {
+      await api.delete("/team-submissions/submission", { params: { loginId, submissionId: sub.id } });
+      await fetchTeamSubmissions();
+    } catch (e: any) {
+      alert(e.response?.data?.message || "삭제하지 못했어요. 잠시 후 다시 시도해 주세요.");
+    }
+  };
+
   const displaySubmissions = useMemo(() => {
     if (!team) return [];
     const targetMonths = selectedTerm.semester === 1 ? [3, 4, 5, 6] : [9, 10, 11, 12];
@@ -686,6 +703,7 @@ export const TeamTab = ({
                     endDate={sub.endDate}
                     extra={sub.updatedBy || undefined}
                     onClick={() => handleSubmissionCardClick(sub)}
+                    onDelete={canDeleteSubmission(sub) ? () => handleDeleteSubmission(sub) : undefined}
                   />
                 ))}
               </div>
