@@ -8,7 +8,7 @@ import { scoreColor, type MemberActivity } from "../../profile/activity/Activity
 // ✨ [2026-09-30 신규] 관리자 "활동 현황" — 부원별 출석·총회 제출·OJ·회비와 활동 점수를 한 표에.
 // 활동 점수 = 출석·총회·회비 비율 중 값이 있는 것들의 평균. 50점 미만을 "활동 적은 부원"으로 본다.
 
-type SortKey = "score" | "attendance" | "assembly" | "oj" | "fee" | "name";
+type SortKey = "score" | "attendance" | "assembly" | "fee" | "name";
 const LOW_SCORE = 50;
 
 const formatYear = (id?: string) => {
@@ -96,7 +96,6 @@ export const ActivityTab = () => {
         case "attendance": return r.attendance.rate;
         case "assembly": return r.assembly.rate;
         case "fee": return r.fee.rate;
-        case "oj": return r.oj.linked ? r.oj.solved : null;
         case "name": return r.name;
         default: return r.score;
       }
@@ -132,7 +131,7 @@ export const ActivityTab = () => {
         <div>
           <h2 className="text-2xl md:text-[28px] font-bold text-[#1D1D1F] tracking-[-0.02em]">활동 현황</h2>
           <p className="text-sm text-[#6E6E73] mt-1">
-            부원별 출석·총회 제출·회비 비율과 OJ 풀이 수예요. 총회는 마감된 달 기준(진행 중인 달은 이미 낸 경우만)이고, 활동 점수는 세 비율의 평균이에요. {LOW_SCORE}점 미만이면 활동이 적은 부원으로 봐요.
+            부원별 출석·총회 제출·회비 비율이에요. 총회는 각자 마이페이지에서 정한 대표 프로젝트(팀이면 팀 공유 자료) 기준으로, 마감된 달(진행 중인 달은 이미 낸 경우만)을 세요. 활동 점수는 세 비율의 평균이고 {LOW_SCORE}점 미만이면 활동이 적은 부원으로 봐요.
           </p>
         </div>
         <TermSelect value={term} options={termOptions} onChange={setTerm} />
@@ -194,13 +193,12 @@ export const ActivityTab = () => {
           <div className="py-20 text-center text-sm text-[#8E8E93]">해당하는 부원이 없어요.</div>
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full min-w-[760px]">
+            <table className="w-full min-w-[680px]">
               <thead className="border-b border-black/[0.06]">
                 <tr>
                   <Th k="name" className="pl-5">부원</Th>
                   <Th k="attendance">출석</Th>
                   <Th k="assembly">총회 제출</Th>
-                  <Th k="oj">OJ</Th>
                   <Th k="fee">회비</Th>
                   <Th k="score" className="pr-5">활동 점수</Th>
                 </tr>
@@ -223,16 +221,11 @@ export const ActivityTab = () => {
                       </div>
                     </td>
                     <td className="px-3 py-3"><RateCell rate={r.attendance.rate} text={`${r.attendance.attended}/${r.attendance.total}회`} color="#0A84FF" /></td>
-                    <td className="px-3 py-3"><RateCell rate={r.assembly.rate} text={`${r.assembly.submitted}/${r.assembly.due}개월`} color="#5E5CE6" /></td>
                     <td className="px-3 py-3">
-                      {r.oj.linked ? (
-                        <div>
-                          <span className="text-[13px] font-semibold text-[#1D1D1F]">{r.oj.solved}문제</span>
-                          {r.oj.rank != null && <span className="text-[11px] text-[#8E8E93] ml-1.5">{r.oj.rank}위</span>}
-                        </div>
-                      ) : (
-                        <span className="text-xs text-[#C7C7CC]">미연결</span>
-                      )}
+                      <RateCell rate={r.assembly.rate} text={`${r.assembly.submitted}/${r.assembly.due}개월`} color="#5E5CE6" />
+                      <p className="text-[10px] text-[#AEAEB2] mt-1 truncate max-w-[140px]">
+                        {r.assembly.basis === "TEAM" ? `팀 ${r.assembly.teamName || ""}` : "개인"}
+                      </p>
                     </td>
                     <td className="px-3 py-3"><RateCell rate={r.fee.rate} text={r.fee.due === 0 ? "대상 아님" : `${r.fee.paid}/${r.fee.due}개월`} color="#30B0C7" /></td>
                     <td className="pr-5 pl-3 py-3"><ScorePill score={r.score} /></td>

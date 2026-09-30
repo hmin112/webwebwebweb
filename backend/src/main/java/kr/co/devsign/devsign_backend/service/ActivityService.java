@@ -8,13 +8,14 @@ import kr.co.devsign.devsign_backend.entity.AttendanceSession;
 import kr.co.devsign.devsign_backend.entity.AttendanceTarget;
 import kr.co.devsign.devsign_backend.entity.FeeRecord;
 import kr.co.devsign.devsign_backend.entity.Member;
-import kr.co.devsign.devsign_backend.entity.OjAccount;
+import kr.co.devsign.devsign_backend.dto.assembly.RepresentativeProject;
+import kr.co.devsign.devsign_backend.entity.TeamSubmission;
 import kr.co.devsign.devsign_backend.repository.AssemblyReportRepository;
 import kr.co.devsign.devsign_backend.repository.AttendanceRecordRepository;
 import kr.co.devsign.devsign_backend.repository.AttendanceTargetRepository;
 import kr.co.devsign.devsign_backend.repository.FeeRecordRepository;
 import kr.co.devsign.devsign_backend.repository.MemberRepository;
-import kr.co.devsign.devsign_backend.repository.OjAccountRepository;
+import kr.co.devsign.devsign_backend.repository.TeamSubmissionRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -27,7 +28,8 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 // ✨ [2026-09-30 신규] 개인 활동 대시보드 / 관리자 활동 현황
-// 한 학기(1학기 3~6월, 2학기 9~12월) 기준으로 출석률·총회 제출률·OJ 풀이 수·회비 납부를 모은다.
+// 한 학기(1학기 3~6월, 2학기 9~12월) 기준으로 출석률·총회 제출률·회비 납부를 모은다.
+// 총회 제출은 마이페이지 "대표 프로젝트" 기준 — 대표가 팀 프로젝트면 그 팀의 공유 자료 제출로 센다.
 // 관리자 표는 부원 수만큼 반복 조회하지 않도록 학기 데이터를 한 번에 읽어 메모리에서 나눈다.
 @Service
 @RequiredArgsConstructor
@@ -41,13 +43,8 @@ public class ActivityService {
     private final AttendanceRecordRepository attendanceRecordRepository;
     private final AssemblyReportRepository reportRepository;
     private final FeeRecordRepository feeRecordRepository;
-    private final OjAccountRepository ojAccountRepository;
+    private final TeamSubmissionRepository teamSubmissionRepository;
     private final AssemblyService assemblyService;
-    private final OjClient ojClient;
-
-    // OJ 순위표는 부원 전체를 한 번에 주는 API라 잠깐(1분) 기억해 두고 쓴다
-    private volatile Map<String, int[]> ojRankCache = Map.of();
-    private volatile long ojRankCachedAt = 0L;
 
     @Transactional(readOnly = true)
     public MemberActivityResponse getActivity(String loginId, int year, int semester) {
@@ -94,16 +91,8 @@ public class ActivityService {
                     .collect(Collectors.toMap(FeeRecord::getLoginId, f -> f, (a, b) -> a)));
         }
 
-        // --- OJ: 부원 OJ 계정 ↔ OJ 순위표(맞힌 문제 수)
-        Map<String, String> ojUsernameByLogin = new HashMap<>();
-        for (OjAccount acc : ojAccountRepository.findAll()) {
-            if (acc.getMember() != null) ojUsernameByLogin.put(acc.getMember().getLoginId(), acc.getOjUsername());
-        }
-        Map<String, int[]> ojStats = ojRank();
-        List<Integer> linkedSolved = ojUsernameByLogin.values().stream()
-                .map(u -> ojStats.getOrDefault(u, new int[]{0, 0})[0])
-                .sorted(Comparator.reverseOrder())
-                .toList();
+        // 대표가 팀인 부원이 같은 팀이면 팀 자료를 한 번만 읽는다
+        Map<Long, Map<Integer, TeamSubmission>> teamSubsCache = new HashMap<>();
 
         List<MemberActivityResponse> result = new ArrayList<>();
         for (Member m : members) {
@@ -123,16 +112,30 @@ public class ActivityService {
             var attendance = new MemberActivityResponse.Attendance(
                     sessions.size(), attended, rate(attended, sessions.size()), sessions.stream().limit(8).toList());
 
-            Map<Integer, AssemblyReport> reportByMonth = reportsByMember.getOrDefault(id, List.of()).stream()
-                    .collect(Collectors.toMap(AssemblyReport::getMonth, r -> r, (a, b) -> a));
+            // 대표 프로젝트(직접 고른 것, 없으면 팀 → 자료 올린 개인 순 자동) 기준으로 달별 제출 상태를 정한다
+            RepresentativeProject rep = assemblyService.getMyProjects(id, year, semester).representative();
+            Long repTeamId = null;
+            if (rep != null && "TEAM".equals(rep.type())) {
+                try { repTeamId = Long.parseLong(rep.key().substring("TEAM:".length())); } catch (RuntimeException ignored) { }
+            }
+            Map<Integer, String> statusByMonth = new HashMap<>();
+            if (repTeamId != null) {
+                Long tid = repTeamId;
+                teamSubsCache.computeIfAbsent(tid, k -> teamSubmissionRepository
+                        .findByTeam_IdAndYearAndSemesterOrderByMonthAsc(k, year, semester).stream()
+                        .collect(Collectors.toMap(TeamSubmission::getMonth, t -> t, (a, b) -> a)))
+                        .forEach((mo, t) -> statusByMonth.put(mo, t.getStatus()));
+            } else {
+                reportsByMember.getOrDefault(id, List.of())
+                        .forEach(r -> statusByMonth.putIfAbsent(r.getMonth(), r.getStatus()));
+            }
             List<MemberActivityResponse.Month> monthItems = new ArrayList<>();
             int due = 0, submitted = 0;
             for (int mo : months) {
                 SubmissionPeriodResponse p = periodByMonth.get(mo);
                 boolean started = p != null && !today.isBefore(LocalDate.parse(p.startDate()));
                 boolean closed = p != null && today.isAfter(LocalDate.parse(p.endDate()));
-                AssemblyReport r = reportByMonth.get(mo);
-                String status = r == null || r.getStatus() == null ? "NOT_SUBMITTED" : r.getStatus();
+                String status = statusByMonth.get(mo) == null ? "NOT_SUBMITTED" : statusByMonth.get(mo);
                 boolean done = "SUBMITTED".equals(status);
                 boolean counted = closed || (started && done);
                 if (counted) {
@@ -141,17 +144,10 @@ public class ActivityService {
                 }
                 monthItems.add(new MemberActivityResponse.Month(mo, status, counted, started && !closed));
             }
-            var assembly = new MemberActivityResponse.Assembly(due, submitted, rate(submitted, due), monthItems);
-
-            String ojUser = ojUsernameByLogin.get(id);
-            MemberActivityResponse.Oj oj;
-            if (ojUser == null) {
-                oj = new MemberActivityResponse.Oj(false, 0, 0, null, linkedSolved.size());
-            } else {
-                int[] st = ojStats.getOrDefault(ojUser, new int[]{0, 0});
-                int rank = linkedSolved.indexOf(st[0]) + 1;
-                oj = new MemberActivityResponse.Oj(true, st[0], st[1], rank > 0 ? rank : null, linkedSolved.size());
-            }
+            var assembly = new MemberActivityResponse.Assembly(due, submitted, rate(submitted, due), monthItems,
+                    repTeamId != null ? "TEAM" : "PERSONAL",
+                    rep != null ? rep.title() : null,
+                    repTeamId != null ? rep.teamName() : null);
 
             List<MemberActivityResponse.FeeMonth> feeMonths = new ArrayList<>();
             int feeDue = 0, feePaid = 0;
@@ -177,7 +173,7 @@ public class ActivityService {
 
             result.add(new MemberActivityResponse(
                     id, m.getName(), m.getStudentId(), m.getUserStatus(), m.getRole(), m.getProfileImage(),
-                    year, semester, attendance, assembly, oj, fee, score));
+                    year, semester, attendance, assembly, fee, score));
         }
         return result;
     }
@@ -190,27 +186,4 @@ public class ActivityService {
         return total == 0 ? null : (int) Math.round(done * 100.0 / total);
     }
 
-    // OJ 사용자명 → [맞힌 문제 수, 제출 수]. OJ가 응답하지 않으면 마지막으로 받은 값(없으면 빈 값)을 쓴다.
-    private Map<String, int[]> ojRank() {
-        long now = System.currentTimeMillis();
-        if (now - ojRankCachedAt < 60_000 && !ojRankCache.isEmpty()) return ojRankCache;
-        try {
-            Map<String, int[]> fresh = new HashMap<>();
-            for (Map<String, Object> row : ojClient.getUserRank()) {
-                Object user = row.get("user");
-                String username = user instanceof Map<?, ?> u ? String.valueOf(u.get("username")) : null;
-                if (username == null) continue;
-                fresh.put(username, new int[]{toInt(row.get("accepted_number")), toInt(row.get("submission_number"))});
-            }
-            ojRankCache = fresh;
-            ojRankCachedAt = now;
-        } catch (RuntimeException ignored) {
-            // OJ 서버가 잠깐 안 될 때도 나머지 활동은 보여준다
-        }
-        return ojRankCache;
-    }
-
-    private static int toInt(Object o) {
-        return o instanceof Number n ? n.intValue() : 0;
-    }
 }

@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo, type ReactNode } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { GraduationCap, MessageSquare, Lock, ChevronLeft, ChevronRight, ShieldCheck, Key, Loader2 } from "lucide-react";
 import { TermSelect } from "../assembly/assemblyUi";
-import { ActivityGrid, Ring, scoreColor, type MemberActivity } from "./activity/ActivityWidgets";
+import { ActivityStats, type MemberActivity } from "./activity/ActivityWidgets";
 
 const DEPARTMENTS = [
   "AI소프트웨어학부(컴퓨터공학전공)",
@@ -224,64 +224,54 @@ export const ProfilePage = ({ onNavigate, user, setUser, posts = [] }: any) => {
         </button>
         <h1 className="text-[34px] md:text-[40px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight mb-6 md:mb-8">프로필</h1>
 
-        {/* 프로필 카드 */}
+        {/* 프로필 카드 — 왼쪽: 사진·이름·학번, 오른쪽: 이번 학기 활동(출석·총회 제출·회비) */}
         <motion.div
           initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.5, ease: [0.22, 1, 0.36, 1] }}
-          className="glass-card rounded-[32px] p-6 md:p-8 flex flex-col sm:flex-row sm:items-center gap-5 md:gap-7 mb-10 md:mb-12"
+          className="glass-card rounded-[32px] p-6 md:p-8 mb-10 md:mb-12 grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_auto] gap-6 lg:gap-0"
         >
-          <img
-            src={userInfo.avatar}
-            alt="프로필 사진"
-            className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover ring-4 ring-white shadow-[0_8px_24px_rgb(0_0_0/0.12)] shrink-0"
-            onError={(e: any) => (e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png")}
-          />
-          <div className="min-w-0 flex-1">
-            <h2 className="text-[28px] md:text-[32px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight truncate">{userInfo.name}</h2>
-            <p className="text-[15px] text-[#6E6E73] mt-1">
-              {userInfo.studentId ? `${userInfo.studentId}학번` : "학번 없음"} · {userInfo.userStatus}
-            </p>
-            <div className="flex flex-wrap items-center gap-1.5 mt-3">
-              {user?.role === "ADMIN" && (
-                <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-[#0071E3]/10 text-[#0071E3] text-xs font-semibold">
-                  <ShieldCheck size={13} /> 관리자
+          <div className="flex flex-col sm:flex-row sm:items-center gap-5 md:gap-6 min-w-0 lg:pr-8">
+            <img
+              src={userInfo.avatar}
+              alt="프로필 사진"
+              className="w-24 h-24 md:w-28 md:h-28 rounded-full object-cover ring-4 ring-white shadow-[0_8px_24px_rgb(0_0_0/0.12)] shrink-0"
+              onError={(e: any) => (e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png")}
+            />
+            <div className="min-w-0">
+              <h2 className="text-[28px] md:text-[32px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight truncate">{userInfo.name}</h2>
+              <p className="text-[15px] text-[#6E6E73] mt-1">
+                {userInfo.studentId ? `${userInfo.studentId}학번` : "학번 없음"} · {userInfo.userStatus}
+              </p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-3">
+                {user?.role === "ADMIN" && (
+                  <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-[#0071E3]/10 text-[#0071E3] text-xs font-semibold">
+                    <ShieldCheck size={13} /> 관리자
+                  </span>
+                )}
+                <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-black/[0.05] text-[#3A3A3C] text-xs font-semibold">
+                  <MessageSquare size={12} /> 작성글 {userPostsCount}개
                 </span>
-              )}
-              <span className="inline-flex items-center gap-1 h-7 px-3 rounded-full bg-black/[0.05] text-[#3A3A3C] text-xs font-semibold">
-                <MessageSquare size={12} /> 작성글 {userPostsCount}개
-              </span>
+              </div>
             </div>
           </div>
-          {activity && activity.score != null && (
-            <div className="flex sm:flex-col items-center gap-3 sm:gap-1.5 shrink-0">
-              <Ring value={activity.score} color={scoreColor(activity.score)} size={84} stroke={8}>
-                <span className="text-[22px] font-bold text-[#1D1D1F] tracking-[-0.03em]">{activity.score}</span>
-              </Ring>
-              <span className="text-xs font-semibold text-[#8E8E93]">활동 점수</span>
-            </div>
-          )}
-        </motion.div>
 
-        {/* 활동 */}
-        <div className="flex items-end justify-between gap-3 mb-4 px-1">
-          <div>
-            <h2 className="text-[22px] md:text-2xl font-bold text-[#1D1D1F] tracking-[-0.02em]">활동</h2>
-            <p className="text-[13px] text-[#8E8E93] mt-0.5">활동 점수는 출석·총회 제출·회비 비율의 평균이에요. OJ는 참고로 보여줘요.</p>
-          </div>
-          <TermSelect value={term} options={termOptions} onChange={setTerm} />
-        </div>
-        <div className="mb-10 md:mb-12">
-          {activityState === "loading" && !activity ? (
-            <div className="glass-card rounded-[26px] py-16 flex items-center justify-center gap-2 text-[#8E8E93] text-sm">
-              <Loader2 size={16} className="animate-spin" /> 활동을 불러오는 중이에요
+          <div className="pt-6 lg:pt-0 lg:pl-8 border-t lg:border-t-0 lg:border-l border-black/[0.06] lg:min-w-[400px]">
+            <div className="flex items-center justify-between gap-3 mb-5">
+              <p className="text-[13px] font-semibold text-[#6E6E73]">이번 학기 활동</p>
+              <TermSelect value={term} options={termOptions} onChange={setTerm} />
             </div>
-          ) : activityState === "error" || !activity ? (
-            <div className="glass-card rounded-[26px] py-16 text-center text-[#8E8E93] text-sm">활동 정보를 불러오지 못했어요. 잠시 후 다시 시도해 주세요.</div>
-          ) : (
-            <ActivityGrid data={activity} />
-          )}
-        </div>
+            {activityState === "loading" && !activity ? (
+              <div className="h-[170px] flex items-center justify-center gap-2 text-[#8E8E93] text-sm">
+                <Loader2 size={16} className="animate-spin" /> 불러오는 중이에요
+              </div>
+            ) : activityState === "error" || !activity ? (
+              <div className="h-[170px] flex items-center justify-center text-[#8E8E93] text-sm">활동 정보를 불러오지 못했어요.</div>
+            ) : (
+              <ActivityStats data={activity} />
+            )}
+          </div>
+        </motion.div>
 
         {/* 계정 — 설정 앱처럼 한 카드 안에 줄 목록 */}
         <div className="flex items-end justify-between gap-3 mb-3 px-1">
