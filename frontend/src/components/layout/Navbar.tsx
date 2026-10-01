@@ -454,6 +454,19 @@ export const Navbar = ({
               )}
             </div>
             
+            {/* ✨ [2026-10-01] 휴대폰 — 메뉴 버튼 바로 왼쪽에 동그란 프린터 버튼 (데스크탑 버튼이 숨는 폭에서만) */}
+            {isLoggedIn && (
+              <button
+                type="button"
+                aria-label="프린터"
+                onClick={() => { setIsMobileMenuOpen(false); navigate("/print"); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); }}
+                className={`sm:hidden relative glass-lens w-10 h-10 rounded-full flex items-center justify-center active:scale-95 transition-transform ${
+                  location.pathname === "/print" ? "text-[#0071E3]" : "text-[#1D1D1F]/60"
+                }`}
+              >
+                <Printer size={17} className="relative z-[1]" />
+              </button>
+            )}
             {/* 모바일 메뉴 햄버거 버튼 */}
             <button
               type="button"

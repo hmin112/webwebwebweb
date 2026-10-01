@@ -4,6 +4,7 @@ import { CalendarCheck, Check, ChevronRight, FileText, KeyRound, Loader2, Minus,
 import type { LucideIcon } from "lucide-react";
 import { api } from "../../api/axios";
 import { FileDropZone } from "../../components/ui/FileDropZone";
+import { PdfPreview } from "./PdfPreview";
 
 // ✨ [2026-10-01 신규] 웹 인쇄 — 파일을 올리면 미리보기(PDF가 아니면 서버에서 PDF로 바꿔 보여줌), 매수를 고르고 인쇄를 누르면
 // 대기열에 들어가 동아리방 프린터 PC의 쿵프린타 봇이 가져가 인쇄한다. 진행 상태는 몇 초마다 새로 읽는다.
@@ -54,7 +55,7 @@ const fmtTime = (iso?: string | null) => {
 export const PrintPage = () => {
   const inputRef = useRef<HTMLInputElement>(null);
   const [job, setJob] = useState<Job | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [previewData, setPreviewData] = useState<ArrayBuffer | null>(null);
   const [uploading, setUploading] = useState(false);
   const [copies, setCopies] = useState(1);
   const [submitting, setSubmitting] = useState(false);
@@ -87,11 +88,9 @@ export const PrintPage = () => {
     return () => clearInterval(t);
   }, [job?.id, job?.status]);
 
-  useEffect(() => () => { if (previewUrl) URL.revokeObjectURL(previewUrl); }, [previewUrl]);
 
   const reset = () => {
-    if (previewUrl) URL.revokeObjectURL(previewUrl);
-    setPreviewUrl(null);
+    setPreviewData(null);
     setJob(null);
     setCopies(1);
     if (inputRef.current) inputRef.current.value = "";
@@ -107,8 +106,8 @@ export const PrintPage = () => {
       const j = (await create()).data;
       setJob(j);
       if (j.previewReady) {
-        const pdf = await api.get(`/print/jobs/${j.id}/preview`, { responseType: "blob" });
-        setPreviewUrl(URL.createObjectURL(new Blob([pdf.data], { type: "application/pdf" })));
+        const pdf = await api.get(`/print/jobs/${j.id}/preview`, { responseType: "arraybuffer" });
+        setPreviewData(pdf.data);
       }
     } catch (e: any) {
       alert(e?.response?.data?.message || failMessage);
@@ -198,8 +197,8 @@ export const PrintPage = () => {
                 <Loader2 size={28} className="animate-spin text-[#0071E3]" />
                 <p className="text-sm">{startingForm ? "양식 미리보기를 불러오는 중이에요…" : "파일을 올리고 미리보기를 만드는 중이에요…"}</p>
               </div>
-            ) : job && previewUrl ? (
-              <iframe title="인쇄 미리보기" src={`${previewUrl}#view=FitH`} className="flex-1 w-full rounded-[20px] bg-[#F2F2F7] min-h-[400px] md:min-h-[590px]" />
+            ) : job && previewData ? (
+              <PdfPreview data={previewData} />
             ) : job ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-2 text-center px-6">
                 <FileText size={36} className="text-[#C7C7CC]" />
