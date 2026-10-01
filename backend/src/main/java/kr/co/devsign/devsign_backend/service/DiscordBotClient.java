@@ -65,4 +65,19 @@ public class DiscordBotClient {
         String url = botBaseUrl + "/message-reactors/{messageId}?emoji={emoji}";
         return restTemplate.getForObject(url, Map.class, messageId, emoji);
     }
+
+    // ✨ [2026-10-01] 공지 채널 최근 메시지 (총회 공지 자동 찾기)
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getChannelMessages(String channelKeyword, int limit) {
+        String url = org.springframework.web.util.UriComponentsBuilder.fromUriString(botBaseUrl + "/channel-messages")
+                .queryParam("channel", channelKeyword).queryParam("limit", limit)
+                .encode().toUriString();
+        return restTemplate.getForObject(java.net.URI.create(url), Map.class);
+    }
+
+    // ✨ [2026-10-01] 한 메시지에 어떤 이모지로든 반응한 사람 전체 (총회 공지 반응 현황)
+    @SuppressWarnings("unchecked")
+    public Map<String, Object> getAllReactors(String messageId) {
+        return restTemplate.getForObject(botBaseUrl + "/message-all-reactors/" + messageId, Map.class);
+    }
 }

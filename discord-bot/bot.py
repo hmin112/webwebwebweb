@@ -263,6 +263,80 @@ async def get_message_reactors(message_id: int, emoji: str = "✅"):
         "members": reactors,
     }
 
+# ✨ [2026-10-01] 채널 이름 비교용 — 이모지·구분자(｜, -, 공백)를 빼고 글자만 남긴다 ("📢｜동아리공지" → "동아리공지")
+def _norm_name(s):
+    import re
+    return re.sub(r"[^0-9A-Za-z가-힣]", "", s or "")
+
+async def _find_message(guild, message_id: int):
+    for channel in guild.text_channels:
+        try:
+            return await channel.fetch_message(message_id)
+        except (discord.NotFound, discord.Forbidden):
+            continue
+        except Exception:
+            continue
+    return None
+
+# [기능 8] 공지 채널 최근 메시지 — 총회 공지를 자동으로 찾기 위해 (채널은 이름에 키워드가 들어간 첫 텍스트 채널)
+@app.get("/channel-messages")
+async def get_channel_messages(channel: str = "동아리공지", limit: int = 100):
+    guild = bot.get_guild(GUILD_ID)
+    if not guild:
+        return {"status": "error", "message": "서버를 찾을 수 없습니다."}
+    key = _norm_name(channel)
+    target = next((c for c in guild.text_channels if key and key in _norm_name(c.name)), None)
+    if target is None:
+        return {"status": "not_found", "message": f"'{channel}' 채널을 찾을 수 없습니다.",
+                "channels": [c.name for c in guild.text_channels]}
+    messages = []
+    try:
+        async for m in target.history(limit=max(1, min(limit, 300))):
+            messages.append({
+                "id": str(m.id),
+                "content": (m.content or "")[:1500],
+                "createdAt": m.created_at.isoformat(),
+                "author": getattr(m.author, "display_name", ""),
+                "reactions": [{"emoji": str(r.emoji), "count": r.count} for r in m.reactions],
+            })
+    except discord.Forbidden:
+        return {"status": "error", "message": f"'{target.name}' 채널의 기록을 읽을 권한이 없습니다."}
+    return {"status": "success", "guildId": str(guild.id), "channelId": str(target.id),
+            "channelName": target.name, "messages": messages}
+
+# [기능 9] 한 메시지에 어떤 이모지로든 반응한 사람 전체 (사람마다 누른 이모지 목록 포함) — 총회 공지 반응 현황용
+@app.get("/message-all-reactors/{message_id}")
+async def get_message_all_reactors(message_id: int):
+    guild = bot.get_guild(GUILD_ID)
+    if not guild:
+        return {"status": "error", "message": "서버를 찾을 수 없습니다."}
+    target_message = await _find_message(guild, message_id)
+    if target_message is None:
+        return {"status": "not_found", "message": "해당 메시지를 찾을 수 없습니다."}
+    by_user = {}
+    for reaction in target_message.reactions:
+        async for user in reaction.users():
+            if user.bot:
+                continue
+            entry = by_user.get(user.id)
+            if entry is None:
+                member = guild.get_member(user.id)
+                if member is None:
+                    try:
+                        member = await guild.fetch_member(user.id)
+                    except Exception:
+                        member = None
+                info = get_member_status_info(member) if member else {
+                    "discordTag": user.name, "name": user.display_name, "studentId": "Unknown",
+                    "userStatus": "일반", "role": "USER", "avatarUrl": str(user.display_avatar.url),
+                }
+                entry = {**info, "emojis": []}
+                by_user[user.id] = entry
+            entry["emojis"].append(str(reaction.emoji))
+    return {"status": "success", "messageId": str(message_id),
+            "channelName": getattr(target_message.channel, "name", ""),
+            "count": len(by_user), "members": list(by_user.values())}
+
 # 메인 실행 루프
 async def main():
     # 도커 컨테이너 외부에서도 접근 가능하도록 host를 "0.0.0.0"으로 변경

@@ -14,6 +14,7 @@ import { Button } from "../../components/ui/button";
 import { api } from "../../api/axios";
 import { FeeTab } from "./tabs/FeeTab";
 import { ActivityTab } from "./tabs/ActivityTab";
+import { AssemblyNoticeTab } from "./tabs/AssemblyNoticeTab";
 import { FileDropZone } from "../../components/ui/FileDropZone";
 import { MiniCalendar } from "../../components/ui/MiniCalendar";
 
@@ -88,7 +89,7 @@ export const AdminPage = () => {
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [deletedMembers, setDeletedMembers] = useState<Member[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster" | "fee" | "activity">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster" | "fee" | "activity" | "notice">("members");
   const [sortBy, setSortBy] = useState<SortCriteria>("ID_DESC");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -591,37 +592,59 @@ export const AdminPage = () => {
   };
 
   return (
-    <div className="pt-24 md:pt-32 pb-16 md:pb-20 px-4 md:px-6 bg-slate-50 min-h-screen font-sans">
+    <div className="relative pt-24 md:pt-28 pb-16 md:pb-20 px-4 md:px-6 min-h-screen font-sans">
+      {/* ✨ [2026-10-01] 리퀴드 글라스 배경 — 유리 카드 뒤로 은은한 색이 비치게 */}
+      <div aria-hidden className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
+        <div className="absolute -top-32 -left-24 w-[520px] h-[520px] rounded-full blur-3xl opacity-70" style={{ background: "radial-gradient(circle, rgb(10 132 255 / 0.18), transparent 65%)" }} />
+        <div className="absolute top-1/3 -right-32 w-[560px] h-[560px] rounded-full blur-3xl opacity-70" style={{ background: "radial-gradient(circle, rgb(191 90 242 / 0.14), transparent 65%)" }} />
+        <div className="absolute -bottom-40 left-1/4 w-[520px] h-[520px] rounded-full blur-3xl opacity-60" style={{ background: "radial-gradient(circle, rgb(100 210 255 / 0.16), transparent 65%)" }} />
+      </div>
       <div className="max-w-7xl mx-auto">
-        <div className="mb-8 md:mb-12 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
+        <div className="mb-6 md:mb-8 flex flex-col md:flex-row md:items-end justify-between gap-4 md:gap-6">
           <div>
-            <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4">
-              <div className="p-2 md:p-3 bg-indigo-600 rounded-xl md:rounded-2xl text-white shadow-lg"><ShieldCheck className="w-5 h-5 md:w-6 md:h-6" /></div>
-              <h1 className="text-xl md:text-3xl font-[900] text-slate-900 tracking-tighter uppercase">관리</h1>
-            </div>
-            <p className="text-slate-500 font-bold tracking-tight text-[11px] md:text-sm">부원 권한 관리 및 실시간 로그 모니터링 시스템</p>
+            <h1 className="text-[34px] md:text-[40px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight">관리</h1>
+            <p className="text-[15px] text-[#6E6E73] mt-1">부원 권한과 로그, 회비·활동·총회 공지를 한곳에서 관리해요.</p>
           </div>
-          <div className="flex flex-wrap items-center gap-2 bg-white p-1.5 md:p-2 rounded-xl md:rounded-2xl border border-slate-100 shadow-sm w-full md:w-auto justify-end">
+          <div className="flex items-center gap-2">
             <button
               onClick={handleDiscordSync}
               disabled={isSyncing}
-              className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-2 md:py-3 bg-white text-indigo-600 border border-indigo-100 font-black rounded-lg md:rounded-xl hover:bg-indigo-50 transition-all disabled:opacity-50 text-[10px] md:text-sm h-auto"
+              className="glass-card inline-flex items-center gap-1.5 h-10 px-4 rounded-full text-sm font-semibold text-[#1D1D1F] hover:text-[#0071E3] transition-colors disabled:opacity-50"
             >
-              <RefreshCcw size={14} className={isSyncing ? "animate-spin" : ""} /> <span className="whitespace-nowrap">디스코드 동기화</span>
+              <RefreshCcw size={15} className={isSyncing ? "animate-spin" : ""} /> <span className="whitespace-nowrap">디스코드 동기화</span>
             </button>
-            <button onClick={exportToCSV} className="flex items-center gap-1.5 md:gap-2 px-3 md:px-5 py-2 md:py-3 bg-indigo-600 text-white font-black rounded-lg md:rounded-xl hover:bg-indigo-700 shadow-lg shadow-indigo-100 text-[10px] md:text-sm h-auto"><Download size={14} /> CSV</button>
+            <button onClick={exportToCSV} className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#0071E3] text-white text-sm font-semibold hover:bg-[#0077ED] transition-colors"><Download size={15} /> CSV</button>
           </div>
         </div>
 
-        <div className="max-w-full overflow-x-auto no-scrollbar mb-8 md:mb-10 pb-1">
-          <div className="flex w-max gap-2 p-1 bg-slate-200/50 rounded-xl md:rounded-[1.5rem]">
-          <button onClick={() => { setActiveTab("members"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "members" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>부원 명단</button>
-          <button onClick={() => { setActiveTab("access"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "access" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>통합 로그</button>
-          <button onClick={() => { setActiveTab("logs"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base ${activeTab === "logs" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>삭제 기록</button>
-          <button onClick={() => { setActiveTab("discord"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "discord" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>디스코드 확인</button>
-          <button onClick={() => { setActiveTab("roster"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "roster" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>명단 대조</button>
-          <button onClick={() => { setActiveTab("fee"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "fee" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>회비</button>
-          <button onClick={() => { setActiveTab("activity"); setSearchQuery(""); }} className={`shrink-0 px-4 md:px-8 py-2 md:py-3 rounded-lg md:rounded-2xl font-bold transition-all text-xs md:text-base whitespace-nowrap ${activeTab === "activity" ? "bg-white text-indigo-600 shadow-sm" : "text-slate-500"}`}>활동 현황</button>
+        {/* ✨ [2026-10-01] 탭 — 유리 막대 위를 흰 알약이 미끄러지는 세그먼트 */}
+        <div className="max-w-full overflow-x-auto md:overflow-visible no-scrollbar mb-8 md:mb-10 pb-1 -mx-1 px-1">
+          <div className="glass-card inline-flex w-max gap-0.5 p-1 rounded-full">
+            {([
+              ["members", "부원 명단"],
+              ["access", "통합 로그"],
+              ["logs", "삭제 기록"],
+              ["discord", "디스코드 확인"],
+              ["roster", "명단 대조"],
+              ["fee", "회비"],
+              ["activity", "활동 현황"],
+              ["notice", "총회 공지"],
+            ] as const).map(([id, label]) => (
+              <button
+                key={id}
+                onClick={() => { setActiveTab(id); setSearchQuery(""); }}
+                className={`relative shrink-0 h-9 md:h-10 px-4 md:px-5 rounded-full text-[13px] md:text-sm font-semibold whitespace-nowrap transition-colors ${activeTab === id ? "text-[#1D1D1F]" : "text-[#1D1D1F]/55 hover:text-[#1D1D1F]"}`}
+              >
+                {activeTab === id && (
+                  <motion.span
+                    layoutId="adminTabPill"
+                    className="absolute inset-0 rounded-full bg-[#fff] shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.10)]"
+                    transition={{ type: "spring", bounce: 0.15, duration: 0.45 }}
+                  />
+                )}
+                <span className="relative">{label}</span>
+              </button>
+            ))}
           </div>
         </div>
 
@@ -1239,6 +1262,7 @@ export const AdminPage = () => {
         {/* ✨ [2026-09-09 신규] 회비 탭 */}
         {activeTab === "fee" && <FeeTab key="fee" />}
         {activeTab === "activity" && <ActivityTab key="activity" />}
+        {activeTab === "notice" && <AssemblyNoticeTab key="notice" />}
       </div>
 
       <AnimatePresence>
