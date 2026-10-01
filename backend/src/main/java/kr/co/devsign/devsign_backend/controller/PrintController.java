@@ -36,6 +36,20 @@ public class PrintController {
         }
     }
 
+    @GetMapping("/forms")
+    public Object forms() {
+        return printService.forms();
+    }
+
+    @PostMapping("/forms/{key}")
+    public ResponseEntity<?> startForm(Authentication auth, @PathVariable String key) {
+        try {
+            return ResponseEntity.ok(printService.startForm(auth.getName(), key));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        }
+    }
+
     @GetMapping("/jobs/{id}/preview")
     public ResponseEntity<?> preview(Authentication auth, @PathVariable Long id) {
         try {

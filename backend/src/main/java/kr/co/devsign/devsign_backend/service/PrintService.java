@@ -36,8 +36,18 @@ public class PrintService {
     private final PrintJobRepository repository;
     private final MemberRepository memberRepository;
 
-    @Value("${app.upload.base-dir:uploads}")
+    // 인쇄 파일은 Caddy가 공개로 서빙하는 /app/uploads 밖(별도 볼륨)에 둔다 — 남의 인쇄물이 주소로 열리지 않게
+    @Value("${app.print.base-dir:print-data}")
     private String uploadBaseDir;
+
+    // ✨ [2026-10-01] 양식 출력 — 디스코드 고정 메뉴의 버튼과 같은 양식. 원본은 {base}/forms/{key}.hwp,
+    // 미리보기 PDF는 처음 고를 때 한 번 만들어 {key}.pdf로 저장해 둔다.
+    public record PrintForm(String key, String name, String color) {}
+
+    public static final List<PrintForm> FORMS = List.of(
+            new PrintForm("attendance", "출석인정요청서", "#DA373C"),
+            new PrintForm("counseling", "지도교수상담서", "#248046"),
+            new PrintForm("rental", "시설물대여신청서", "#5865F2"));
 
     // 프린터 PC 봇이 마지막으로 서버에 들른 시각 — 웹에 "프린터 연결됨/꺼짐"으로 보여준다
     private volatile LocalDateTime agentLastSeen;
@@ -73,13 +83,13 @@ public class PrintService {
 
         PrintJob job = new PrintJob();
         job.setLoginId(loginId);
-        job.setRequesterName(memberRepository.findByLoginId(loginId).map(Member::getName).orElse(loginId));
+        job.setRequesterName(requesterName(loginId));
         job.setOriginalFileName(original.length() > 200 ? original.substring(original.length() - 200) : original);
         job.setExtension(ext);
         job.setStoredPath(folder + "/original." + ext);
         job.setStatus(DRAFT);
 
-        Path pdf = "pdf".equals(ext) ? src : convertToPdf(src, dir);
+        Path pdf = "pdf".equals(ext) ? src : convertToPdf(src, dir.resolve("preview.pdf"));
         if (pdf != null) {
             job.setPreviewPath(base().relativize(pdf).toString());
             job.setPageCount(countPages(pdf));
@@ -89,9 +99,12 @@ public class PrintService {
         return toResponse(repository.save(job));
     }
 
-    private Path convertToPdf(Path src, Path dir) {
+    // LibreOffice로 src를 PDF로 바꿔 target에 둔다 (실패하면 null)
+    private Path convertToPdf(Path src, Path target) {
         synchronized (convertLock) {
+            Path out = null;
             try {
+                Path dir = Files.createTempDirectory("print-convert");
                 Process p = new ProcessBuilder("soffice", "--headless", "--norestore",
                         "-env:UserInstallation=file:///tmp/lo-print-profile",
                         "--convert-to", "pdf", "--outdir", dir.toString(), src.toString())
@@ -102,14 +115,22 @@ public class PrintService {
                     p.destroyForcibly();
                     return null;
                 }
-                Path out = dir.resolve("original.pdf");
+                String name = src.getFileName().toString();
+                out = dir.resolve(name.substring(0, name.lastIndexOf('.')) + ".pdf");
                 if (!Files.exists(out)) return null;
-                Path preview = dir.resolve("preview.pdf");
-                Files.move(out, preview, StandardCopyOption.REPLACE_EXISTING);
-                return preview;
+                Files.move(out, target, StandardCopyOption.REPLACE_EXISTING);
+                return target;
             } catch (Exception e) {
                 System.err.println("인쇄 미리보기 변환 실패: " + e.getMessage());
                 return null;
+            } finally {
+                try {
+                    if (out != null) {
+                        Files.deleteIfExists(out);
+                        Files.deleteIfExists(out.getParent());
+                    }
+                } catch (Exception ignored) {
+                }
             }
         }
     }
@@ -125,6 +146,61 @@ public class PrintService {
         } catch (Exception e) {
             return null;
         }
+    }
+
+    private String requesterName(String loginId) {
+        return memberRepository.findByLoginId(loginId)
+                .map(m -> {
+                    String sid = m.getStudentId() == null ? "" : m.getStudentId().trim();
+                    String year = sid.length() >= 4 ? sid.substring(2, 4) + " " : "";
+                    return year + m.getName();
+                })
+                .orElse(loginId);
+    }
+
+    private Path formSource(String key) {
+        return resolve("forms/" + key + ".hwp");
+    }
+
+    public List<Map<String, Object>> forms() {
+        return FORMS.stream().map(f -> {
+            Map<String, Object> m = new LinkedHashMap<>();
+            m.put("key", f.key());
+            m.put("name", f.name());
+            m.put("color", f.color());
+            m.put("available", Files.exists(formSource(f.key())));
+            return m;
+        }).toList();
+    }
+
+    // 양식을 고르면 업로드한 파일과 똑같이 DRAFT 작업을 만든다 — 미리보기·매수·인쇄 흐름을 그대로 쓴다
+    @Transactional
+    public PrintJobResponse startForm(String loginId, String key) {
+        PrintForm form = FORMS.stream().filter(f -> f.key().equals(key)).findFirst()
+                .orElseThrow(() -> new IllegalArgumentException("없는 양식이에요."));
+        Path src = formSource(key);
+        if (!Files.exists(src)) throw new IllegalArgumentException(form.name() + " 파일이 아직 서버에 없어요. 관리자에게 알려주세요.");
+
+        PrintJob job = new PrintJob();
+        job.setLoginId(loginId);
+        job.setRequesterName(requesterName(loginId));
+        job.setOriginalFileName(form.name() + ".hwp");
+        job.setExtension("hwp");
+        job.setFormKey(key);
+        job.setStatus(DRAFT);
+
+        Path preview = resolve("forms/" + key + ".pdf");
+        try {
+            boolean stale = !Files.exists(preview)
+                    || Files.getLastModifiedTime(preview).compareTo(Files.getLastModifiedTime(src)) < 0;
+            if (stale) convertToPdf(src, preview);
+        } catch (IOException ignored) {
+        }
+        if (Files.exists(preview)) {
+            job.setPreviewPath("forms/" + key + ".pdf");
+            job.setPageCount(countPages(preview));
+        }
+        return toResponse(repository.save(job));
     }
 
     public byte[] preview(Long id, String loginId, boolean admin) throws IOException {
@@ -157,7 +233,9 @@ public class PrintService {
     }
 
     public List<PrintJobResponse> mine(String loginId) {
-        return repository.findTop10ByLoginIdAndStatusNotOrderByIdDesc(loginId, DRAFT).stream().map(this::toResponse).toList();
+        // 올렸다가 닫은(취소) 작업은 빼고 — 대기·인쇄 중(진행 표시용)과 완료·실패만
+        return repository.findTop30ByLoginIdAndStatusInOrderByIdDesc(loginId, List.of(QUEUED, PRINTING, DONE, FAILED))
+                .stream().map(this::toResponse).toList();
     }
 
     public Map<String, Object> status() {
@@ -194,6 +272,8 @@ public class PrintService {
             m.put("extension", job.getExtension());
             m.put("copies", job.getCopies());
             m.put("requester", job.getRequesterName());
+            m.put("formName", job.getFormKey() == null ? null : job.getOriginalFileName().replaceFirst("\\.hwp$", ""));
+            m.put("discordTag", memberRepository.findByLoginId(job.getLoginId()).map(Member::getDiscordTag).orElse(null));
             return m;
         });
     }
@@ -201,7 +281,8 @@ public class PrintService {
     public byte[] agentFile(Long id) throws IOException {
         PrintJob job = repository.findById(id).orElseThrow(() -> new IllegalArgumentException("작업이 없어요."));
         if (!PRINTING.equals(job.getStatus())) throw new IllegalArgumentException("인쇄 중인 작업이 아니에요.");
-        return Files.readAllBytes(resolve(job.getStoredPath()));
+        Path file = job.getFormKey() != null ? formSource(job.getFormKey()) : resolve(job.getStoredPath());
+        return Files.readAllBytes(file);
     }
 
     @Transactional

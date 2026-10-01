@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Optional;
 
 public interface PrintJobRepository extends JpaRepository<PrintJob, Long> {
-    List<PrintJob> findTop10ByLoginIdAndStatusNotOrderByIdDesc(String loginId, String status);
+    List<PrintJob> findTop30ByLoginIdAndStatusInOrderByIdDesc(String loginId, List<String> statuses);
 
     Optional<PrintJob> findFirstByStatusOrderByQueuedAtAscIdAsc(String status);
 

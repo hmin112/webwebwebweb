@@ -22,6 +22,9 @@ public class PrintJob {
     private String originalFileName;
     private String extension;
 
+    // 양식 출력이면 양식 키(attendance 등) — 파일은 서버의 양식 원본을 쓰고 작업이 끝나도 지우지 않는다
+    private String formKey;
+
     // 업로드 폴더 기준 상대 경로 (원본 / 미리보기 PDF)
     private String storedPath;
     private String previewPath;

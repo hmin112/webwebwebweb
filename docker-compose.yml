@@ -35,6 +35,8 @@ services:
     volumes:
       # ✨ 게시글 이미지 및 파일 저장용 격리 경로
       - /devsign-data/uploads:/app/uploads
+      # ✨ [2026-10-01] 웹 인쇄 파일·양식 — Caddy가 공개 서빙하는 uploads와 분리
+      - /devsign-data/print:/app/print-data
     networks:
       - global_network
     depends_on:

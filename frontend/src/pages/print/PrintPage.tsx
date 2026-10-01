@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "framer-motion";
-import { Check, FileText, Loader2, Minus, Plus, Printer, RotateCcw, Upload, X } from "lucide-react";
+import { CalendarCheck, Check, ChevronRight, FileText, KeyRound, Loader2, Minus, MessagesSquare, Plus, Printer, RotateCcw, Upload } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import { api } from "../../api/axios";
 import { FileDropZone } from "../../components/ui/FileDropZone";
 
@@ -20,6 +21,16 @@ type Job = {
   finishedAt: string | null;
   queuePosition: number;
   previewReady: boolean;
+  formKey: string | null;
+};
+
+type PrintForm = { key: string; name: string; color: string; available: boolean };
+
+// 양식별 아이콘과 한 줄 설명 (색은 서버가 주는 디스코드 버튼 색을 아이콘에만 옅게 쓴다)
+const FORM_META: Record<string, { icon: LucideIcon; hint: string }> = {
+  attendance: { icon: CalendarCheck, hint: "결석 출석 인정 신청" },
+  counseling: { icon: MessagesSquare, hint: "지도교수 상담 기록" },
+  rental: { icon: KeyRound, hint: "시설물 대여 신청" },
 };
 
 const ACCEPT = ".pdf,.ppt,.pptx,.hwp,.hwpx,.doc,.docx";
@@ -49,6 +60,8 @@ export const PrintPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [history, setHistory] = useState<Job[]>([]);
   const [printer, setPrinter] = useState<{ online: boolean; queued: number } | null>(null);
+  const [forms, setForms] = useState<PrintForm[]>([]);
+  const [startingForm, setStartingForm] = useState<string | null>(null);
 
   const loadHistory = () => api.get("/print/jobs/mine").then((r) => setHistory(r.data || [])).catch(() => {});
   const loadStatus = () => api.get("/print/status").then((r) => setPrinter(r.data)).catch(() => {});
@@ -56,6 +69,7 @@ export const PrintPage = () => {
   useEffect(() => {
     loadHistory();
     loadStatus();
+    api.get("/print/forms").then((r) => setForms(r.data || [])).catch(() => {});
     const t = setInterval(() => { loadStatus(); loadHistory(); }, 5000);
     return () => clearInterval(t);
   }, []);
@@ -83,27 +97,38 @@ export const PrintPage = () => {
     if (inputRef.current) inputRef.current.value = "";
   };
 
-  const upload = async (file: File) => {
-    if (file.size > 50 * 1024 * 1024) return alert("50MB 이하 파일만 인쇄할 수 있어요.");
-    // 이전에 올리고 인쇄하지 않은 파일은 정리
+  // 업로드한 파일이든 양식이든 DRAFT 작업을 받아 미리보기를 띄운다
+  const openDraft = async (create: () => Promise<{ data: Job }>, failMessage: string) => {
+    // 이전에 올리고 인쇄하지 않은 작업은 정리
     if (job && job.status === "DRAFT") api.post(`/print/jobs/${job.id}/cancel`).catch(() => {});
     reset();
     setUploading(true);
     try {
-      const form = new FormData();
-      form.append("file", file);
-      const res = await api.post("/print/upload", form);
-      const j: Job = res.data;
+      const j = (await create()).data;
       setJob(j);
       if (j.previewReady) {
         const pdf = await api.get(`/print/jobs/${j.id}/preview`, { responseType: "blob" });
         setPreviewUrl(URL.createObjectURL(new Blob([pdf.data], { type: "application/pdf" })));
       }
     } catch (e: any) {
-      alert(e?.response?.data?.message || "파일을 올리지 못했어요.");
+      alert(e?.response?.data?.message || failMessage);
     } finally {
       setUploading(false);
     }
+  };
+
+  const upload = (file: File) => {
+    if (file.size > 50 * 1024 * 1024) return alert("50MB 이하 파일만 인쇄할 수 있어요.");
+    const form = new FormData();
+    form.append("file", file);
+    return openDraft(() => api.post("/print/upload", form), "파일을 올리지 못했어요.");
+  };
+
+  const startForm = async (f: PrintForm) => {
+    if (startingForm) return;
+    setStartingForm(f.key);
+    await openDraft(() => api.post(`/print/forms/${f.key}`), "양식을 불러오지 못했어요.");
+    setStartingForm(null);
   };
 
   const submit = async () => {
@@ -130,6 +155,9 @@ export const PrintPage = () => {
     }
   };
 
+  // 최근 인쇄에는 끝난 것(완료·실패) 최근 3개만 — 올렸다가 닫은 것, 대기 중인 것은 위 인쇄 설정 카드에서 보인다
+  const finished = history.filter((h) => h.status === "DONE" || h.status === "FAILED").slice(0, 3);
+
   const totalPages = job?.pageCount ? job.pageCount * (job.status === "DRAFT" ? copies : job.copies) : null;
   const requested = job && job.status !== "DRAFT";
 
@@ -144,7 +172,7 @@ export const PrintPage = () => {
         <div className="flex flex-col md:flex-row md:items-end justify-between gap-3 mb-6 md:mb-8">
           <div>
             <h1 className="text-[34px] md:text-[40px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight">프린터</h1>
-            <p className="text-[15px] text-[#6E6E73] mt-1">파일을 올리고 미리보기를 확인한 뒤, 동아리방 프린터로 바로 인쇄해요.</p>
+            <p className="text-[15px] text-[#6E6E73] mt-1">파일을 올리거나 양식을 골라 미리보기를 확인한 뒤, 동아리방 프린터로 바로 인쇄해요.</p>
           </div>
           {printer && (
             <span className="glass-card inline-flex items-center gap-2 h-9 px-3.5 rounded-full text-[13px] font-semibold text-[#1D1D1F] self-start md:self-auto">
@@ -168,7 +196,7 @@ export const PrintPage = () => {
             {uploading ? (
               <div className="flex-1 flex flex-col items-center justify-center gap-3 text-[#8E8E93]">
                 <Loader2 size={28} className="animate-spin text-[#0071E3]" />
-                <p className="text-sm">파일을 올리고 미리보기를 만드는 중이에요…</p>
+                <p className="text-sm">{startingForm ? "양식 미리보기를 불러오는 중이에요…" : "파일을 올리고 미리보기를 만드는 중이에요…"}</p>
               </div>
             ) : job && previewUrl ? (
               <iframe title="인쇄 미리보기" src={`${previewUrl}#view=FitH`} className="flex-1 w-full rounded-[20px] bg-[#F2F2F7] min-h-[400px] md:min-h-[590px]" />
@@ -195,6 +223,49 @@ export const PrintPage = () => {
 
           {/* 인쇄 설정 */}
           <div className="space-y-4">
+            {/* 양식 출력 — 디스코드 프린터봇 고정 메뉴의 양식과 같은 것. 설정 앱처럼 한 줄씩 */}
+            {forms.length > 0 && (
+              <div className="glass-card rounded-[28px] p-2 md:p-2.5">
+                <p className="text-[13px] font-semibold text-[#8E8E93] px-3 pt-2.5 pb-1.5">양식 출력</p>
+                <div className="divide-y divide-black/[0.05]">
+                  {forms.map((f) => {
+                    const meta = FORM_META[f.key] || { icon: FileText, hint: "" };
+                    const Icon = meta.icon;
+                    const active = job?.formKey === f.key && job.status === "DRAFT";
+                    return (
+                      <button
+                        key={f.key}
+                        type="button"
+                        onClick={() => startForm(f)}
+                        disabled={!f.available || !!startingForm || uploading}
+                        className={`group w-full flex items-center gap-3 px-3 py-2.5 rounded-[18px] text-left transition-colors disabled:opacity-50 ${active ? "bg-[#0071E3]/[0.07]" : "hover:bg-black/[0.035]"}`}
+                      >
+                        <span
+                          className="w-9 h-9 rounded-[11px] flex items-center justify-center shrink-0 shadow-[inset_0_1px_0_rgb(255_255_255/0.6)]"
+                          style={{ backgroundColor: `${f.color}14`, color: f.color }}
+                        >
+                          <Icon size={17} strokeWidth={2.1} />
+                        </span>
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-[15px] font-semibold text-[#1D1D1F] leading-tight">{f.name}</span>
+                          <span className="block text-[12px] text-[#8E8E93] mt-0.5 truncate">
+                            {f.available ? meta.hint : "양식 파일 준비 중"}
+                          </span>
+                        </span>
+                        {startingForm === f.key ? (
+                          <Loader2 size={16} className="animate-spin text-[#8E8E93] shrink-0" />
+                        ) : active ? (
+                          <Check size={16} strokeWidth={2.6} className="text-[#0071E3] shrink-0" />
+                        ) : (
+                          <ChevronRight size={17} className="text-[#C7C7CC] group-hover:text-[#8E8E93] transition-colors shrink-0" />
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
             <div className="glass-card rounded-[28px] p-5 md:p-6">
               <p className="text-[13px] font-semibold text-[#8E8E93] mb-2">인쇄 설정</p>
               {job ? (
@@ -231,7 +302,7 @@ export const PrintPage = () => {
 
                   {!requested ? (
                     <div className="flex gap-2">
-                      <button onClick={() => { cancelJob(job.id); reset(); }} className="h-11 px-4 rounded-full bg-black/[0.05] text-[15px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] transition-colors">다른 파일</button>
+                      <button onClick={() => { cancelJob(job.id); reset(); }} className="h-11 px-4 rounded-full bg-black/[0.05] text-[15px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] transition-colors">{job.formKey ? "닫기" : "다른 파일"}</button>
                       <button
                         onClick={submit}
                         disabled={submitting}
@@ -245,29 +316,26 @@ export const PrintPage = () => {
                   )}
                 </>
               ) : (
-                <p className="text-sm text-[#AEAEB2] py-6">왼쪽에 파일을 올리면 여기서 매수를 고르고 인쇄할 수 있어요.</p>
+                <p className="text-sm text-[#AEAEB2] py-6">파일을 올리거나 양식을 고르면 여기서 매수를 고르고 인쇄할 수 있어요.</p>
               )}
             </div>
 
             {/* 최근 인쇄 */}
             <div className="glass-card rounded-[28px] p-5 md:p-6">
               <p className="text-[13px] font-semibold text-[#8E8E93] mb-2">최근 인쇄</p>
-              {history.length === 0 ? (
+              {finished.length === 0 ? (
                 <p className="text-sm text-[#AEAEB2] py-3">아직 인쇄한 기록이 없어요.</p>
               ) : (
                 <div className="divide-y divide-black/[0.05]">
-                  {history.map((h) => {
+                  {finished.map((h) => {
                     const st = STATUS_LABEL[h.status];
                     return (
-                      <div key={h.id} className="flex items-center gap-3 py-2.5">
+                      <div key={h.id} className="flex items-center gap-3 py-2.5" title={h.status === "FAILED" ? h.errorMessage || "" : undefined}>
                         <div className="min-w-0 flex-1">
                           <p className="text-[14px] font-medium text-[#1D1D1F] truncate">{h.fileName}</p>
-                          <p className="text-[11px] text-[#8E8E93]">{fmtTime(h.queuedAt || h.createdAt)} · {h.copies}부</p>
+                          <p className="text-[11px] text-[#8E8E93]">{fmtTime(h.finishedAt || h.queuedAt || h.createdAt)} · {h.copies}부</p>
                         </div>
                         <span className="shrink-0 text-[12px] font-semibold" style={{ color: st.color }}>{st.label}</span>
-                        {h.status === "QUEUED" && (
-                          <button onClick={() => cancelJob(h.id)} aria-label="취소" className="w-7 h-7 rounded-full text-[#AEAEB2] hover:text-[#FF3B30] hover:bg-[#FF3B30]/[0.06] flex items-center justify-center"><X size={14} /></button>
-                        )}
                       </div>
                     );
                   })}
