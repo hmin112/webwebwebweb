@@ -26,6 +26,15 @@ FROM eclipse-temurin:21-jre-noble
 WORKDIR /backend
 #컨테이너 내 생성되는 작업폴더, app이라고 해도 되나 backend가 더 명확
 
+# ✨ [2026-10-01] 웹 인쇄 미리보기 — LibreOffice로 PPT/DOC/HWP를 PDF로 바꾼다(한글 글꼴 포함).
+# HWP/HWPX는 LibreOffice 확장 H2Orestart로 연다. 학교 망에서 우분투 HTTP 저장소가 막혀 있어 HTTPS 미러(카카오)를 쓴다.
+RUN sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirror.kakao.com/ubuntu|g; s|http://security.ubuntu.com/ubuntu|https://mirror.kakao.com/ubuntu|g' /etc/apt/sources.list.d/ubuntu.sources \
+ && apt-get update && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+      libreoffice-writer libreoffice-impress libreoffice-java-common fonts-nanum fonts-noto-cjk curl ca-certificates \
+ && curl -fsSL -o /tmp/H2Orestart.oxt https://github.com/ebandal/H2Orestart/releases/download/v0.7.14/H2Orestart.oxt \
+ && unopkg add --shared /tmp/H2Orestart.oxt \
+ && rm -rf /tmp/H2Orestart.oxt /var/lib/apt/lists/*
+
 # 1단계(builder)에서 만들어진 jar 파일만 실행 환경으로 복사
 COPY --from=builder /backend/build/libs/*.jar backend.jar
 #호스트(빌드 단계)의 빌드된 jar파일을 컨테이너의 backend.jar로 복사

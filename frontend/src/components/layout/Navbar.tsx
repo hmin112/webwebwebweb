@@ -1,7 +1,7 @@
 import { api } from "../../api/axios";
 import { useState, useEffect, useLayoutEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { Menu, X, LogOut, ChevronRight } from "lucide-react";
+import { Menu, X, LogOut, ChevronRight, Printer } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom"; // ✨ 라우터 훅 추가
 
 // ✨ [수정] 서버 아이콘을 하드코딩하면 디스코드에서 아이콘을 바꿀 때마다 깨지므로,
@@ -423,6 +423,21 @@ export const Navbar = ({
                     </span>
                     <ChevronRight size={14} className="relative z-[1] -ml-0.5 text-[#1D1D1F]/35 shrink-0" />
                   </motion.button>
+                  {/* ✨ [2026-10-01] 웹 인쇄 — 로그아웃 바로 왼쪽, 같은 크기 */}
+                  <motion.button
+                    type="button"
+                    onClick={() => { navigate("/print"); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); }}
+                    aria-label="프린터"
+                    title="프린터로 인쇄"
+                    whileHover={{ y: -1 }}
+                    whileTap={{ scale: 0.94 }}
+                    transition={{ type: "spring", stiffness: 500, damping: 30 }}
+                    className={`relative glass-lens w-10 h-10 rounded-full flex items-center justify-center transition-colors duration-200 ${
+                      location.pathname === "/print" ? "text-[#0071E3]" : "text-[#1D1D1F]/55 hover:text-[#0071E3]"
+                    }`}
+                  >
+                    <Printer size={16} className="relative z-[1]" />
+                  </motion.button>
                   <motion.button
                     type="button"
                     onClick={handleLogoutClick}
@@ -529,6 +544,13 @@ export const Navbar = ({
                         </span>
                       </span>
                       <ChevronRight size={16} className="relative z-[1] text-[#1D1D1F]/30 shrink-0" />
+                    </button>
+                    <button
+                      type="button"
+                      className="w-full py-3.5 rounded-2xl bg-[#0071E3]/[0.08] text-[#0071E3] font-semibold flex items-center justify-center gap-2 text-[15px] active:scale-[0.98] transition-transform"
+                      onClick={() => { setIsMobileMenuOpen(false); navigate("/print"); window.scrollTo({ top: 0, left: 0, behavior: "instant" }); }}
+                    >
+                      <Printer size={16} /> 프린터로 인쇄
                     </button>
                     <button
                       type="button"

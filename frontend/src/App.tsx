@@ -13,6 +13,7 @@ import { Signup } from "./pages/auth/Signup";
 import { FindAccount } from "./pages/auth/FindAccount";
 import { SignupSuccess } from "./pages/auth/SignupSuccess";
 import { ProfilePage } from "./pages/profile/ProfilePage";
+import { PrintPage } from "./pages/print/PrintPage";
 
 import { NoticePage } from "./pages/notice/NoticePage";
 import { NoticeDetail } from "./pages/notice/NoticeDetail";
@@ -355,7 +356,7 @@ function AppContent() {
   const hideLayoutPaths = ["/login", "/signup", "/find-account", "/signup-success", "/contact-admin"];
   const isLayoutHidden = hideLayoutPaths.some(path => window.location.pathname.startsWith(path));
   // ✨ [2026-09-30] 앱처럼 쓰는 화면(총회·OJ·관리·개인 프로필)에서는 하단 푸터를 숨긴다 (하위 경로 포함)
-  const hideFooterPaths = ["/assembly", "/oj", "/admin", "/profile"];
+  const hideFooterPaths = ["/assembly", "/oj", "/admin", "/profile", "/print"];
   const isFooterHidden = hideFooterPaths.some(path => location.pathname === path || location.pathname.startsWith(path + "/"));
 
   return (
@@ -398,6 +399,8 @@ function AppContent() {
           <Route path="/signup-success" element={<SignupSuccess onNavigate={handleNavigateCompat} />} />
 
           <Route path="/profile" element={<ProfilePage onNavigate={handleNavigateCompat} user={currentUser} setUser={setCurrentUser} posts={posts} />} />
+          {/* ✨ [2026-10-01] 웹 인쇄 — 로그인한 부원만 */}
+          <Route path="/print" element={isLoggedIn ? <PrintPage /> : <Navigate to="/login" replace />} />
 
           <Route path="/assembly" element={<AssemblyPage isAdmin={isAdmin} userStatus={userStatus} onNavigate={handleNavigateCompat} loginId={currentUser?.loginId} />} />
           <Route path="/assembly/member/:id" element={<MemberDetailTab loginId={""} onBack={() => navigate("/assembly")} />} />

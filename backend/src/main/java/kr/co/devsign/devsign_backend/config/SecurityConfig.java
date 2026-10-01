@@ -76,6 +76,7 @@ public class SecurityConfig {
                                 "/api/members/check/**",
                                 "/h2-console/**",
                                 "/favicon.ico",
+                                "/api/print-agent/**",            // ✨ [2026-10-01] 프린터 PC 봇 — 비밀 키로 따로 인증 (PrintAgentController)
                                 "/error"                         // 에러 페이지 허용 (무한 루프 방지)
                         ).permitAll()
                         // GET 요청은 비로그인도 허용

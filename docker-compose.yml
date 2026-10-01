@@ -29,6 +29,9 @@ services:
       - "8080:8080"
     environment:
       - TZ=Asia/Seoul  # ✨ [추가] 스프링 백엔드 서버 및 로그 한국 시간 적용
+    # ✨ [2026-10-01] 웹 인쇄 — 프린터 PC 봇과 나누는 비밀 키(PRINT_AGENT_KEY). 저장소 밖 파일이라 커밋되지 않는다.
+    env_file:
+      - /home/devsign/.env_devsign_print
     volumes:
       # ✨ 게시글 이미지 및 파일 저장용 격리 경로
       - /devsign-data/uploads:/app/uploads
