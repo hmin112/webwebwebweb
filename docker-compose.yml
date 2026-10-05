@@ -39,6 +39,8 @@ services:
       - /devsign-data/uploads:/app/uploads
       # ✨ [2026-10-01] 웹 인쇄 파일·양식 — Caddy가 공개 서빙하는 uploads와 분리
       - /devsign-data/print:/app/print-data
+      # ✨ [2026-10-05] 실적 파일 — 공개 서빙되는 uploads와 분리
+      - /devsign-data/achievements:/app/achievement-data
     networks:
       - global_network
     depends_on:

@@ -15,6 +15,7 @@ import { api } from "../../api/axios";
 import { FeeTab } from "./tabs/FeeTab";
 import { ActivityTab } from "./tabs/ActivityTab";
 import { AssemblyNoticeTab } from "./tabs/AssemblyNoticeTab";
+import { AchievementsTab } from "./tabs/AchievementsTab";
 import { FileDropZone } from "../../components/ui/FileDropZone";
 import { MiniCalendar } from "../../components/ui/MiniCalendar";
 
@@ -89,7 +90,7 @@ export const AdminPage = () => {
   const [accessLogs, setAccessLogs] = useState<AccessLog[]>([]);
   const [deletedMembers, setDeletedMembers] = useState<Member[]>([]);
 
-  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster" | "fee" | "activity" | "notice">("members");
+  const [activeTab, setActiveTab] = useState<"members" | "access" | "logs" | "discord" | "roster" | "fee" | "activity" | "notice" | "achievements">("members");
   const [sortBy, setSortBy] = useState<SortCriteria>("ID_DESC");
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -629,6 +630,7 @@ export const AdminPage = () => {
               ["fee", "회비"],
               ["activity", "활동 현황"],
               ["notice", "총회 공지"],
+              ["achievements", "실적"],
             ] as const).map(([id, label]) => (
               <button
                 key={id}
@@ -1263,6 +1265,7 @@ export const AdminPage = () => {
         {activeTab === "fee" && <FeeTab key="fee" />}
         {activeTab === "activity" && <ActivityTab key="activity" />}
         {activeTab === "notice" && <AssemblyNoticeTab key="notice" />}
+        {activeTab === "achievements" && <AchievementsTab key="achievements" />}
       </div>
 
       <AnimatePresence>
