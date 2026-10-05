@@ -32,6 +32,8 @@ services:
     # ✨ [2026-10-01] 웹 인쇄 — 프린터 PC 봇과 나누는 비밀 키(PRINT_AGENT_KEY). 저장소 밖 파일이라 커밋되지 않는다.
     env_file:
       - /home/devsign/.env_devsign_print
+      # ✨ [2026-10-05] JWT·OJ 키·DB 비밀번호 — 공개 저장소에 올라가 있던 값을 빼고 서버 전용 파일에서 읽는다
+      - /home/devsign/.env_devsign_secrets
     volumes:
       # ✨ 게시글 이미지 및 파일 저장용 격리 경로
       - /devsign-data/uploads:/app/uploads
