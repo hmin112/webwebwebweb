@@ -68,6 +68,7 @@ public class AchievementService {
     private final AttendanceTargetRepository targetRepository;
     private final AttendanceRecordRepository recordRepository;
     private final AttendanceService attendanceService;
+    private final DiscordBotClient discordBotClient;
 
     @Value("${app.achievement.base-dir:achievement-data}")
     private String baseDir;
@@ -140,6 +141,8 @@ public class AchievementService {
                     fmt(a.getStartDate()), fmt(a.getEndDate()), a.getOrganizer(), a.getMemo(),
                     a.getHallOfFameId(), a.getHallOfFameId() != null && hofIds.contains(a.getHallOfFameId()),
                     attendance(a.getAttendanceSessionId()), entries, recordFiles,
+                    a.getParticipants().stream().map(m -> new MemberRef(m.getLoginId(), m.getName(), m.getStudentId())).toList(),
+                    a.getSourceUrl(), a.getDiscordMessageId() != null,
                     a.getUpdatedAt() == null ? null : a.getUpdatedAt().toString()));
         }
         return out;
@@ -241,8 +244,9 @@ public class AchievementService {
     public void delete(Long id) {
         Achievement a = find(id);
         for (AchievementFile f : fileRepository.findByAchievementIdOrderByIdAsc(id)) removeFile(f);
-        if (a.getHallOfFameId() != null) {
+        if (a.getHallOfFameId() != null || a.getSourceKey() != null) {
             a.getEntries().clear();
+            a.getParticipants().clear();
             a.setDeleted(true);
             a.setAttendanceSessionId(null);
             touch(a);
@@ -316,9 +320,25 @@ public class AchievementService {
     private void applyEntry(AchievementEntry e, EntryRequest req) {
         e.setName(blankToNull(req.name()));
         e.setAward(blankToNull(req.award()));
+        List<AchievementMember> members = resolveMembers(req.members());
+        e.getMembers().clear();
+        e.getMembers().addAll(members);
+    }
+
+    @Transactional
+    public AchievementDto setParticipants(Long id, ParticipantsRequest req) {
+        Achievement a = find(id);
+        a.getParticipants().clear();
+        a.getParticipants().addAll(resolveMembers(req.members()));
+        touch(a);
+        return get(a.getId());
+    }
+
+    // 부원은 지금 이름·학번으로 다시 채우고, 부원이 아닌 사람은 이름만
+    private List<AchievementMember> resolveMembers(List<MemberRef> refs) {
         List<AchievementMember> members = new ArrayList<>();
         Set<String> seen = new HashSet<>();
-        for (MemberRef m : Optional.ofNullable(req.members()).orElse(List.of())) {
+        for (MemberRef m : Optional.ofNullable(refs).orElse(List.of())) {
             if (m == null) continue;
             if (m.loginId() != null && !m.loginId().isBlank()) {
                 if (!seen.add(m.loginId())) continue;
@@ -330,8 +350,7 @@ public class AchievementService {
                 members.add(new AchievementMember(null, m.name().trim(), blankToNull(m.studentId())));
             }
         }
-        e.getMembers().clear();
-        e.getMembers().addAll(members);
+        return members;
     }
 
     // 새 참가 칸의 id가 바로 응답에 실리도록 즉시 반영한다
@@ -564,6 +583,217 @@ public class AchievementService {
         }
     }
 
+    // ---------- 디스코드 총회 가져오기 ----------
+
+    private static final String NOTICE_CHANNEL = "동아리공지";
+    private static final java.time.ZoneId KST = java.time.ZoneId.of("Asia/Seoul");
+    private static final Pattern ASSEMBLY_TITLE = Pattern.compile("(?<!\\d)(\\d{1,2})\\s*월\\s*(정기\\s*)?총회");
+
+    private record NoticeCandidate(int month, Map<String, Object> message, LocalDate created, int reactions) {
+    }
+
+    // 동아리공지 채널에서 그해 총회 공지를 달마다 하나씩 찾아 총회 실적을 만든다.
+    // 이미 가져온 달(지운 것 포함)과 직접 만든 같은 달 총회는 그대로 두고, 아직 안 열린 총회는 건너뛴다.
+    @Transactional
+    @SuppressWarnings("unchecked")
+    public DiscordImportResult importAssembliesFromDiscord(int year, String loginId) {
+        Map<String, Object> res = discordBotClient.getChannelMessages(NOTICE_CHANNEL, 300);
+        if (res == null || !"success".equals(String.valueOf(res.get("status")))) {
+            throw new IllegalArgumentException(res != null && res.get("message") != null
+                    ? res.get("message").toString() : "디스코드 공지 채널을 읽지 못했어요. 봇 상태를 확인해주세요.");
+        }
+        String jumpBase = "https://discord.com/channels/" + res.get("guildId") + "/" + res.get("channelId") + "/";
+
+        // 달마다 반응이 가장 많은 공지 하나 (같은 달 공지가 여러 번 올라와도 투표 받은 본 공지가 뽑힌다)
+        Map<Integer, NoticeCandidate> best = new TreeMap<>();
+        for (Map<String, Object> m : (List<Map<String, Object>>) res.getOrDefault("messages", List.of())) {
+            String content = String.valueOf(m.getOrDefault("content", ""));
+            LocalDate created = java.time.OffsetDateTime.parse(String.valueOf(m.get("createdAt"))).atZoneSameInstant(KST).toLocalDate();
+            int count = ((List<Map<String, Object>>) m.getOrDefault("reactions", List.of())).stream()
+                    .mapToInt(r -> r.get("count") instanceof Number n ? n.intValue() : 0).sum();
+            if (count == 0) continue;
+            Matcher t = ASSEMBLY_TITLE.matcher(content);
+            Set<Integer> months = new HashSet<>();
+            while (t.find()) months.add(Integer.parseInt(t.group(1)));
+            for (int month : months) {
+                if (month < 1 || month > 12) continue;
+                // 공지는 그 달 1일 50일 전 ~ 그 달 말일 사이에 올라온다 (12월에 올린 1월 총회는 다음 해)
+                LocalDate first = LocalDate.of(year, month, 1);
+                if (created.isBefore(first.minusDays(50)) || created.isAfter(first.plusMonths(1).minusDays(1))) continue;
+                NoticeCandidate prev = best.get(month);
+                if (prev == null || count > prev.reactions()) best.put(month, new NoticeCandidate(month, m, created, count));
+            }
+        }
+
+        List<Achievement> all = achievementRepository.findAll();
+        Set<String> keys = all.stream().map(Achievement::getSourceKey).filter(Objects::nonNull).collect(Collectors.toSet());
+        Map<String, Member> byTag = new HashMap<>();
+        for (Member mem : memberRepository.findAll()) {
+            if (mem.getDiscordTag() != null && !mem.isDeleted()) byTag.put(mem.getDiscordTag().toLowerCase(Locale.ROOT), mem);
+        }
+
+        List<String> created = new ArrayList<>(), skipped = new ArrayList<>(), upcoming = new ArrayList<>(), notes = new ArrayList<>();
+        LocalDate today = LocalDate.now(KST);
+        for (NoticeCandidate c : best.values()) {
+            String label = c.month() + "월 정기총회";
+            String key = "discord-assembly:" + year + "-" + String.format("%02d", c.month());
+            boolean manual = all.stream().anyMatch(a -> !a.isDeleted() && a.getSourceKey() == null && "ASSEMBLY".equals(a.getType())
+                    && a.getYear() == year && sameAssemblyMonth(a, c.month()));
+            if (keys.contains(key) || manual) {
+                skipped.add(label);
+                continue;
+            }
+            String content = String.valueOf(c.message().getOrDefault("content", ""));
+            LocalDate date = assemblyDate(content, year, c.month(), c.created());
+            if (date.isAfter(today)) {
+                upcoming.add(label + " (" + fmt(date) + ")");
+                continue;
+            }
+
+            List<String> reactionEmojis = ((List<Map<String, Object>>) c.message().getOrDefault("reactions", List.of())).stream()
+                    .map(r -> String.valueOf(r.get("emoji"))).toList();
+            String attend = attendingEmoji(content, reactionEmojis);
+            String messageId = String.valueOf(c.message().get("id"));
+
+            Achievement a = new Achievement();
+            a.setType("ASSEMBLY");
+            a.setTitle(label);
+            a.setYear(year);
+            a.setStartDate(date);
+            a.setSourceKey(key);
+            a.setDiscordMessageId(messageId);
+            a.setSourceUrl(jumpBase + messageId);
+            a.setMemo(noticeMemo(content));
+            a.setCreatedBy(loginId);
+            if (attend != null) {
+                a.getParticipants().addAll(attendees(messageId, attend, byTag));
+            } else {
+                notes.add(label + ": 공지에서 '총회 참석' 이모지를 못 찾아 참석 인원은 비워 뒀어요.");
+            }
+            a.setAttendanceSessionId(guessSession(a));
+            achievementRepository.save(a);
+            keys.add(key);
+            created.add(label + " · " + a.getParticipants().size() + "명");
+        }
+        return new DiscordImportResult(year, created, skipped, upcoming, notes);
+    }
+
+    // 디스코드 공지의 반응을 다시 읽어 참석 인원을 새로 맞춘다
+    @Transactional
+    public AchievementDto resyncDiscord(Long id) {
+        Achievement a = find(id);
+        if (a.getDiscordMessageId() == null) throw new IllegalArgumentException("디스코드에서 가져온 총회가 아니에요.");
+        Map<String, Object> res = discordBotClient.getChannelMessages(NOTICE_CHANNEL, 300);
+        String content = "";
+        List<String> emojis = List.of();
+        if (res != null) {
+            for (Object o : (List<?>) res.getOrDefault("messages", List.of())) {
+                Map<?, ?> m = (Map<?, ?>) o;
+                if (!a.getDiscordMessageId().equals(String.valueOf(m.get("id")))) continue;
+                content = String.valueOf(m.get("content"));
+                emojis = ((List<?>) m.get("reactions")).stream().map(r -> String.valueOf(((Map<?, ?>) r).get("emoji"))).toList();
+            }
+        }
+        String attend = attendingEmoji(content, emojis);
+        if (attend == null) throw new IllegalArgumentException("공지에서 '총회 참석' 이모지를 찾지 못했어요.");
+        Map<String, Member> byTag = new HashMap<>();
+        for (Member mem : memberRepository.findAll()) {
+            if (mem.getDiscordTag() != null && !mem.isDeleted()) byTag.put(mem.getDiscordTag().toLowerCase(Locale.ROOT), mem);
+        }
+        a.getParticipants().clear();
+        a.getParticipants().addAll(attendees(a.getDiscordMessageId(), attend, byTag));
+        touch(a);
+        return get(a.getId());
+    }
+
+    @SuppressWarnings("unchecked")
+    private List<AchievementMember> attendees(String messageId, String attendEmoji, Map<String, Member> byTag) {
+        Map<String, Object> res = discordBotClient.getAllReactors(messageId);
+        List<Map<String, Object>> reactors = res == null ? List.of() : (List<Map<String, Object>>) res.getOrDefault("members", List.of());
+        List<AchievementMember> out = new ArrayList<>();
+        Set<String> seen = new HashSet<>();
+        for (Map<String, Object> r : reactors) {
+            List<String> es = ((List<Object>) r.getOrDefault("emojis", List.of())).stream().map(x -> plainEmoji(String.valueOf(x))).toList();
+            if (!es.contains(attendEmoji)) continue;
+            String tag = r.get("discordTag") == null ? "" : r.get("discordTag").toString().toLowerCase(Locale.ROOT);
+            Member mem = byTag.get(tag);
+            if (mem != null) {
+                if (seen.add(mem.getLoginId())) out.add(new AchievementMember(mem.getLoginId(), plainName(mem.getName()), mem.getStudentId()));
+            } else {
+                // 웹 회원이 아닌 사람은 디스코드 별명 ("25 홍길동" 꼴이면 이름만)
+                String nick = String.valueOf(r.getOrDefault("name", tag)).trim();
+                Matcher m = Pattern.compile("^(\\d{2})\\s*(.+)$").matcher(nick);
+                String name = plainName(m.matches() ? m.group(2) : nick);
+                if (seen.add("ext:" + nick)) out.add(new AchievementMember(null, name, m.matches() ? "20" + m.group(1) : null));
+            }
+        }
+        out.sort(Comparator.comparing((AchievementMember x) -> Optional.ofNullable(x.getStudentId()).orElse("9999"))
+                .thenComparing(x -> Optional.ofNullable(x.getName()).orElse("")));
+        return out;
+    }
+
+    private boolean sameAssemblyMonth(Achievement a, int month) {
+        Matcher t = ASSEMBLY_TITLE.matcher(Optional.ofNullable(a.getTitle()).orElse(""));
+        if (t.find()) return Integer.parseInt(t.group(1)) == month;
+        return a.getStartDate() != null && a.getStartDate().getMonthValue() == month;
+    }
+
+    // 공지 본문에서 총회 날짜 — "10월 27일", "4월 총회를 5월 3일", "총회를 20일" … 못 찾으면 공지 올린 날
+    static LocalDate assemblyDate(String content, int year, int month, LocalDate created) {
+        Matcher md = Pattern.compile("(?<!\\d)(\\d{1,2})\\s*월\\s*(\\d{1,2})\\s*일").matcher(content);
+        while (md.find()) {
+            int mo = Integer.parseInt(md.group(1)), d = Integer.parseInt(md.group(2));
+            if (mo != month && mo != month % 12 + 1) continue; // 시험 기간 등으로 다음 달에 여는 경우까지만
+            int y = mo < month ? year + 1 : year;
+            LocalDate date = parseDate(y + "." + mo + "." + d);
+            if (date != null) return date;
+        }
+        Matcher dOnly = Pattern.compile("총회[를는을]?\\s*(\\d{1,2})\\s*일").matcher(content);
+        if (dOnly.find()) {
+            LocalDate date = parseDate(year + "." + month + "." + dOnly.group(1));
+            if (date != null) return date;
+        }
+        return created;
+    }
+
+    // 공지마다 참석 이모지가 달라서(⭕, ✅ …) 본문의 안내 줄에서 "총회 참석"에 붙은 이모지를 찾는다.
+    // "총회 참석:⭕" 처럼 글자 뒤에 오거나, "✅ 총회 참석" 처럼 앞에 오는 두 꼴을 모두 읽는다.
+    static String attendingEmoji(String content, List<String> reactionEmojis) {
+        List<String> emojis = reactionEmojis.stream().map(AchievementService::plainEmoji).distinct().toList();
+        for (String raw : content.split("\\R")) {
+            String line = plainEmoji(raw);
+            List<int[]> hits = new ArrayList<>(); // {시작, 끝, 이모지 번호}
+            for (int i = 0; i < emojis.size(); i++) {
+                String e = emojis.get(i);
+                for (int at = line.indexOf(e); at >= 0; at = line.indexOf(e, at + e.length())) {
+                    hits.add(new int[]{at, at + e.length(), i});
+                }
+            }
+            if (hits.isEmpty()) continue;
+            hits.sort(Comparator.comparingInt(h -> h[0]));
+            boolean emojiFirst = line.replaceAll("^[\\s\\-•*·>]+", "").length() > 0
+                    && hits.get(0)[0] == line.length() - line.replaceAll("^[\\s\\-•*·>]+", "").length();
+            for (int k = 0; k < hits.size(); k++) {
+                int[] h = hits.get(k);
+                String label = emojiFirst
+                        ? line.substring(h[1], k + 1 < hits.size() ? hits.get(k + 1)[0] : line.length())
+                        : line.substring(k > 0 ? hits.get(k - 1)[1] : 0, h[0]);
+                String compact = label.replaceAll("[\\s:：\\-()]", "");
+                if (compact.contains("총회참석") && !compact.contains("불참")) return emojis.get(h[2]);
+            }
+        }
+        return null;
+    }
+
+    private static String plainEmoji(String s) {
+        return s == null ? "" : s.replace("\uFE0F", "");
+    }
+
+    private static String noticeMemo(String content) {
+        String text = content.replace("@everyone", "").replaceAll("<@!?\\d+>", "@관리자").trim();
+        return text.length() > 2000 ? text.substring(0, 2000) + "…" : text;
+    }
+
     // ---------- 내려받기 (한 번 쓰는 주소) ----------
 
     public record Ticket(String kind, Integer year, Long id, long expiresAt) {
@@ -635,6 +865,9 @@ public class AchievementService {
             } catch (Exception ignored) {
             }
         }
+        if (!a.getParticipants().isEmpty()) {
+            items.add(new ExportItem(folder + "참석자.xlsx", null, participantsExcel(a)));
+        }
         for (AchievementFile f : files) {
             if (f.getEntryId() != null) continue;
             items.add(new ExportItem(folder + CATEGORY_LABEL.get(f.getCategory()) + "/" + f.getOriginalName(), resolve(f.getStoredPath()), null));
@@ -698,6 +931,10 @@ public class AchievementService {
             AttendanceDto att = attendance(a.getAttendanceSessionId());
             if (att != null) sb.append("출석: ").append(att.checked()).append(" / ").append(att.total()).append("명\n");
         }
+        if (!a.getParticipants().isEmpty()) {
+            sb.append("참석: ").append(a.getParticipants().size()).append("명\n");
+        }
+        if (a.getSourceUrl() != null) sb.append("디스코드 공지: ").append(a.getSourceUrl()).append('\n');
         if (!a.getEntries().isEmpty()) {
             sb.append("\n[참가]\n");
             for (AchievementEntry e : a.getEntries()) {
@@ -732,7 +969,8 @@ public class AchievementService {
                 String attText = att == null ? "" : att.checked() + " / " + att.total();
                 if (a.getEntries().isEmpty()) {
                     Row row = sheet.createRow(r++);
-                    fillRow(row, a, "", "", "", 0, attText, fileCounts.getOrDefault(-a.getId(), 0L));
+                    String names = a.getParticipants().stream().map(this::memberName).collect(Collectors.joining(", "));
+                    fillRow(row, a, "", "", names, a.getParticipants().size(), attText, fileCounts.getOrDefault(-a.getId(), 0L));
                 } else {
                     boolean first = true;
                     for (AchievementEntry e : a.getEntries()) {
@@ -768,8 +1006,41 @@ public class AchievementService {
     // ---------- 도움 함수 ----------
 
     private String memberNames(AchievementEntry e) {
-        return e.getMembers().stream().map(m -> shortId(m.getStudentId()) + Optional.ofNullable(m.getName()).orElse(""))
-                .collect(Collectors.joining(", "));
+        return e.getMembers().stream().map(this::memberName).collect(Collectors.joining(", "));
+    }
+
+    private String memberName(AchievementMember m) {
+        return shortId(m.getStudentId()) + Optional.ofNullable(m.getName()).orElse("");
+    }
+
+    private byte[] participantsExcel(Achievement a) {
+        try (XSSFWorkbook wb = new XSSFWorkbook(); ByteArrayOutputStream buf = new ByteArrayOutputStream()) {
+            Sheet sheet = wb.createSheet("참석자");
+            var bold = wb.createFont();
+            bold.setBold(true);
+            XSSFCellStyle head = wb.createCellStyle();
+            head.setFont(bold);
+            String[] headers = {"번호", "이름", "학번", "비고"};
+            Row hr = sheet.createRow(0);
+            for (int i = 0; i < headers.length; i++) {
+                hr.createCell(i).setCellValue(headers[i]);
+                hr.getCell(i).setCellStyle(head);
+            }
+            int r = 1;
+            for (AchievementMember m : a.getParticipants()) {
+                Row row = sheet.createRow(r);
+                row.createCell(0).setCellValue(r);
+                row.createCell(1).setCellValue(Optional.ofNullable(m.getName()).orElse(""));
+                row.createCell(2).setCellValue(Optional.ofNullable(m.getStudentId()).orElse(""));
+                row.createCell(3).setCellValue(m.getLoginId() == null ? "부원 계정 없음" : "");
+                r++;
+            }
+            for (int i = 0; i < headers.length; i++) sheet.autoSizeColumn(i);
+            wb.write(buf);
+            return buf.toByteArray();
+        } catch (IOException e) {
+            return new byte[0];
+        }
     }
 
     private String entryFolderName(AchievementEntry e) {

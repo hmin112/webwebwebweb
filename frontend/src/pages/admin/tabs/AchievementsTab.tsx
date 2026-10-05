@@ -2,8 +2,9 @@ import { useEffect, useMemo, useRef, useState, type DragEvent, type ReactNode } 
 import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import {
-  Award, CalendarDays, ChevronLeft, ChevronRight, Crown, Download, FileText, GraduationCap, Image as ImageIcon,
-  Loader2, Package, Paperclip, PartyPopper, Plus, RefreshCw, Scissors, Search, Trash2, Trophy, UserPlus, Users, X,
+  Award, CalendarDays, Check, ChevronDown, ChevronLeft, ChevronRight, Crown, Download, ExternalLink, FileText, GraduationCap,
+  Image as ImageIcon, Loader2, MessageCircle, Package, Paperclip, PartyPopper, Plus, RefreshCw, Scissors, Search, Trash2,
+  Trophy, UserPlus, Users, X,
 } from "lucide-react";
 import { api } from "../../../api/axios";
 import { DateMaskInput, isValidDate } from "../../../components/ui/DateMaskInput";
@@ -22,8 +23,10 @@ type Attendance = { sessionId: number; title: string; startedAt: string; checked
 type Achievement = {
   id: number; year: number; type: TypeId; title: string; startDate: string | null; endDate: string | null;
   organizer: string | null; memo: string | null; hallOfFameId: number | null; hallOfFameLinked: boolean;
-  attendance: Attendance | null; entries: Entry[]; files: FileItem[]; updatedAt: string;
+  attendance: Attendance | null; entries: Entry[]; files: FileItem[];
+  participants: MemberRef[]; sourceUrl: string | null; fromDiscord: boolean; updatedAt: string;
 };
+type ImportResult = { year: number; created: string[]; skipped: string[]; upcoming: string[]; notes: string[] };
 type SessionOpt = { id: number; title: string; startedAt: string; checked: number; total: number; linkedAchievementId: number | null };
 type MemberLite = { loginId: string; name: string; studentId: string; profileImage?: string | null };
 
@@ -171,6 +174,23 @@ export const AchievementsTab = () => {
     .filter((g) => g.items.length > 0), [list, filter]);
 
   const open = list.find((a) => a.id === openId) || null;
+  const [importing, setImporting] = useState(false);
+
+  // 디스코드 동아리공지에서 그해 총회를 한 번에 — 이미 있는 달은 그대로 두고 없는 달만 새로 만든다
+  const importDiscord = async (): Promise<ImportResult | null> => {
+    setImporting(true);
+    try {
+      const res = await api.post("/admin/achievements/import-discord", null, { params: { year } });
+      await load(year);
+      loadYears();
+      return res.data;
+    } catch (e) {
+      alert(errMsg(e, "디스코드에서 가져오지 못했어요."));
+      return null;
+    } finally {
+      setImporting(false);
+    }
+  };
   const replace = (a: Achievement) => setList((prev) => prev.some((x) => x.id === a.id) ? prev.map((x) => (x.id === a.id ? a : x)) : [...prev, a]);
   // 여러 칸에 동시에 올려도 서로 덮어쓰지 않게 — 지금 목록의 최신 값에 바꿔 넣는다
   const patch = (id: number, fn: (a: Achievement) => Achievement) => setList((prev) => prev.map((x) => (x.id === id ? fn(x) : x)));
@@ -182,22 +202,7 @@ export const AchievementsTab = () => {
 
       {/* 머리 — 연도 · 새 실적 · 전체 다운로드 */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-3 mb-5">
-        <div className="max-w-full overflow-x-auto no-scrollbar -mx-1 px-1">
-          <div className="glass-card inline-flex w-max gap-0.5 p-1 rounded-full">
-            {years.map((y) => (
-              <button
-                key={y.year}
-                onClick={() => setYear(y.year)}
-                className={`relative h-9 px-4 rounded-full text-[13px] font-semibold transition-colors ${year === y.year ? "text-[#1D1D1F]" : "text-[#1D1D1F]/55 hover:text-[#1D1D1F]"}`}
-              >
-                {year === y.year && (
-                  <motion.span layoutId="achYearPill" className="absolute inset-0 rounded-full bg-[#fff] shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.10)]" transition={{ type: "spring", bounce: 0.15, duration: 0.45 }} />
-                )}
-                <span className="relative tabular-nums">{y.year}</span>
-              </button>
-            ))}
-          </div>
-        </div>
+        <YearPicker years={years} year={year} onChange={setYear} />
         <div className="flex items-center gap-2 shrink-0">
           <button
             onClick={() => download("YEAR", { year })}
@@ -245,6 +250,9 @@ export const AchievementsTab = () => {
               <h3 className="flex items-center gap-2 text-[15px] font-bold text-[#1D1D1F] mb-3 px-1">
                 <type.icon size={16} style={{ color: type.color }} /> {type.label}
                 <span className="text-[#8E8E93] font-semibold tabular-nums">{items.length}</span>
+                {type.id === "ASSEMBLY" && (
+                  <DiscordImportButton year={year} importing={importing} onImport={importDiscord} small />
+                )}
               </h3>
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3 md:gap-4">
                 {items.map((a) => <AchievementCard key={a.id} a={a} onOpen={() => setOpenId(a.id)} />)}
@@ -261,6 +269,8 @@ export const AchievementsTab = () => {
               key="new"
               defaultYear={year}
               onClose={() => setCreating(false)}
+              onImport={importDiscord}
+              importing={importing}
               onCreated={(a) => {
                 setCreating(false);
                 loadYears();
@@ -322,10 +332,13 @@ const AchievementCard = ({ a, onOpen }: { a: Achievement; onOpen: () => void }) 
             <Chip>{a.entries.length ? `참가 ${a.entries.length}` : "참가 미입력"}</Chip>
             {[...new Set(awards)].slice(0, 3).map((w) => <Chip key={w} tone="gold">{w}</Chip>)}
           </>
-        ) : a.attendance ? (
-          <Chip tone="blue">출석 {a.attendance.checked}/{a.attendance.total}</Chip>
         ) : (
-          <Chip>출석 기록 없음</Chip>
+          <>
+            {a.participants.length > 0 && <Chip tone="blue">참석 {a.participants.length}명</Chip>}
+            {a.attendance && <Chip tone="blue">QR 출석 {a.attendance.checked}/{a.attendance.total}</Chip>}
+            {!a.participants.length && !a.attendance && <Chip>참석 인원 없음</Chip>}
+            {a.fromDiscord && <Chip tone="discord">디스코드</Chip>}
+          </>
         )}
         <Chip>파일 {files.length}</Chip>
       </div>
@@ -339,16 +352,110 @@ const AchievementCard = ({ a, onOpen }: { a: Achievement; onOpen: () => void }) 
   );
 };
 
-const Chip = ({ children, tone }: { children: ReactNode; tone?: "gold" | "blue" }) => (
+const Chip = ({ children, tone }: { children: ReactNode; tone?: "gold" | "blue" | "discord" }) => (
   <span className={`inline-flex items-center h-6 px-2.5 rounded-full text-[11px] font-semibold ${
-    tone === "gold" ? "bg-[#FF9F0A]/[0.12] text-[#B25000]" : tone === "blue" ? "bg-[#0A84FF]/[0.10] text-[#0062CC]" : "bg-black/[0.05] text-[#6E6E73]"
+    tone === "gold" ? "bg-[#FF9F0A]/[0.12] text-[#B25000]"
+      : tone === "blue" ? "bg-[#0A84FF]/[0.10] text-[#0062CC]"
+      : tone === "discord" ? "bg-[#5865F2]/[0.10] text-[#4752C4]"
+      : "bg-black/[0.05] text-[#6E6E73]"
   }`}>{children}</span>
 );
 
+// ---------- 연도 고르기 ----------
+// 해가 늘어나도 한 칸 — 좌우 화살표로 넘기고, 가운데를 누르면 전체 연도 목록
+
+const YearPicker = ({ years, year, onChange }: { years: { year: number; count: number }[]; year: number; onChange: (y: number) => void }) => {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+  const sorted = useMemo(() => {
+    const list = [...years];
+    if (!list.some((y) => y.year === year)) list.push({ year, count: 0 });
+    return list.sort((a, b) => b.year - a.year);
+  }, [years, year]);
+  const idx = sorted.findIndex((y) => y.year === year);
+  const older = sorted[idx + 1];
+  const newer = idx > 0 ? sorted[idx - 1] : undefined;
+
+  useEffect(() => {
+    if (!open) return;
+    const onDown = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false); };
+    document.addEventListener("mousedown", onDown);
+    return () => document.removeEventListener("mousedown", onDown);
+  }, [open]);
+
+  return (
+    <div ref={ref} className="relative self-start">
+      <div className="glass-card inline-flex items-center gap-0.5 h-11 p-1 rounded-full">
+        <button aria-label="이전 해" disabled={!older} onClick={() => older && onChange(older.year)} className="w-9 h-9 rounded-full flex items-center justify-center text-[#1D1D1F]/60 hover:bg-black/[0.05] disabled:opacity-25"><ChevronLeft size={18} /></button>
+        <button onClick={() => setOpen((v) => !v)} className="h-9 px-3 rounded-full inline-flex items-center gap-1.5 hover:bg-black/[0.04]">
+          <span className="text-[17px] font-bold text-[#1D1D1F] tabular-nums tracking-[-0.01em]">{year}년</span>
+          <ChevronDown size={15} className={`text-[#8E8E93] transition-transform ${open ? "rotate-180" : ""}`} />
+        </button>
+        <button aria-label="다음 해" disabled={!newer} onClick={() => newer && onChange(newer.year)} className="w-9 h-9 rounded-full flex items-center justify-center text-[#1D1D1F]/60 hover:bg-black/[0.05] disabled:opacity-25"><ChevronRight size={18} /></button>
+      </div>
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            initial={{ opacity: 0, y: -4, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -4, scale: 0.98 }}
+            transition={{ duration: 0.15 }}
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 z-30 w-48 max-h-[320px] overflow-y-auto rounded-2xl bg-[#fff]/95 backdrop-blur-xl p-1.5 shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_12px_32px_rgb(0_0_0/0.14)]"
+          >
+            {sorted.map((y) => (
+              <button
+                key={y.year}
+                onClick={() => { onChange(y.year); setOpen(false); }}
+                className={`w-full flex items-center gap-2 h-10 px-3 rounded-xl text-left transition-colors ${y.year === year ? "bg-[#0071E3]/[0.08]" : "hover:bg-black/[0.04]"}`}
+              >
+                <span className={`text-[15px] font-semibold tabular-nums ${y.year === year ? "text-[#0071E3]" : "text-[#1D1D1F]"}`}>{y.year}년</span>
+                <span className="text-[12px] text-[#8E8E93] tabular-nums">{y.count ? `${y.count}건` : ""}</span>
+                {y.year === year && <Check size={15} className="ml-auto text-[#0071E3]" />}
+              </button>
+            ))}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+};
+
+// ---------- 디스코드에서 총회 가져오기 ----------
+
+const DiscordImportButton = ({ year, importing, onImport, small }: {
+  year: number; importing: boolean; onImport: () => Promise<ImportResult | null>; small?: boolean;
+}) => {
+  const run = async () => {
+    if (!confirm(`디스코드 동아리공지에서 ${year}년 총회 공지를 찾아 가져올까요?\n이미 있는 달은 그대로 두고 없는 달만 새로 만들어요.`)) return;
+    const r = await onImport();
+    if (r) alert(importSummary(r));
+  };
+  return (
+    <button
+      onClick={run}
+      disabled={importing}
+      className={`${small ? "ml-auto h-8 px-3 text-[12px]" : "w-full h-12 text-[15px]"} rounded-full bg-[#5865F2] text-white font-semibold hover:bg-[#4752C4] transition-colors inline-flex items-center justify-center gap-1.5 disabled:opacity-70`}
+    >
+      {importing ? <Loader2 size={small ? 13 : 16} className="animate-spin" /> : <MessageCircle size={small ? 13 : 16} />}
+      {importing ? "디스코드 공지 읽는 중…" : small ? "디스코드에서 가져오기" : `디스코드에서 ${year}년 총회 가져오기`}
+    </button>
+  );
+};
+
+const importSummary = (r: ImportResult) => {
+  const lines = [`${r.year}년 총회 가져오기`];
+  lines.push(r.created.length ? `\n새로 가져옴 (${r.created.length})\n· ${r.created.join("\n· ")}` : "\n새로 가져온 총회가 없어요.");
+  if (r.skipped.length) lines.push(`\n이미 있어서 그대로 둠: ${r.skipped.join(", ")}`);
+  if (r.upcoming.length) lines.push(`\n아직 안 열려서 다음에: ${r.upcoming.join(", ")}`);
+  if (r.notes.length) lines.push(`\n${r.notes.join("\n")}`);
+  return lines.join("\n");
+};
+
 // ---------- 새 실적 ----------
 
-const NewAchievementSheet = ({ defaultYear, onClose, onCreated }: {
+const NewAchievementSheet = ({ defaultYear, onClose, onCreated, onImport, importing }: {
   defaultYear: number; onClose: () => void; onCreated: (a: Achievement) => void;
+  onImport: () => Promise<ImportResult | null>; importing: boolean;
 }) => {
   const [type, setType] = useState<TypeId>("COMPETITION");
   const [title, setTitle] = useState("");
@@ -424,8 +531,19 @@ const NewAchievementSheet = ({ defaultYear, onClose, onCreated }: {
           <input value={organizer} onChange={(e) => setOrganizer(e.target.value)} placeholder="예: 과학기술정보통신부" className="w-full h-12 px-4 rounded-xl text-[15px] outline-none" />
         </Field>
       )}
+      {type === "ASSEMBLY" && (
+        <div className="rounded-2xl bg-[#5865F2]/[0.06] p-4 mb-4">
+          <p className="text-[14px] font-semibold text-[#1D1D1F]">디스코드에서 한 번에 가져오기</p>
+          <p className="text-[12px] text-[#6E6E73] mt-1 mb-3 leading-relaxed">
+            동아리공지 채널의 {defaultYear}년 총회 공지를 달마다 찾아 날짜·공지 내용·참석 반응한 사람까지 넣어요.
+            이미 있는 달은 그대로 두고 없는 달만 새로 만들어요.
+          </p>
+          <DiscordImportButton year={defaultYear} importing={importing} onImport={async () => { const r = await onImport(); if (r) onClose(); return r; }} />
+          <p className="text-[11px] text-[#8E8E93] mt-3 text-center">또는 아래에서 한 달만 직접 만들기</p>
+        </div>
+      )}
       {type !== "COMPETITION" && (
-        <p className="text-xs text-[#8E8E93] -mt-1 mb-4 px-1">같은 달 출석 기록이 있으면 자동으로 연결돼요.</p>
+        <p className="text-xs text-[#8E8E93] -mt-1 mb-4 px-1">같은 달 QR 출석 기록이 있으면 자동으로 연결돼요.</p>
       )}
 
       <button
@@ -440,6 +558,8 @@ const NewAchievementSheet = ({ defaultYear, onClose, onCreated }: {
 };
 
 // ---------- 상세 ----------
+// 데스크탑: 화면에 꽉 차는 넓은 창 — 왼쪽은 정보, 오른쪽은 참가/참석·파일. 칸마다 따로 스크롤되고 창 자체는 움직이지 않는다.
+// 휴대폰: 한 줄로 쌓이고 창 안에서만 스크롤.
 
 const AchievementDetail = ({ a, members, onChange, onPatch, onClose, onDeleted, onYearChanged }: {
   a: Achievement; members: MemberLite[]; onChange: (a: Achievement) => void;
@@ -452,15 +572,22 @@ const AchievementDetail = ({ a, members, onChange, onPatch, onClose, onDeleted, 
   }));
   const [saving, setSaving] = useState(false);
   const [sessions, setSessions] = useState<SessionOpt[] | null>(null);
-  const [picker, setPicker] = useState<null | "INDIVIDUAL" | "TEAM">(null);
+  const [picker, setPicker] = useState<null | "INDIVIDUAL" | "TEAM" | "PARTICIPANTS">(null);
   const [lightbox, setLightbox] = useState<{ files: FileItem[]; index: number } | null>(null);
   const [pending, setPending] = useState<Record<string, number>>({});
-  const [showAttendees, setShowAttendees] = useState(false);
+  const [syncing, setSyncing] = useState(false);
+  const competition = a.type === "COMPETITION";
 
   useEffect(() => {
-    if (a.type === "COMPETITION") return;
+    if (competition) return;
     api.get("/admin/achievements/sessions", { params: { year: a.year } }).then((r) => setSessions(r.data || [])).catch(() => setSessions([]));
-  }, [a.type, a.year]);
+  }, [competition, a.year]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape" && !picker && !lightbox) close(); };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  });
 
   const save = async (patch: Partial<{ type: TypeId; attendanceSessionId: number | null }> = {}) => {
     if (form.startDate && !isValidDate(form.startDate)) return alert("날짜를 확인해주세요.");
@@ -491,6 +618,7 @@ const AchievementDetail = ({ a, members, onChange, onPatch, onClose, onDeleted, 
   const dirty = form.title !== a.title || form.startDate !== (a.startDate || "") || form.endDate !== (a.endDate || "")
     || form.organizer !== (a.organizer || "") || form.memo !== (a.memo || "");
   const saveIfDirty = () => { if (dirty && form.title.trim()) save(); };
+  const close = () => { saveIfDirty(); onClose(); };
 
   const remove = async () => {
     const n = allFiles(a).length;
@@ -552,7 +680,7 @@ const AchievementDetail = ({ a, members, onChange, onPatch, onClose, onDeleted, 
     }
   };
 
-  const entryCall = async (fn: () => Promise<{ data: Achievement }>) => {
+  const call = async (fn: () => Promise<{ data: Achievement }>) => {
     try {
       onChange((await fn()).data);
     } catch (e) {
@@ -560,14 +688,21 @@ const AchievementDetail = ({ a, members, onChange, onPatch, onClose, onDeleted, 
     }
   };
 
-  const addEntries = async (picked: MemberRef[]) => {
+  const setParticipants = (list: MemberRef[]) => call(() => api.put(`/admin/achievements/${a.id}/participants`, { members: list }));
+
+  const resyncDiscord = async () => {
+    if (!confirm("디스코드 공지의 반응을 다시 읽어 참석 인원을 새로 맞출까요?\n직접 고친 참석 인원은 디스코드 기준으로 바뀌어요.")) return;
+    setSyncing(true);
+    await call(() => api.post(`/admin/achievements/${a.id}/resync-discord`));
+    setSyncing(false);
+  };
+
+  const pick = async (picked: MemberRef[]) => {
     const mode = picker;
     setPicker(null);
     if (!picked.length) return;
-    if (mode === "TEAM") {
-      await entryCall(() => api.post(`/admin/achievements/${a.id}/entries`, { name: null, award: null, members: picked }));
-      return;
-    }
+    if (mode === "PARTICIPANTS") return setParticipants([...a.participants, ...picked]);
+    if (mode === "TEAM") return call(() => api.post(`/admin/achievements/${a.id}/entries`, { name: null, award: null, members: picked }));
     let last: Achievement | null = null;
     for (const m of picked) {
       try {
@@ -580,209 +715,255 @@ const AchievementDetail = ({ a, members, onChange, onPatch, onClose, onDeleted, 
     if (last) onChange(last);
   };
 
-  const sessionOptions = sessions || [];
+  const recordSlots = (
+    <div className="space-y-2.5">
+      {RECORD_SLOTS[a.type].map((cat) => (
+        <FileSlot
+          key={cat}
+          category={cat}
+          files={a.files.filter((f) => f.category === cat)}
+          pending={pending[`r:${cat}`] || 0}
+          onUpload={(files) => upload(files, cat, null)}
+          onOpen={(files, index) => setLightbox({ files, index })}
+          onRemove={removeFile}
+        />
+      ))}
+    </div>
+  );
 
   return (
-    <Modal onClose={() => { saveIfDirty(); onClose(); }} width="max-w-3xl" padded={false}>
-      {/* 머리 */}
-      <div className="sticky top-0 z-10 bg-[#fff]/90 backdrop-blur-xl rounded-t-[28px] px-5 md:px-7 pt-5 pb-3 border-b border-black/[0.05]">
-        <div className="flex items-center gap-2">
-          <select
-            value={a.type}
-            onChange={(e) => save({ type: e.target.value as TypeId })}
-            className="h-8 pl-2.5 pr-7 rounded-full text-[12px] font-bold outline-none"
-            style={{ color: t.color }}
-            aria-label="구분"
-          >
-            {TYPES.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
-          </select>
-          {a.hallOfFameId && (
-            <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[#C9A227]/[0.12] text-[#8A6D0B] text-[11px] font-bold">
-              <Crown size={12} /> 명예의 전당{a.hallOfFameLinked ? "" : " (원글 삭제됨)"}
-            </span>
-          )}
-          {saving && <Loader2 size={14} className="animate-spin text-[#8E8E93]" />}
-          <div className="ml-auto flex items-center gap-1.5">
-            <IconButton label="이 실적 압축 다운로드" onClick={() => download("RECORD", { id: a.id })}><Download size={16} /></IconButton>
-            <IconButton label="실적 삭제" danger onClick={remove}><Trash2 size={16} /></IconButton>
-            <CloseButton onClick={() => { saveIfDirty(); onClose(); }} />
-          </div>
-        </div>
-        <input
-          value={form.title}
-          onChange={(e) => setForm({ ...form, title: e.target.value })}
-          onBlur={saveIfDirty}
-          className="bare-field w-full mt-2 text-[22px] md:text-[26px] font-bold tracking-[-0.02em] text-[#1D1D1F] outline-none"
-          placeholder="이름"
-        />
-      </div>
-
-      <div className="px-5 md:px-7 py-5 space-y-6">
-        {/* 기본 정보 */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-x-3">
-          <Field label="날짜"><div onBlur={saveIfDirty}><DateMaskInput value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} /></div></Field>
-          <Field label="끝나는 날 (여러 날이면)"><div onBlur={saveIfDirty}><DateMaskInput value={form.endDate} onChange={(v) => setForm({ ...form, endDate: v })} /></div></Field>
-          {a.type === "COMPETITION" && (
-            <div className="sm:col-span-2">
-              <Field label="주최">
-                <input value={form.organizer} onChange={(e) => setForm({ ...form, organizer: e.target.value })} onBlur={saveIfDirty} placeholder="예: 과학기술정보통신부" className="w-full h-12 px-4 rounded-xl text-[15px] outline-none" />
-              </Field>
-            </div>
-          )}
-          <div className="sm:col-span-2">
-            <Field label="메모">
-              <textarea
-                value={form.memo}
-                onChange={(e) => setForm({ ...form, memo: e.target.value })}
-                onBlur={saveIfDirty}
-                rows={2}
-                placeholder="내용, 특이사항 (압축 파일의 정보.txt에 같이 들어가요)"
-                className="w-full px-4 py-3 rounded-xl text-[15px] outline-none resize-y min-h-[52px]"
-              />
-            </Field>
-          </div>
-        </div>
-
-        {a.hallOfFameId && a.hallOfFameLinked && (
-          <button
-            onClick={() => entryCall(() => api.post(`/admin/achievements/${a.id}/resync-hof`))}
-            className="-mt-3 inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#8A6D0B] hover:underline"
-          >
-            <RefreshCw size={12} /> 명예의 전당의 상·수상자 다시 가져오기
-          </button>
-        )}
-
-        {/* 출석 (총회·교육·행사) */}
-        {a.type !== "COMPETITION" && (
-          <Section title="출석 기록" icon={CalendarDays}>
-            <div className="rounded-2xl bg-[#F5F5F7] p-4">
+    <div className="fixed inset-0 z-[300] flex items-center justify-center px-2 md:px-6 pt-[72px] md:pt-[84px] pb-2 md:pb-5">
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="absolute inset-0 bg-black/30 backdrop-blur-sm" onClick={close} />
+      <motion.div
+        initial={{ opacity: 0, y: 16 }}
+        animate={{ opacity: 1, y: 0 }}
+        exit={{ opacity: 0, y: 16 }}
+        transition={{ type: "spring", stiffness: 380, damping: 34 }}
+        className="relative w-full max-w-[1280px] h-full bg-[#fff] rounded-[24px] md:rounded-[28px] shadow-[0_24px_70px_rgb(0_0_0/0.22)] overflow-hidden"
+      >
+        <div className="write-page h-full flex flex-col">
+          {/* 머리 */}
+          <div className="shrink-0 px-4 md:px-7 pt-4 md:pt-5 pb-3 border-b border-black/[0.06]">
+            <div className="flex items-center gap-2 flex-wrap">
+              <span className="w-9 h-9 rounded-[11px] flex items-center justify-center shrink-0" style={{ backgroundColor: `${t.color}1A`, color: t.color }}>
+                <t.icon size={17} />
+              </span>
               <select
-                value={a.attendance?.sessionId ?? ""}
-                onChange={(e) => save({ attendanceSessionId: e.target.value ? Number(e.target.value) : null })}
-                className="w-full h-11 px-3 rounded-xl text-[14px] font-semibold outline-none"
+                value={a.type}
+                onChange={(e) => save({ type: e.target.value as TypeId })}
+                className="h-8 pl-2.5 pr-7 rounded-full text-[12px] font-bold outline-none"
+                aria-label="구분"
               >
-                <option value="">{sessions === null ? "불러오는 중…" : "연결 안 함"}</option>
-                {sessionOptions.map((s) => (
-                  <option key={s.id} value={s.id} disabled={s.linkedAchievementId != null && s.linkedAchievementId !== a.id}>
-                    {s.startedAt.slice(5, 10).replace("-", ".")} · {s.title || "출석"} ({s.checked}/{s.total})
-                    {s.linkedAchievementId != null && s.linkedAchievementId !== a.id ? " · 다른 실적에 연결됨" : ""}
-                  </option>
-                ))}
+                {TYPES.map((x) => <option key={x.id} value={x.id}>{x.label}</option>)}
               </select>
-              {a.attendance ? (
-                <div className="mt-3">
-                  <div className="flex items-baseline gap-2">
-                    <span className="text-[22px] font-bold text-[#1D1D1F] tabular-nums">{a.attendance.checked}</span>
-                    <span className="text-[13px] text-[#8E8E93]">/ {a.attendance.total}명 출석 · 압축 파일에 출석부.xlsx로 들어가요</span>
-                  </div>
-                  <div className="h-1.5 rounded-full bg-black/[0.06] overflow-hidden mt-2">
-                    <div className="h-full rounded-full bg-[#34C759]" style={{ width: `${a.attendance.total ? (a.attendance.checked / a.attendance.total) * 100 : 0}%` }} />
-                  </div>
-                  {a.attendance.attendees.length > 0 && (
-                    <>
-                      <div className={`flex flex-wrap gap-1 mt-3 ${showAttendees ? "" : "max-h-[52px] overflow-hidden"}`}>
-                        {a.attendance.attendees.map((n) => <span key={n} className="h-6 px-2 rounded-full bg-[#fff] text-[11px] font-medium text-[#1D1D1F] inline-flex items-center">{n}</span>)}
-                      </div>
-                      {a.attendance.attendees.length > 12 && (
-                        <button onClick={() => setShowAttendees((v) => !v)} className="mt-1.5 text-[12px] font-semibold text-[#0071E3]">{showAttendees ? "접기" : "전체 보기"}</button>
-                      )}
-                    </>
-                  )}
+              {a.hallOfFameId && (
+                <span className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[#C9A227]/[0.12] text-[#8A6D0B] text-[11px] font-bold">
+                  <Crown size={12} /> 명예의 전당{a.hallOfFameLinked ? "" : " (원글 삭제됨)"}
+                </span>
+              )}
+              {a.sourceUrl && (
+                <a href={a.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 h-7 px-2.5 rounded-full bg-[#5865F2]/[0.1] text-[#4752C4] text-[11px] font-bold hover:bg-[#5865F2]/[0.16]">
+                  <MessageCircle size={12} /> 디스코드 공지 <ExternalLink size={11} />
+                </a>
+              )}
+              {saving && <Loader2 size={14} className="animate-spin text-[#8E8E93]" />}
+              <div className="ml-auto flex items-center gap-1.5">
+                <IconButton label="이 실적 압축 다운로드" onClick={() => download("RECORD", { id: a.id })}><Download size={16} /></IconButton>
+                <IconButton label="실적 삭제" danger onClick={remove}><Trash2 size={16} /></IconButton>
+                <CloseButton onClick={close} />
+              </div>
+            </div>
+            <input
+              value={form.title}
+              onChange={(e) => setForm({ ...form, title: e.target.value })}
+              onBlur={saveIfDirty}
+              className="bare-field w-full mt-1.5 text-[21px] md:text-[26px] font-bold tracking-[-0.02em] text-[#1D1D1F] outline-none"
+              placeholder="이름"
+            />
+          </div>
+
+          {/* 본문 — 데스크탑은 두 칸이 각각 스크롤 */}
+          <div className="flex-1 min-h-0 overflow-y-auto overscroll-contain lg:overflow-hidden lg:grid lg:grid-cols-[360px_minmax(0,1fr)]">
+            {/* 왼쪽: 정보 */}
+            <div className="p-4 md:p-6 space-y-5 lg:overflow-y-auto lg:overscroll-contain lg:border-r border-black/[0.06] lg:bg-[#FAFAFC]">
+              <div>
+                <div className="grid grid-cols-2 gap-2">
+                  <Field label="날짜"><div onBlur={saveIfDirty}><DateMaskInput value={form.startDate} onChange={(v) => setForm({ ...form, startDate: v })} /></div></Field>
+                  <Field label="끝나는 날"><div onBlur={saveIfDirty}><DateMaskInput value={form.endDate} onChange={(v) => setForm({ ...form, endDate: v })} /></div></Field>
                 </div>
+                {competition && (
+                  <Field label="주최">
+                    <input value={form.organizer} onChange={(e) => setForm({ ...form, organizer: e.target.value })} onBlur={saveIfDirty} placeholder="예: 과학기술정보통신부" className="w-full h-12 px-4 rounded-xl text-[15px] outline-none" />
+                  </Field>
+                )}
+                <Field label="메모">
+                  <textarea
+                    value={form.memo}
+                    onChange={(e) => setForm({ ...form, memo: e.target.value })}
+                    onBlur={saveIfDirty}
+                    rows={competition ? 4 : 5}
+                    placeholder="내용, 특이사항 (압축 파일의 정보.txt에 같이 들어가요)"
+                    className="w-full px-4 py-3 rounded-xl text-[14px] leading-relaxed outline-none resize-y min-h-[90px]"
+                  />
+                </Field>
+                {a.hallOfFameId && a.hallOfFameLinked && (
+                  <button onClick={() => call(() => api.post(`/admin/achievements/${a.id}/resync-hof`))} className="inline-flex items-center gap-1.5 text-[12px] font-semibold text-[#8A6D0B] hover:underline">
+                    <RefreshCw size={12} /> 명예의 전당의 상·수상자 다시 가져오기
+                  </button>
+                )}
+              </div>
+
+              {competition ? (
+                <Section title="대회 공통 자료" icon={Paperclip}>{recordSlots}</Section>
               ) : (
-                <p className="text-[12px] text-[#8E8E93] mt-2">관리 → 출석에서 연 출석 기록을 고르면 출석부가 같이 정리돼요.</p>
+                <Section title="출석 기록 (QR 출석)" icon={CalendarDays}>
+                  <select
+                    value={a.attendance?.sessionId ?? ""}
+                    onChange={(e) => save({ attendanceSessionId: e.target.value ? Number(e.target.value) : null })}
+                    className="w-full h-11 px-3 rounded-xl text-[14px] font-semibold outline-none"
+                  >
+                    <option value="">{sessions === null ? "불러오는 중…" : sessions.length ? "연결 안 함" : "올해 출석 기록 없음"}</option>
+                    {(sessions || []).map((s) => (
+                      <option key={s.id} value={s.id} disabled={s.linkedAchievementId != null && s.linkedAchievementId !== a.id}>
+                        {s.startedAt.slice(5, 10).replace("-", ".")} · {s.title || "출석"} ({s.checked}/{s.total})
+                        {s.linkedAchievementId != null && s.linkedAchievementId !== a.id ? " · 다른 실적에 연결됨" : ""}
+                      </option>
+                    ))}
+                  </select>
+                  {a.attendance && (
+                    <div className="mt-2.5">
+                      <div className="flex items-baseline gap-2">
+                        <span className="text-[20px] font-bold text-[#1D1D1F] tabular-nums">{a.attendance.checked}</span>
+                        <span className="text-[12px] text-[#8E8E93]">/ {a.attendance.total}명 출석 · 출석부.xlsx로 같이 나가요</span>
+                      </div>
+                      <div className="h-1.5 rounded-full bg-black/[0.06] overflow-hidden mt-1.5">
+                        <div className="h-full rounded-full bg-[#34C759]" style={{ width: `${a.attendance.total ? (a.attendance.checked / a.attendance.total) * 100 : 0}%` }} />
+                      </div>
+                    </div>
+                  )}
+                </Section>
               )}
             </div>
-          </Section>
-        )}
 
-        {/* 참가 팀/개인 (대회) */}
-        {a.type === "COMPETITION" && (
-          <Section
-            title="참가"
-            icon={Users}
-            right={
-              <div className="flex gap-1.5">
-                <button onClick={() => setPicker("INDIVIDUAL")} className="h-8 px-3 rounded-full bg-black/[0.05] text-[12px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] inline-flex items-center gap-1"><UserPlus size={13} /> 개인</button>
-                <button onClick={() => setPicker("TEAM")} className="h-8 px-3 rounded-full bg-black/[0.05] text-[12px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] inline-flex items-center gap-1"><Users size={13} /> 팀</button>
-              </div>
-            }
-          >
-            {a.entries.length === 0 ? (
-              <p className="text-[13px] text-[#8E8E93] rounded-2xl bg-[#F5F5F7] px-4 py-6 text-center">
-                개인으로 넣으면 한 사람씩, 팀으로 넣으면 한 칸에 묶여요. 압축 파일에서 이 칸마다 폴더가 생겨요.
-              </p>
-            ) : (
-              <div className="space-y-3">
-                {a.entries.map((e) => (
-                  <EntryCard
-                    key={e.id}
-                    entry={e}
-                    members={members}
-                    pending={pending}
-                    onSave={(req) => entryCall(() => api.put(`/admin/achievements/entries/${e.id}`, req))}
-                    onSplit={() => entryCall(() => api.post(`/admin/achievements/entries/${e.id}/split`))}
-                    onDelete={() => {
-                      if (!confirm(`이 참가 칸을 지울까요?${e.files.length ? `\n올린 파일 ${e.files.length}개도 함께 지워져요.` : ""}`)) return;
-                      entryCall(() => api.delete(`/admin/achievements/entries/${e.id}`));
-                    }}
-                    onUpload={(files, cat) => upload(files, cat, e.id)}
-                    onOpenFile={(files, index) => setLightbox({ files, index })}
-                    onRemoveFile={removeFile}
-                  />
-                ))}
-              </div>
-            )}
-          </Section>
-        )}
-
-        {/* 실적 전체 파일 */}
-        <Section title={a.type === "COMPETITION" ? "대회 공통 자료" : "자료"} icon={Paperclip}>
-          <div className="grid grid-cols-1 gap-2.5">
-            {RECORD_SLOTS[a.type].map((cat) => (
-              <FileSlot
-                key={cat}
-                category={cat}
-                files={a.files.filter((f) => f.category === cat)}
-                pending={pending[`r:${cat}`] || 0}
-                onUpload={(files) => upload(files, cat, null)}
-                onOpen={(files, index) => setLightbox({ files, index })}
-                onRemove={removeFile}
-              />
-            ))}
+            {/* 오른쪽 */}
+            <div className="p-4 md:p-6 space-y-6 lg:overflow-y-auto lg:overscroll-contain border-t lg:border-t-0 border-black/[0.06]">
+              {competition ? (
+                <Section
+                  title={`참가 ${a.entries.length || ""}`}
+                  icon={Users}
+                  right={
+                    <div className="flex gap-1.5">
+                      <button onClick={() => setPicker("INDIVIDUAL")} className="h-8 px-3 rounded-full bg-black/[0.05] text-[12px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] inline-flex items-center gap-1"><UserPlus size={13} /> 개인</button>
+                      <button onClick={() => setPicker("TEAM")} className="h-8 px-3 rounded-full bg-black/[0.05] text-[12px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] inline-flex items-center gap-1"><Users size={13} /> 팀</button>
+                    </div>
+                  }
+                >
+                  {a.entries.length === 0 ? (
+                    <p className="text-[13px] text-[#8E8E93] rounded-2xl bg-[#F5F5F7] px-4 py-10 text-center">
+                      개인으로 넣으면 한 사람씩, 팀으로 넣으면 한 칸에 묶여요.<br />압축 파일에서 이 칸마다 폴더가 생겨요.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-1 xl:grid-cols-2 gap-3 items-start">
+                      {a.entries.map((e) => (
+                        <EntryCard
+                          key={e.id}
+                          entry={e}
+                          members={members}
+                          pending={pending}
+                          onSave={(req) => call(() => api.put(`/admin/achievements/entries/${e.id}`, req))}
+                          onSplit={() => call(() => api.post(`/admin/achievements/entries/${e.id}/split`))}
+                          onDelete={() => {
+                            if (!confirm(`이 참가 칸을 지울까요?${e.files.length ? `\n올린 파일 ${e.files.length}개도 함께 지워져요.` : ""}`)) return;
+                            call(() => api.delete(`/admin/achievements/entries/${e.id}`));
+                          }}
+                          onUpload={(files, cat) => upload(files, cat, e.id)}
+                          onOpenFile={(files, index) => setLightbox({ files, index })}
+                          onRemoveFile={removeFile}
+                        />
+                      ))}
+                    </div>
+                  )}
+                </Section>
+              ) : (
+                <>
+                  <Section
+                    title={`참석 인원 ${a.participants.length ? `${a.participants.length}명` : ""}`}
+                    icon={Users}
+                    right={
+                      <div className="flex gap-1.5">
+                        {a.fromDiscord && (
+                          <button onClick={resyncDiscord} disabled={syncing} className="h-8 px-3 rounded-full bg-[#5865F2]/[0.1] text-[12px] font-semibold text-[#4752C4] hover:bg-[#5865F2]/[0.16] inline-flex items-center gap-1 disabled:opacity-60">
+                            {syncing ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} 디스코드 반응 다시
+                          </button>
+                        )}
+                        <button onClick={() => setPicker("PARTICIPANTS")} className="h-8 px-3 rounded-full bg-black/[0.05] text-[12px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] inline-flex items-center gap-1"><UserPlus size={13} /> 사람</button>
+                      </div>
+                    }
+                  >
+                    {a.participants.length === 0 ? (
+                      <p className="text-[13px] text-[#8E8E93] rounded-2xl bg-[#F5F5F7] px-4 py-6 text-center">
+                        {a.fromDiscord ? "디스코드 공지에 '총회 참석'으로 반응한 사람이 없어요." : "참석한 사람을 넣으면 압축 파일에 참석자.xlsx로 들어가요."}
+                      </p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1.5">
+                        {a.participants.map((m, i) => (
+                          <span key={`${m.loginId ?? m.name}-${i}`} className="inline-flex items-center gap-1 h-8 pl-3 pr-1 rounded-full bg-[#F5F5F7] text-[13px] font-semibold text-[#1D1D1F]">
+                            {memberLabel(m)}
+                            {!m.loginId && <span className="text-[10px] text-[#8E8E93] font-medium">외부</span>}
+                            <button
+                              aria-label={`${m.name} 빼기`}
+                              onClick={() => setParticipants(a.participants.filter((_, j) => j !== i))}
+                              className="w-6 h-6 rounded-full text-[#AEAEB2] hover:text-[#FF3B30] hover:bg-[#FF3B30]/[0.08] flex items-center justify-center"
+                            ><X size={12} /></button>
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                  </Section>
+                  <Section title="자료" icon={Paperclip}>{recordSlots}</Section>
+                </>
+              )}
+            </div>
           </div>
-        </Section>
-      </div>
+        </div>
+      </motion.div>
 
-      <AnimatePresence>
-        {picker && (
-          <MemberPicker
-            key="picker"
-            mode={picker}
-            members={members}
-            onClose={() => setPicker(null)}
-            onPick={addEntries}
-          />
-        )}
-        {lightbox && (
-          <Lightbox
-            key="lightbox"
-            files={lightbox.files}
-            index={lightbox.index}
-            onIndex={(i) => setLightbox({ ...lightbox, index: i })}
-            onClose={() => setLightbox(null)}
-            onRemove={async (f) => {
-              if (await removeFile(f)) {
-                const rest = lightbox.files.filter((x) => x.id !== f.id);
-                setLightbox(rest.length ? { files: rest, index: Math.min(lightbox.index, rest.length - 1) } : null);
-              }
-            }}
-          />
-        )}
-      </AnimatePresence>
-    </Modal>
+      <Portal>
+        <AnimatePresence>
+          {picker && (
+            <MemberPicker
+              key="picker"
+              mode={picker === "INDIVIDUAL" ? "INDIVIDUAL" : "TEAM"}
+              title={picker === "PARTICIPANTS" ? "참석 인원 추가" : undefined}
+              members={members}
+              exclude={picker === "PARTICIPANTS" ? (a.participants.map((m) => m.loginId).filter(Boolean) as string[]) : []}
+              onClose={() => setPicker(null)}
+              onPick={pick}
+            />
+          )}
+          {lightbox && (
+            <Lightbox
+              key="lightbox"
+              files={lightbox.files}
+              index={lightbox.index}
+              onIndex={(i) => setLightbox({ ...lightbox, index: i })}
+              onClose={() => setLightbox(null)}
+              onRemove={async (f) => {
+                if (await removeFile(f)) {
+                  const rest = lightbox.files.filter((x) => x.id !== f.id);
+                  setLightbox(rest.length ? { files: rest, index: Math.min(lightbox.index, rest.length - 1) } : null);
+                }
+              }}
+            />
+          )}
+        </AnimatePresence>
+      </Portal>
+    </div>
   );
 };
+
+// 겹쳐 뜨는 창(사람 고르기·사진 보기)은 상세 창 밖(main)에 띄운다 — 움직이는 창 안에 두면 위치가 같이 밀린다
+const Portal = ({ children }: { children: ReactNode }) => createPortal(children, document.querySelector("main") ?? document.body);
 
 // ---------- 참가 칸 ----------
 
@@ -853,7 +1034,7 @@ const EntryCard = ({ entry, members, pending, onSave, onSplit, onDelete, onUploa
         </button>
       </div>
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-3">
+      <div className="grid grid-cols-2 gap-2 mt-3">
         {ENTRY_SLOTS.map((cat) => (
           <FileSlot
             key={cat}
@@ -868,18 +1049,20 @@ const EntryCard = ({ entry, members, pending, onSave, onSplit, onDelete, onUploa
         ))}
       </div>
 
-      <AnimatePresence>
-        {adding && (
-          <MemberPicker
-            mode="TEAM"
-            title="사람 추가"
-            members={members}
-            exclude={entry.members.map((m) => m.loginId).filter(Boolean) as string[]}
-            onClose={() => setAdding(false)}
-            onPick={(picked) => { setAdding(false); if (picked.length) commit({ members: [...entry.members, ...picked] }); }}
-          />
-        )}
-      </AnimatePresence>
+      <Portal>
+        <AnimatePresence>
+          {adding && (
+            <MemberPicker
+              mode="TEAM"
+              title="사람 추가"
+              members={members}
+              exclude={entry.members.map((m) => m.loginId).filter(Boolean) as string[]}
+              onClose={() => setAdding(false)}
+              onPick={(picked) => { setAdding(false); if (picked.length) commit({ members: [...entry.members, ...picked] }); }}
+            />
+          )}
+        </AnimatePresence>
+      </Portal>
     </div>
   );
 };

@@ -71,6 +71,33 @@ public class AchievementController {
         return handle(() -> service.resyncHallOfFame(id));
     }
 
+    @PostMapping("/api/admin/achievements/import-discord")
+    public ResponseEntity<?> importDiscord(@RequestParam int year, Authentication auth) {
+        try {
+            return ResponseEntity.ok(service.importAssembliesFromDiscord(year, auth.getName()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(StatusResponse.fail("디스코드에서 가져오지 못했어요. 봇이 켜져 있는지 확인해주세요."));
+        }
+    }
+
+    @PostMapping("/api/admin/achievements/{id}/resync-discord")
+    public ResponseEntity<?> resyncDiscord(@PathVariable Long id) {
+        try {
+            return ResponseEntity.ok(service.resyncDiscord(id));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest().body(StatusResponse.fail(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.internalServerError().body(StatusResponse.fail("디스코드에서 가져오지 못했어요."));
+        }
+    }
+
+    @PutMapping("/api/admin/achievements/{id}/participants")
+    public ResponseEntity<?> participants(@PathVariable Long id, @RequestBody ParticipantsRequest req) {
+        return handle(() -> service.setParticipants(id, req));
+    }
+
     @PostMapping("/api/admin/achievements/{id}/entries")
     public ResponseEntity<?> addEntry(@PathVariable Long id, @RequestBody EntryRequest req) {
         return handle(() -> service.addEntry(id, req));

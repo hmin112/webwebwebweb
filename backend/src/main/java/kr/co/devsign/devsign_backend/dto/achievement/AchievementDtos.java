@@ -24,6 +24,7 @@ public final class AchievementDtos {
     public record AchievementDto(Long id, int year, String type, String title, String startDate, String endDate,
                                  String organizer, String memo, Long hallOfFameId, boolean hallOfFameLinked,
                                  AttendanceDto attendance, List<EntryDto> entries, List<FileDto> files,
+                                 List<MemberRef> participants, String sourceUrl, boolean fromDiscord,
                                  String updatedAt) {
     }
 
@@ -41,5 +42,13 @@ public final class AchievementDtos {
     }
 
     public record DownloadRequest(String kind, Integer year, Long id) {
+    }
+
+    public record ParticipantsRequest(List<MemberRef> members) {
+    }
+
+    // 디스코드에서 총회 가져오기 결과 — 새로 만든 달 / 이미 있어서 둔 달 / 아직 안 열린 달 / 공지를 못 찾은 달
+    public record DiscordImportResult(int year, List<String> created, List<String> skipped, List<String> upcoming,
+                                      List<String> notes) {
     }
 }

@@ -40,12 +40,23 @@ public class Achievement {
     private Long attendanceSessionId;
     private Long hallOfFameId;
 
+    // 디스코드 총회 공지에서 가져온 실적 — "discord-assembly:2026-04" 같은 키로 이미 가져온 달을 알아본다
+    private String sourceKey;
+    private String sourceUrl;
+    private String discordMessageId;
+
     // 명예의 전당에서 온 실적을 지우면 행은 남겨 두고 숨긴다 — 그래야 다음에 탭을 열 때 다시 들어오지 않는다
     private boolean deleted = false;
 
     private String createdBy;
     private LocalDateTime createdAt = LocalDateTime.now();
     private LocalDateTime updatedAt = LocalDateTime.now();
+
+    // 총회·교육·행사의 참석 인원 (디스코드 반응에서 가져오거나 직접 넣는다)
+    @ElementCollection
+    @CollectionTable(name = "achievement_participants", joinColumns = @JoinColumn(name = "achievement_id"))
+    @OrderColumn(name = "member_order")
+    private List<AchievementMember> participants = new ArrayList<>();
 
     @OneToMany(mappedBy = "achievement", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sortOrder ASC, id ASC")
