@@ -6,6 +6,7 @@ import {
   User, Send, Wallet, Trash2, Edit3, Trash, ChevronDown, Lock
 } from "lucide-react";
 import { FEE, feeChipStyle } from "./feeTheme";
+import { CategoryChip } from "./CategorySegment";
 
 export const BoardDetail = ({
   onNavigate,
@@ -115,13 +116,7 @@ export const BoardDetail = ({
         >
           <header className="mb-6 md:mb-8">
             <div className="flex items-center gap-2 mb-3">
-              <span
-                className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[12px] font-semibold"
-                style={isFeePost ? feeChipStyle : { color: "#0062CC", backgroundColor: "rgb(0 113 227 / 0.1)" }}
-              >
-                {isFeePost && <Wallet size={12} />}
-                {post.category}
-              </span>
+              <CategoryChip category={post.category} />
               <span className="text-[13px] text-[#8E8E93] tabular-nums">{post.date}</span>
             </div>
             <h1 className="text-[26px] md:text-[36px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight mb-5">
@@ -281,7 +276,7 @@ const FeeInfoCard = ({ post }: any) => {
     <div className="mb-8 rounded-[22px] p-4 md:p-6" style={{ backgroundColor: FEE.wash }}>
       <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
         <div className="flex items-center gap-2.5">
-          <span className="w-10 h-10 rounded-[12px] flex items-center justify-center" style={feeChipStyle}>
+          <span className="w-10 h-10 rounded-[12px] flex items-center justify-center bg-[#fff] shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_2px_rgb(0_0_0/0.05)]" style={{ color: FEE.accent }}>
             <Wallet size={18} />
           </span>
           <div>
@@ -305,7 +300,7 @@ const FeeInfoCard = ({ post }: any) => {
               <div key={idx} className="flex items-center gap-3 px-4 py-3">
                 <span
                   className="shrink-0 inline-flex items-center justify-center w-11 h-6 rounded-full text-[12px] font-semibold"
-                  style={{ color: isIncome ? FEE.income : FEE.expense, backgroundColor: isIncome ? "rgb(52 199 89 / 0.12)" : "rgb(255 59 48 / 0.10)" }}
+                  style={{ color: isIncome ? FEE.income : FEE.expense, backgroundColor: "rgb(0 0 0 / 0.05)" }}
                 >
                   {item.type}
                 </span>

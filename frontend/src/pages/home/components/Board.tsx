@@ -1,5 +1,6 @@
+import { CategoryChip } from "../../board/CategorySegment";
 import { motion } from "framer-motion";
-import { MessageSquare, Eye, Heart, ArrowRight, User, Wallet, Lock } from "lucide-react";
+import { MessageSquare, Eye, Heart, ArrowRight, User, Lock } from "lucide-react";
 
 interface BoardSectionProps {
   onNavigate: (pageId: string, itemId?: any) => void;
@@ -45,14 +46,7 @@ export const Board = ({ onNavigate, posts, isLoggedIn }: BoardSectionProps) => {
               {/* 카테고리 태그 */}
               {/* ✨ 모바일 여백 축소 (mb-3), 데스크탑 유지 (md:mb-4) */}
               <div className="flex items-center gap-2 mb-3 md:mb-4">
-                <span className={`px-2.5 py-1 md:px-3 md:py-1 rounded-lg text-[9px] md:text-[10px] font-black uppercase tracking-widest ${
-                  post.category === "회비" 
-                    ? "bg-[#34C759]/[0.12] text-[#1F8A43] border border-[#34C759]/20" 
-                    : "bg-indigo-50 text-indigo-600 border border-indigo-100"
-                }`}>
-                  {post.category === "회비" && <Wallet size={10} className="inline mr-1 mb-0.5" />}
-                  {post.category || "일반"}
-                </span>
+                <CategoryChip category={post.category} size="sm" />
                 {post.category === "회비" && !isLoggedIn && (
                   <span className="flex items-center gap-1 px-2 py-1 rounded-lg text-[9px] md:text-[10px] font-black text-slate-400 bg-slate-50 border border-slate-100">
                     <Lock size={9} /> 로그인 필요
@@ -67,9 +61,9 @@ export const Board = ({ onNavigate, posts, isLoggedIn }: BoardSectionProps) => {
               
               {/* 내용 — 회비 글은 최종 잔액을 요약해서 보여줌(항목별 내역은 상세에서만) */}
               {post.category === "회비" && post.feeTerm ? (
-                <p className="text-[#1F8A43] font-black text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">
+                <p className="text-[#1D1D1F] font-black text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">
                   {post.feeTerm}
-                  <span className="text-[#1F8A43]/60 font-bold"> · 잔액 {(post.feeFinalBalance ?? 0).toLocaleString()}원</span>
+                  <span className="text-[#8E8E93] font-bold"> · 잔액 {(post.feeFinalBalance ?? 0).toLocaleString()}원</span>
                 </p>
               ) : (
                 <p className="text-slate-400 font-bold text-xs md:text-sm mb-4 md:mb-6 line-clamp-2 flex-1 leading-relaxed">

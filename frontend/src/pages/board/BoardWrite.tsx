@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { ArrowLeft, ImagePlus, Trash2, Wallet, Plus, Loader2, X } from "lucide-react";
 import { FileDropZone } from "../../components/ui/FileDropZone";
 import { FEE } from "./feeTheme";
+import { CategorySegment } from "./CategorySegment";
 
 // ✨ [2026-10-08] 게시판 글쓰기 — 지금 웹(애플 스타일)과 같은 흰 카드·회색 입력칸으로 다시 정리.
 // 회비 글은 "회비 사용 내역": 대상 학기 + 이월 금액 + 입금/사용 내역을 한 줄씩 넣으면 최종 잔액을 바로 계산해 보여준다.
@@ -196,31 +197,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
           {/* 카테고리 — 세그먼트 */}
           <div>
             <Label>카테고리</Label>
-            <div className="inline-flex p-1 rounded-full bg-black/[0.05]">
-              {categories.map((cat) => {
-                const active = category === cat;
-                return (
-                  <button
-                    key={cat}
-                    type="button"
-                    onClick={() => setCategory(cat)}
-                    className={`relative h-9 px-5 rounded-full text-[14px] font-semibold transition-colors inline-flex items-center gap-1.5 ${active ? "text-[#1D1D1F]" : "text-[#6E6E73] hover:text-[#1D1D1F]"}`}
-                  >
-                    {active && (
-                      <motion.span
-                        layoutId="boardWriteCategory"
-                        className="absolute inset-0 rounded-full bg-[#fff] shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_3px_rgb(0_0_0/0.12)]"
-                        transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
-                      />
-                    )}
-                    <span className="relative inline-flex items-center gap-1.5">
-                      {cat === "회비" && <Wallet size={14} style={{ color: active ? FEE.ink : undefined }} />}
-                      {cat}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <CategorySegment options={categories} value={category} onChange={setCategory} layoutId="boardWriteCategory" variant="solid" />
           </div>
 
           {/* 제목 */}
@@ -247,7 +224,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
               >
                 <div className="rounded-[22px] p-4 md:p-6" style={{ backgroundColor: FEE.wash }}>
                   <div className="flex items-center gap-2 mb-4">
-                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center" style={{ backgroundColor: FEE.tint, color: FEE.ink }}>
+                    <span className="w-8 h-8 rounded-[10px] flex items-center justify-center bg-[#fff] shadow-[0_0_0_0.5px_rgb(0_0_0/0.08),0_1px_2px_rgb(0_0_0/0.05)]" style={{ color: FEE.accent }}>
                       <Wallet size={16} />
                     </span>
                     <span className="text-[16px] font-bold text-[#1D1D1F]">회비 사용 내역</span>
@@ -364,8 +341,7 @@ export const BoardWrite = ({ onNavigate, isAdmin, user, fetchPosts, post }: any)
                     <button
                       type="button"
                       onClick={addFeeItem}
-                      className="w-full h-12 rounded-2xl border border-dashed border-black/[0.12] text-[14px] font-semibold inline-flex items-center justify-center gap-1.5 hover:bg-[#fff] transition-colors"
-                      style={{ color: FEE.ink }}
+                      className="w-full h-12 rounded-2xl border border-dashed border-black/[0.12] text-[14px] font-semibold text-[#0071E3] inline-flex items-center justify-center gap-1.5 hover:bg-[#fff] transition-colors"
                     >
                       <Plus size={16} /> 내역 추가
                     </button>
