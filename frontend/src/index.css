@@ -218,6 +218,16 @@
     box-shadow: none !important;
   }
 
+  /* ✨ [2026-10-08] 색 있는 바탕(회비 내역 칸 등) 위의 입력칸은 흰색 + 옅은 테두리 */
+  .apple-app main .write-page .field-white input:not([type="file"]):not([type="checkbox"]):not([type="radio"]) {
+    background-color: #fff !important;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 0.08) !important;
+  }
+
+  .apple-app main .write-page .field-white input:not([type="file"]):not([type="checkbox"]):not([type="radio"]):focus {
+    box-shadow: 0 0 0 1px rgb(0 113 227 / 0.45), 0 0 0 4px rgb(0 113 227 / 0.12) !important;
+  }
+
   /* ✨ [2026-09-30] 홈 배너(사진) 위 문구 편집 칸 — 흰 유리 입력칸 대신 어두운 유리 알약이라 흰 글자가 잘 보인다 */
   .apple-app main input.hero-field,
   .apple-app main input.hero-field:focus {

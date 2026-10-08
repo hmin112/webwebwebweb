@@ -3,10 +3,9 @@ import { useState, useEffect, useRef } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   ArrowLeft, Eye, MessageSquare, Heart,
-  User, Send, Wallet, Trash2, Edit3, Trash, ChevronDown,
-  Users, Lock, TrendingUp, TrendingDown, Scale
+  User, Send, Wallet, Trash2, Edit3, Trash, ChevronDown, Lock
 } from "lucide-react";
-import { Button } from "../../components/ui/button";
+import { FEE, feeChipStyle } from "./feeTheme";
 
 export const BoardDetail = ({
   onNavigate,
@@ -49,32 +48,19 @@ export const BoardDetail = ({
 
   if (!post) return <div className="pt-40 text-center text-slate-400 font-bold">게시글을 찾을 수 없습니다.</div>;
 
-  // ✨ 회비 게시글은 목록에는 보이지만(제목/금액/기한), 상세 내용(계좌번호 등)은 로그인해야 확인 가능
+  // 회비 게시글은 목록에는 보이지만(제목·잔액), 상세 내역은 로그인한 부원만 볼 수 있다
   if (post.category === "회비" && !isLoggedIn) {
     return (
-      <div className="min-h-screen bg-slate-50 pt-24 md:pt-40 pb-16 md:pb-20 font-sans flex items-center justify-center px-4">
-        <div className="max-w-md w-full text-center bg-white rounded-[2rem] md:rounded-[3rem] p-10 md:p-16 shadow-sm border border-slate-100">
-          <div className="w-14 h-14 md:w-16 md:h-16 mx-auto mb-5 md:mb-6 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-500">
-            <Lock className="w-6 h-6 md:w-7 md:h-7" />
+      <div className="min-h-screen pt-24 md:pt-36 pb-20 flex items-start justify-center px-4">
+        <div className="max-w-md w-full text-center bg-[#fff] rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_40px_rgb(0_0_0/0.06)] p-8 md:p-10">
+          <div className="w-14 h-14 mx-auto mb-5 rounded-2xl flex items-center justify-center" style={feeChipStyle}>
+            <Lock size={24} />
           </div>
-          <h2 className="text-lg md:text-2xl font-[900] text-slate-900 mb-2 tracking-tight">{post.title}</h2>
-          <p className="text-slate-400 font-bold text-xs md:text-sm mb-8 md:mb-10">
-            로그인한 부원만 회비 게시글의 상세 내용을 확인할 수 있습니다.
-          </p>
-          <div className="flex gap-2 md:gap-3">
-            <Button
-              onClick={() => onNavigate("board-page")}
-              variant="ghost"
-              className="flex-1 py-3 md:py-6 rounded-xl md:rounded-2xl font-black text-slate-400 text-xs md:text-sm h-auto"
-            >
-              목록으로
-            </Button>
-            <Button
-              onClick={() => onNavigate("login")}
-              className="flex-[2] bg-indigo-600 hover:bg-indigo-700 text-white py-3 md:py-6 rounded-xl md:rounded-2xl font-black shadow-lg shadow-indigo-100 text-xs md:text-sm h-auto"
-            >
-              로그인하러 가기
-            </Button>
+          <h2 className="text-[20px] md:text-[22px] font-bold text-[#1D1D1F] tracking-[-0.02em] mb-1.5">{post.title}</h2>
+          <p className="text-[14px] text-[#6E6E73] mb-7">로그인한 부원만 회비 내역을 볼 수 있어요.</p>
+          <div className="flex gap-2">
+            <button onClick={() => onNavigate("board-page")} className="flex-1 h-12 rounded-full bg-black/[0.05] text-[15px] font-semibold text-[#1D1D1F] hover:bg-black/[0.08] transition-colors">목록으로</button>
+            <button onClick={() => onNavigate("login")} className="flex-[2] h-12 rounded-full bg-[#0071E3] text-white text-[15px] font-semibold hover:bg-[#0077ED] transition-colors">로그인하기</button>
           </div>
         </div>
       </div>
@@ -110,138 +96,119 @@ export const BoardDetail = ({
     }
   };
 
-  return (
-    <div className="min-h-screen bg-slate-50 pt-20 md:pt-32 pb-16 md:pb-20 font-sans">
-      <div className="max-w-4xl mx-auto px-4 md:px-6">
+  const isFeePost = post.category === "회비";
 
+  return (
+    <div className="min-h-screen pt-24 md:pt-28 pb-20">
+      <div className="max-w-3xl mx-auto px-4 md:px-6">
         <button
           onClick={() => onNavigate("board-page")}
-          className="flex items-center gap-1.5 md:gap-2 text-slate-400 font-black mb-6 md:mb-8 hover:text-indigo-600 transition-colors group text-xs md:text-sm whitespace-nowrap mt-2"
+          className="inline-flex items-center gap-1.5 text-[14px] font-medium text-[#6E6E73] hover:text-[#1D1D1F] transition-colors group mb-5"
         >
-          <ArrowLeft className="w-4 h-4 md:w-[18px] md:h-[18px] group-hover:-translate-x-1 transition-transform shrink-0" />
-          목록으로 돌아가기
+          <ArrowLeft size={16} className="group-hover:-translate-x-0.5 transition-transform" /> 게시판
         </button>
 
         <motion.article
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 12 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-[1.5rem] md:rounded-[3rem] p-6 md:p-16 shadow-sm border border-slate-100 mb-6 md:mb-8 overflow-hidden"
+          className="bg-[#fff] rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04),0_12px_40px_rgb(0_0_0/0.05)] p-5 md:p-10 mb-4 md:mb-5"
         >
-          <header className="mb-6 md:mb-10 border-b border-slate-50 pb-6 md:pb-10">
-            <div className="flex items-center gap-2 md:gap-3 mb-4 md:mb-6">
-              <span className={`px-3 py-1 md:px-4 md:py-1.5 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest border ${post.category === "회비"
-                  ? "bg-amber-50 text-amber-600 border-amber-100"
-                  : "bg-indigo-50 text-indigo-600 border border-indigo-100"
-                }`}>
-                {post.category === "회비" && <Wallet className="w-2.5 h-2.5 md:w-2.5 md:h-2.5 inline mr-1 mb-0.5" />}
+          <header className="mb-6 md:mb-8">
+            <div className="flex items-center gap-2 mb-3">
+              <span
+                className="inline-flex items-center gap-1 h-6 px-2.5 rounded-full text-[12px] font-semibold"
+                style={isFeePost ? feeChipStyle : { color: "#0062CC", backgroundColor: "rgb(0 113 227 / 0.1)" }}
+              >
+                {isFeePost && <Wallet size={12} />}
                 {post.category}
               </span>
-              <span className="text-slate-300 text-[10px] md:text-xs font-bold">{post.date}</span>
+              <span className="text-[13px] text-[#8E8E93] tabular-nums">{post.date}</span>
             </div>
-
-            <h1 className="text-2xl md:text-5xl font-[900] text-slate-900 tracking-tighter mb-6 md:mb-8 leading-tight">
+            <h1 className="text-[26px] md:text-[36px] font-bold text-[#1D1D1F] tracking-[-0.025em] leading-tight mb-5">
               {post.title}
             </h1>
-
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3 md:gap-4">
-                <div className="w-10 h-10 md:w-14 md:h-14 bg-slate-100 rounded-xl md:rounded-2xl flex items-center justify-center text-slate-400 border border-slate-200 shadow-sm overflow-hidden shrink-0">
+            <div className="flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-[#F2F2F7] overflow-hidden shrink-0 flex items-center justify-center text-[#AEAEB2]">
                   {post.profileImage ? (
                     <img
                       src={post.profileImage}
-                      alt="profile"
+                      alt=""
                       className="w-full h-full object-cover"
                       onError={(e: any) => { e.target.src = "https://cdn.discordapp.com/embed/avatars/0.png"; }}
                     />
                   ) : (
-                    <User className="w-5 h-5 md:w-7 md:h-7" />
+                    <User size={18} />
                   )}
                 </div>
-                <div>
-                  <p className="text-slate-900 font-black text-sm md:text-lg flex items-center gap-1.5 md:gap-2">
-                    {post.author}
-                    <span className="text-[9px] md:text-xs text-indigo-500 font-bold bg-indigo-50 px-1.5 py-0.5 rounded-md md:rounded-lg">
-                      {formatStudentId(post.studentId)}
-                    </span>
+                <div className="min-w-0">
+                  <p className="text-[15px] font-semibold text-[#1D1D1F] flex items-center gap-1.5">
+                    <span className="truncate">{post.author}</span>
+                    <span className="text-[12px] font-medium text-[#8E8E93] shrink-0">{formatStudentId(post.studentId)}</span>
                   </p>
-                  <p className="text-slate-400 font-bold text-[9px] md:text-xs uppercase tracking-wider line-clamp-1">
-                    {post.department || "AI소프트웨어학부(컴퓨터공학전공)"}
-                  </p>
+                  <p className="text-[12px] text-[#8E8E93] truncate">{post.department || "AI소프트웨어학부(컴퓨터공학전공)"}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-2 md:gap-4 text-slate-300 shrink-0">
-                <span className="flex items-center gap-1 md:gap-1.5 text-[10px] md:text-xs font-bold">
-                  <Eye className="w-3.5 h-3.5 md:w-4 md:h-4" /> {post.views || 0}
-                </span>
-              </div>
+              <span className="inline-flex items-center gap-1 text-[13px] text-[#8E8E93] shrink-0">
+                <Eye size={15} /> {post.views || 0}
+              </span>
             </div>
           </header>
 
-          <div className="prose prose-slate max-w-none mb-10 md:mb-16">
-            {post.category === "회비" && (post.feeTerm || (post.feeItems && post.feeItems.length > 0)) && (
-              <FeeInfoCard post={post} />
-            )}
+          {isFeePost && (post.feeTerm || (post.feeItems && post.feeItems.length > 0)) && <FeeInfoCard post={post} />}
 
-            {post.content && (
-              <div className="text-slate-600 text-sm md:text-lg font-medium leading-relaxed whitespace-pre-wrap">
-                {post.content}
-              </div>
-            )}
+          {post.content && (
+            <div className="text-[15px] md:text-[17px] text-[#1D1D1F]/85 leading-[1.75] whitespace-pre-wrap">
+              {post.content}
+            </div>
+          )}
 
-            {post.images && post.images.length > 0 && (
-              <div className="mt-8 md:mt-12 flex flex-col gap-4 md:gap-8">
-                {post.images.map((img: string, idx: number) => (
-                  <motion.div
-                    key={idx}
-                    className="rounded-[1.5rem] md:rounded-[2.5rem] overflow-hidden shadow-xl shadow-slate-200/50 border border-slate-100"
-                  >
-                    <img src={img} alt={`post-img-${idx}`} className="w-full h-auto object-cover" />
-                  </motion.div>
-                ))}
-              </div>
-            )}
-          </div>
+          {post.images && post.images.length > 0 && (
+            <div className="mt-8 flex flex-col gap-4">
+              {post.images.map((img: string, idx: number) => (
+                <div key={idx} className="rounded-[20px] overflow-hidden border border-black/[0.06]">
+                  <img src={img} alt={`첨부 사진 ${idx + 1}`} className="w-full h-auto object-cover" />
+                </div>
+              ))}
+            </div>
+          )}
 
-          <div className="flex items-center gap-2 md:gap-4 pt-6 md:pt-10 border-t border-slate-50">
-            <Button
+          <div className="flex items-center gap-2 mt-8 pt-5 border-t border-black/[0.06]">
+            <button
               onClick={() => onToggleLike(post.id)}
-              className={`rounded-xl md:rounded-2xl px-4 py-2.5 md:px-6 md:py-3.5 font-black transition-all flex items-center gap-1.5 md:gap-2 shadow-none border-none active:scale-95 text-[11px] md:text-sm h-auto ${post.likedByMe ? "bg-pink-50 text-pink-500" : "bg-slate-50 text-slate-400"
-                }`}
+              className={`h-10 px-4 rounded-full inline-flex items-center gap-1.5 text-[14px] font-semibold transition-colors active:scale-95 ${post.likedByMe ? "bg-[#FF2D55]/[0.1] text-[#FF2D55]" : "bg-black/[0.05] text-[#6E6E73] hover:bg-black/[0.08]"}`}
             >
-              <Heart className="w-3.5 h-3.5 md:w-5 md:h-5" fill={post.likedByMe ? "currentColor" : "none"} />
-              좋아요 {post.likes || 0}
-            </Button>
-
-            <div className="ml-auto flex gap-1.5 md:gap-3">
+              <Heart size={16} fill={post.likedByMe ? "currentColor" : "none"} />
+              {post.likes || 0}
+            </button>
+            <div className="ml-auto flex gap-1.5">
               {canEdit && (
-                <Button
+                <button
                   onClick={() => onNavigate("board-write", post.id)}
-                  className="bg-indigo-50 text-indigo-600 hover:bg-indigo-600 hover:text-white font-black rounded-lg md:rounded-xl px-3 py-2 md:px-6 flex items-center gap-1 md:gap-2 transition-all shadow-none border-none text-[11px] md:text-sm h-auto"
+                  className="h-10 px-4 rounded-full bg-black/[0.05] text-[#0071E3] text-[14px] font-semibold inline-flex items-center gap-1.5 hover:bg-black/[0.08] transition-colors"
                 >
-                  <Edit3 className="w-3.5 h-3.5 md:w-[18px] md:h-[18px]" /> <span className="hidden sm:inline">수정</span>
-                </Button>
+                  <Edit3 size={15} /> 수정
+                </button>
               )}
-
               {canDelete && (
-                <Button
+                <button
                   onClick={() => onDelete(post.id)}
-                  className="bg-red-50 text-red-500 hover:bg-red-600 hover:text-white font-black rounded-lg md:rounded-xl px-3 py-2 md:px-6 flex items-center gap-1 md:gap-2 transition-all shadow-none border-none text-[11px] md:text-sm h-auto"
+                  className="h-10 px-4 rounded-full bg-black/[0.05] text-[#FF3B30] text-[14px] font-semibold inline-flex items-center gap-1.5 hover:bg-[#FF3B30]/[0.08] transition-colors"
                 >
-                  <Trash2 className="w-3.5 h-3.5 md:w-[18px] md:h-[18px]" /> <span className="hidden sm:inline">삭제</span>
-                </Button>
+                  <Trash2 size={15} /> 삭제
+                </button>
               )}
             </div>
           </div>
         </motion.article>
 
-        <section className="bg-white rounded-[1.5rem] md:rounded-[3rem] p-6 md:p-16 shadow-sm border border-slate-100">
-          <div className="flex items-center gap-2 md:gap-3 mb-6 md:mb-10">
-            <MessageSquare className="text-indigo-600 w-5 h-5 md:w-6 md:h-6" />
-            <h3 className="text-lg md:text-2xl font-black text-slate-900 tracking-tight">댓글 {post.commentsList?.length || 0}</h3>
-          </div>
+        <section className="bg-[#fff] rounded-[28px] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] p-5 md:p-10">
+          <h3 className="flex items-center gap-2 text-[18px] md:text-[20px] font-bold text-[#1D1D1F] mb-5">
+            <MessageSquare size={18} className="text-[#0071E3]" /> 댓글 <span className="text-[#8E8E93] font-semibold">{post.commentsList?.length || 0}</span>
+          </h3>
 
           {isLoggedIn ? (
-            <div className="mb-8 md:mb-12">
+            <div className="write-page mb-8">
               <textarea
                 value={commentContent}
                 onChange={(e) => setCommentContent(e.target.value)}
@@ -251,23 +218,23 @@ export const BoardDetail = ({
                     handleSendComment();
                   }
                 }}
-                placeholder="따뜻한 댓글 한마디를 남겨주세요. (Shift+Enter로 줄바꿈)"
-                className="w-full p-4 md:p-6 bg-slate-50 rounded-[1.25rem] md:rounded-[2rem] border-none outline-none focus:ring-2 focus:ring-indigo-500 font-bold text-xs md:text-sm text-slate-700 min-h-[80px] md:min-h-[120px] transition-all resize-none"
+                placeholder="댓글을 남겨주세요. (Shift+Enter로 줄바꿈)"
+                className="w-full px-4 py-3.5 rounded-2xl text-[15px] text-[#1D1D1F] outline-none resize-none min-h-[88px] transition-shadow"
               />
-              <div className="flex justify-end mt-2.5 md:mt-3">
+              <div className="flex justify-end mt-2">
                 <button
                   onClick={handleSendComment}
                   disabled={!commentContent.trim() || isCommentSubmitting}
-                  className="flex items-center gap-1.5 px-4 py-2.5 md:px-5 md:py-3 bg-indigo-600 text-white rounded-xl md:rounded-2xl font-black text-[11px] md:text-sm shadow-sm hover:bg-indigo-700 active:scale-95 transition-all disabled:bg-slate-200 disabled:text-slate-400"
+                  className="h-9 px-4 rounded-full bg-[#0071E3] text-white text-[14px] font-semibold inline-flex items-center gap-1.5 hover:bg-[#0077ED] transition-colors disabled:bg-black/[0.08] disabled:text-[#AEAEB2]"
                 >
-                  <Send className="w-3.5 h-3.5 md:w-4 md:h-4" /> {isCommentSubmitting ? "등록 중..." : "등록"}
+                  <Send size={14} /> {isCommentSubmitting ? "등록 중…" : "등록"}
                 </button>
               </div>
             </div>
           ) : (
-            <div className="mb-8 md:mb-12 p-6 md:p-10 bg-slate-50 rounded-[1.5rem] md:rounded-[2.5rem] border border-dashed border-slate-200 text-center">
-              <p className="text-slate-400 font-bold text-xs md:text-sm">로그인한 부원만 댓글을 작성할 수 있습니다.</p>
-              <button onClick={() => onNavigate("login")} className="mt-3 md:mt-4 text-indigo-600 font-black text-xs md:text-sm hover:underline">로그인하러 가기 →</button>
+            <div className="mb-8 rounded-2xl bg-[#F5F5F7] px-5 py-6 text-center">
+              <p className="text-[14px] text-[#6E6E73]">로그인한 부원만 댓글을 쓸 수 있어요.</p>
+              <button onClick={() => onNavigate("login")} className="mt-2 text-[14px] font-semibold text-[#0071E3] hover:underline">로그인하기</button>
             </div>
           )}
 
@@ -302,91 +269,72 @@ export const BoardDetail = ({
   );
 };
 
-// ✨ 회비 게시글 전용 구조화 정보 카드 — 금액/대상학기/납부기한/입금계좌를 한눈에, 계좌는 복사 버튼 제공
-// ✨ 회비 "사용 내역" 게시글 전용 — 대상 학기 + 입금/사용 내역을 엑셀 표처럼 보여주고,
-// 기존 금액에서 입금/사용을 반영한 최종 잔액을 강조해서 표시한다(전부 서버가 계산해서 내려줌).
+// ✨ [2026-10-08] 회비 "사용 내역" 카드 — 대상 학기·최종 잔액을 크게, 입금/사용 내역은 한 줄씩(입금 초록, 사용 빨강).
+// 이월 금액에서 입금/사용을 반영한 최종 잔액은 서버가 계산해서 내려준다.
 const FeeInfoCard = ({ post }: any) => {
   const items = post.feeItems || [];
   const income = items.filter((i: any) => i.type === "입금").reduce((sum: number, i: any) => sum + (i.amount || 0), 0);
   const expense = items.filter((i: any) => i.type !== "입금").reduce((sum: number, i: any) => sum + (i.amount || 0), 0);
+  const final = post.feeFinalBalance ?? 0;
 
   return (
-    <div className="not-prose mb-8 md:mb-12 p-5 md:p-8 bg-amber-50/60 rounded-[1.5rem] md:rounded-[2.5rem] border border-amber-100">
-      <div className="flex items-center justify-between flex-wrap gap-3 mb-5 md:mb-6">
-        {post.feeTerm && (
-          <div className="flex items-center gap-1.5 text-amber-600">
-            <Users className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="font-black text-xs md:text-base text-slate-800">{post.feeTerm}</span>
-          </div>
-        )}
-        <div className="flex items-center gap-1.5 ml-auto">
-          <Scale className="w-4 h-4 md:w-5 md:h-5 text-amber-600" />
-          <span className="text-[10px] md:text-xs font-black text-amber-600 uppercase tracking-widest">최종 잔액</span>
-          <span className="text-lg md:text-2xl font-black text-amber-700 tracking-tight">
-            {(post.feeFinalBalance ?? 0).toLocaleString()}원
+    <div className="mb-8 rounded-[22px] p-4 md:p-6" style={{ backgroundColor: FEE.wash }}>
+      <div className="flex items-start justify-between gap-3 flex-wrap mb-4">
+        <div className="flex items-center gap-2.5">
+          <span className="w-10 h-10 rounded-[12px] flex items-center justify-center" style={feeChipStyle}>
+            <Wallet size={18} />
           </span>
+          <div>
+            <p className="text-[12px] font-semibold text-[#6E6E73]">회비 사용 내역</p>
+            <p className="text-[16px] font-bold text-[#1D1D1F]">{post.feeTerm || "대상 학기 미정"}</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-[12px] font-semibold text-[#6E6E73]">최종 잔액</p>
+          <p className="text-[26px] md:text-[30px] font-bold tracking-[-0.02em] tabular-nums leading-tight" style={{ color: final < 0 ? FEE.expense : "#1D1D1F" }}>
+            {final.toLocaleString()}<span className="text-[16px] font-semibold text-[#8E8E93] ml-0.5">원</span>
+          </p>
         </div>
       </div>
 
       {items.length > 0 && (
-        <div className="rounded-xl md:rounded-2xl border border-amber-100 bg-white overflow-hidden mb-4 md:mb-6">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[420px] text-xs md:text-sm">
-              <thead>
-                <tr className="bg-amber-100/60 text-amber-700 text-[10px] md:text-xs font-black uppercase tracking-wider">
-                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-left">구분</th>
-                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-left">날짜</th>
-                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-left">내역</th>
-                  <th className="px-3 py-2.5 md:px-4 md:py-3 text-right">금액</th>
-                </tr>
-              </thead>
-              <tbody>
-                {items.map((item: any, idx: number) => (
-                  <tr key={idx} className="border-t border-amber-50">
-                    <td className="px-3 py-2.5 md:px-4 md:py-3">
-                      <span className={`px-2 py-0.5 rounded-md text-[10px] md:text-xs font-black ${
-                        item.type === "입금" ? "bg-emerald-50 text-emerald-600" : "bg-rose-50 text-rose-600"
-                      }`}>
-                        {item.type}
-                      </span>
-                    </td>
-                    <td className="px-3 py-2.5 md:px-4 md:py-3 text-slate-400 font-bold">{item.date || "-"}</td>
-                    <td className="px-3 py-2.5 md:px-4 md:py-3 text-slate-700 font-bold">{item.description}</td>
-                    <td className={`px-3 py-2.5 md:px-4 md:py-3 text-right font-black ${
-                      item.type === "입금" ? "text-emerald-600" : "text-rose-600"
-                    }`}>
-                      {item.type === "입금" ? "+" : "-"}{(item.amount || 0).toLocaleString()}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <div className="rounded-2xl bg-[#fff] border border-black/[0.06] divide-y divide-black/[0.05] mb-3">
+          {items.map((item: any, idx: number) => {
+            const isIncome = item.type === "입금";
+            return (
+              <div key={idx} className="flex items-center gap-3 px-4 py-3">
+                <span
+                  className="shrink-0 inline-flex items-center justify-center w-11 h-6 rounded-full text-[12px] font-semibold"
+                  style={{ color: isIncome ? FEE.income : FEE.expense, backgroundColor: isIncome ? "rgb(52 199 89 / 0.12)" : "rgb(255 59 48 / 0.10)" }}
+                >
+                  {item.type}
+                </span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[15px] font-medium text-[#1D1D1F] truncate">{item.description}</p>
+                  {item.date && <p className="text-[12px] text-[#8E8E93] tabular-nums">{String(item.date).replace(/-/g, ".")}</p>}
+                </div>
+                <span className="shrink-0 text-[15px] font-semibold tabular-nums" style={{ color: isIncome ? FEE.income : FEE.expense }}>
+                  {isIncome ? "+" : "−"}{(item.amount || 0).toLocaleString()}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
 
-      <div className="grid grid-cols-3 gap-2 md:gap-4">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 text-slate-400 mb-1">
-            <Scale className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">기존 금액</span>
+      <div className="grid grid-cols-3 gap-2">
+        {[
+          { label: "이월", value: post.feeOpeningBalance ?? 0, color: "#1D1D1F", sign: "" },
+          { label: "입금", value: income, color: FEE.income, sign: "+" },
+          { label: "사용", value: expense, color: FEE.expense, sign: "−" },
+        ].map((s) => (
+          <div key={s.label} className="rounded-2xl bg-[#fff]/80 border border-black/[0.05] px-3 py-2.5 text-center">
+            <p className="text-[12px] font-semibold text-[#8E8E93]">{s.label}</p>
+            <p className="text-[15px] md:text-[17px] font-bold tabular-nums" style={{ color: s.color }}>
+              {s.value ? s.sign : ""}{Number(s.value).toLocaleString()}
+            </p>
           </div>
-          <p className="text-sm md:text-lg font-black text-slate-700">{(post.feeOpeningBalance ?? 0).toLocaleString()}</p>
-        </div>
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 text-emerald-500 mb-1">
-            <TrendingUp className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">총 입금</span>
-          </div>
-          <p className="text-sm md:text-lg font-black text-slate-900">+{income.toLocaleString()}</p>
-        </div>
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 text-rose-500 mb-1">
-            <TrendingDown className="w-3.5 h-3.5 md:w-4 md:h-4" />
-            <span className="text-[9px] md:text-[10px] font-black uppercase tracking-wider">총 사용</span>
-          </div>
-          <p className="text-sm md:text-lg font-black text-slate-900">-{expense.toLocaleString()}</p>
-        </div>
+        ))}
       </div>
     </div>
   );

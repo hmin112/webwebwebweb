@@ -121,7 +121,7 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
               }`}
             >
               {cat === "회비" ? (
-                <Wallet className={`w-3.5 h-3.5 md:w-4 md:h-4 ${activeCategory === cat ? "text-yellow-400" : "text-slate-300"}`} />
+                <Wallet className={`w-3.5 h-3.5 md:w-4 md:h-4 ${activeCategory === cat ? "text-[#34C759]" : "text-slate-300"}`} />
               ) : (
                 <Hash className={`w-3.5 h-3.5 md:w-4 md:h-4 ${activeCategory === cat ? "text-indigo-400" : "text-slate-300"}`} />
               )}
@@ -144,7 +144,7 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
                   <div className="flex items-center gap-2 md:gap-3 mb-2 md:mb-4">
                     <span className={`px-2.5 py-1 md:px-4 md:py-1.5 rounded-lg md:rounded-xl text-[9px] md:text-[10px] font-black uppercase tracking-widest border shrink-0 ${
                       post.category === "회비" 
-                        ? "bg-amber-50 text-amber-600 border-amber-100" 
+                        ? "bg-[#34C759]/[0.12] text-[#1F8A43] border-[#34C759]/20" 
                         : "bg-indigo-50 text-indigo-600 border border-indigo-100"
                     }`}>
                       {post.category}
@@ -160,9 +160,9 @@ export const BoardPage = ({ onNavigate, posts, isLoggedIn }: any) => {
                     {post.title}
                   </h3>
                   {post.category === "회비" && post.feeTerm ? (
-                    <p className="text-amber-700 font-black text-xs md:text-sm line-clamp-1 md:leading-relaxed">
+                    <p className="text-[#1F8A43] font-black text-xs md:text-sm line-clamp-1 md:leading-relaxed">
                       {post.feeTerm}
-                      <span className="text-amber-400 font-bold"> · 잔액 {(post.feeFinalBalance ?? 0).toLocaleString()}원</span>
+                      <span className="text-[#1F8A43]/60 font-bold"> · 잔액 {(post.feeFinalBalance ?? 0).toLocaleString()}원</span>
                     </p>
                   ) : (
                     <p className="text-slate-400 font-bold text-xs md:text-sm line-clamp-1 md:leading-relaxed">
