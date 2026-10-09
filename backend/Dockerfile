@@ -36,6 +36,10 @@ RUN sed -i 's|http://archive.ubuntu.com/ubuntu|https://mirror.kakao.com/ubuntu|g
  && rm -rf /tmp/H2Orestart.oxt /var/lib/apt/lists/*
 
 # 1단계(builder)에서 만들어진 jar 파일만 실행 환경으로 복사
+# ✨ [2026-10-09] 미리보기용 한글 글꼴 대체 규칙 (윈도우·한컴 글꼴 → 나눔 글꼴)
+COPY fonts-ko.conf /etc/fonts/conf.d/99-ko-substitute.conf
+RUN fc-cache -f >/dev/null
+
 COPY --from=builder /backend/build/libs/*.jar backend.jar
 #호스트(빌드 단계)의 빌드된 jar파일을 컨테이너의 backend.jar로 복사
 

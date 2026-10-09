@@ -299,12 +299,12 @@ public class PrintService {
 
     // ---------- 정리 ----------
 
-    // 프린터 PC가 가져가고 15분 넘게 결과를 안 주면 실패 처리, 오래된 작업 파일은 지운다 (10분마다)
+    // 프린터 PC가 가져가고 25분 넘게 결과를 안 주면 실패 처리 (프린터 봇은 큰 PDF를 최대 15분까지 기다린다), 오래된 작업 파일은 지운다 (10분마다)
     @Scheduled(fixedDelay = 10 * 60 * 1000, initialDelay = 2 * 60 * 1000)
     @Transactional
     public void housekeeping() {
         LocalDateTime now = LocalDateTime.now();
-        for (PrintJob j : repository.findByStatusAndClaimedAtBefore(PRINTING, now.minusMinutes(15))) {
+        for (PrintJob j : repository.findByStatusAndClaimedAtBefore(PRINTING, now.minusMinutes(25))) {
             j.setStatus(FAILED);
             j.setErrorMessage("프린터 PC에서 응답이 없어요. 다시 요청해주세요.");
             j.setFinishedAt(now);
