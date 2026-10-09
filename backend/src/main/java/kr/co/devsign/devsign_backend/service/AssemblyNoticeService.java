@@ -69,8 +69,39 @@ public class AssemblyNoticeService {
                 "https://discord.com/channels/" + guildId + "/" + channelId + "/" + id, reactions));
     }
 
+    // ✨ [2026-10-09] 디스코드에서 역할(신입생·재학생·휴학생…)을 바꿔도 웹의 부원 상태는 "디스코드 동기화"를 눌러야만
+    // 바뀌어서, 휴학생이 된 부원이 계속 신입생·재학생 "안 누름"으로 잡혔다. 반응 현황을 볼 때마다 지금 디스코드 역할을
+    // 읽어 상태가 달라진 부원만 맞춘다(이름·사진 등 다른 정보는 건드리지 않는다). 봇이 응답하지 않으면 저장된 상태를 그대로 쓴다.
+    @SuppressWarnings("unchecked")
+    public int refreshStatusesFromDiscord() {
+        Map<String, Object> res;
+        try {
+            res = discordBotClient.syncAllMembers();
+        } catch (Exception e) {
+            return 0;
+        }
+        if (res == null || !"success".equals(String.valueOf(res.get("status")))) return 0;
+        Map<String, String> live = new HashMap<>();
+        for (Map<String, Object> d : (List<Map<String, Object>>) res.getOrDefault("members", List.of())) {
+            Object tag = d.get("discordTag"), status = d.get("userStatus");
+            if (tag != null && status != null) live.put(tag.toString().toLowerCase(Locale.ROOT), status.toString());
+        }
+        int changed = 0;
+        for (Member m : memberRepository.findByDeletedFalseOrderByStudentIdDesc()) {
+            if (m.getDiscordTag() == null) continue;
+            String status = live.get(m.getDiscordTag().toLowerCase(Locale.ROOT));
+            if (status != null && !status.equals(m.getUserStatus())) {
+                m.setUserStatus(status);
+                memberRepository.save(m);
+                changed++;
+            }
+        }
+        return changed;
+    }
+
     @SuppressWarnings("unchecked")
     public AssemblyNoticeResponse reactions(int year, int month) {
+        refreshStatusesFromDiscord();
         Optional<FoundNotice> found = findNotice(year, month);
         if (found.isEmpty()) {
             return new AssemblyNoticeResponse(false, month + "월 총회 공지를 동아리공지 채널에서 찾지 못했어요.",
