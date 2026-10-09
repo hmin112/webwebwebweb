@@ -27,10 +27,17 @@ export const TeamTab = ({
   loginId,
   onNavigate,
   onOpenTeamPlanEditor,
+  embedded = false,
+  teamId: teamIdProp,
+  term: termProp,
 }: {
   loginId: string;
   onNavigate?: (page: string, identifier?: string) => void;
   onOpenTeamPlanEditor?: (submission: any, team: any) => void;
+  // ✨ [2026-10-09] 마이페이지 안에 팀 하나를 그대로 보여줄 때 — 머리말·초대·팀 고르기 줄은 숨기고, 팀과 학기는 마이페이지가 정한다
+  embedded?: boolean;
+  teamId?: number | null;
+  term?: { year: number; semester: number };
 }) => {
   // ✨ 마이페이지와 동일한 연도/학기 계산 및 선택 로직 (2~7월: 1학기, 그 외: 2학기)
   const { currentYear, currentSemester } = useMemo(() => {
@@ -55,7 +62,8 @@ export const TeamTab = ({
     return options.reverse();
   }, [currentYear, currentSemester]);
 
-  const [selectedTerm, setSelectedTerm] = useState(semesterOptions[0]);
+  const [ownTerm, setSelectedTerm] = useState(semesterOptions[0]);
+  const selectedTerm = termProp ?? ownTerm;
 
   // ✨ [2026-09-21] 한 학기에 여러 팀 소속 가능 — 목록으로 받고, 화면은 "선택된 팀" 하나를 본다.
   // 아래 team은 선택된 팀에서 파생되므로 기존 렌더/핸들러 코드는 그대로 team을 쓰면 된다.
@@ -99,8 +107,8 @@ export const TeamTab = ({
   };
 
   const team = useMemo(
-    () => teams.find((t) => t.teamId === selectedTeamId) ?? teams[0] ?? null,
-    [teams, selectedTeamId]
+    () => teams.find((t) => t.teamId === (teamIdProp ?? selectedTeamId)) ?? teams[0] ?? null,
+    [teams, selectedTeamId, teamIdProp]
   );
   const isLeader = Boolean(team && team.leaderLoginId === loginId);
 
@@ -127,7 +135,7 @@ export const TeamTab = ({
     }
   };
 
-  useEffect(() => { fetchStatus(); }, [loginId, selectedTerm]);
+  useEffect(() => { fetchStatus(); }, [loginId, selectedTerm.year, selectedTerm.semester]);
 
   const fetchTeamSubmissions = async () => {
     if (!team) {
@@ -146,7 +154,7 @@ export const TeamTab = ({
     }
   };
 
-  useEffect(() => { fetchTeamSubmissions(); }, [team?.teamId, selectedTerm]);
+  useEffect(() => { fetchTeamSubmissions(); }, [team?.teamId, selectedTerm.year, selectedTerm.semester]);
 
   // ✨ [2026-09-30] 팀 공유 자료 삭제 — 팀원 누구나, 제출 기간 안에서만 (서버도 팀원 여부·기간을 다시 확인)
   const canDeleteSubmission = (sub: any) =>
@@ -479,23 +487,25 @@ export const TeamTab = ({
 
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="pb-20">
+      {!embedded && (
       <PageHeader
-        title="팀 프로젝트"
-        desc="팀을 만들고 팀원과 함께 팀 자료를 제출해요. 개인 마이 페이지 제출과는 따로 관리돼요."
-        right={
-          <div className="flex items-center gap-2 flex-wrap">
-            <TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />
-            <button
-              type="button"
-              onClick={() => setIsOtherTeamsOpen(true)}
-              className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] text-sm font-semibold text-[#1D1D1F]/80 hover:text-[#1D1D1F] transition-colors"
-            >
-              <Users size={15} className="text-[#0071E3]" /> 다른 팀 둘러보기
-              <span className="text-[#AEAEB2]">{otherTeamCount}</span>
-            </button>
-          </div>
-        }
-      />
+          title="팀 프로젝트"
+          desc="팀을 만들고 팀원과 함께 팀 자료를 제출해요. 개인 마이 페이지 제출과는 따로 관리돼요."
+          right={
+            <div className="flex items-center gap-2 flex-wrap">
+              <TermSelect value={selectedTerm} options={semesterOptions} onChange={setSelectedTerm} />
+              <button
+                type="button"
+                onClick={() => setIsOtherTeamsOpen(true)}
+                className="inline-flex items-center gap-1.5 h-10 px-4 rounded-full bg-[#fff] border border-black/[0.06] shadow-[0_1px_2px_rgb(0_0_0/0.04)] text-sm font-semibold text-[#1D1D1F]/80 hover:text-[#1D1D1F] transition-colors"
+              >
+                <Users size={15} className="text-[#0071E3]" /> 다른 팀 둘러보기
+                <span className="text-[#AEAEB2]">{otherTeamCount}</span>
+              </button>
+            </div>
+          }
+        />
+      )}
 
       {isLoading ? (
         <div className="flex flex-col items-center justify-center py-20 md:py-40 gap-4">
@@ -504,7 +514,7 @@ export const TeamTab = ({
         </div>
       ) : (
         <>
-          {invitations.length > 0 && (
+          {!embedded && invitations.length > 0 && (
             <div className="mb-8 md:mb-10 space-y-3 md:space-y-4">
               <h3 className="text-lg md:text-xl font-bold text-[#1D1D1F] tracking-[-0.01em] flex items-center gap-2">
                 <Mail size={16} className="text-[#0071E3]" /> 받은 팀 초대
@@ -526,7 +536,7 @@ export const TeamTab = ({
           )}
 
           {/* ✨ [2026-09-21] 내가 속한 팀 목록 — 여러 팀에 동시에 속할 수 있어 선택해서 본다 */}
-          {teams.length > 0 && !isCreatingNewTeam && (
+          {!embedded && teams.length > 0 && !isCreatingNewTeam && (
             <div className="flex items-center gap-2 mb-4 md:mb-6 overflow-x-auto no-scrollbar">
               {teams.map((t: any) => (
                 <button
@@ -551,7 +561,7 @@ export const TeamTab = ({
             </div>
           )}
 
-          {(!team || isCreatingNewTeam) ? (
+          {(!team || (!embedded && isCreatingNewTeam)) ? (
             <div className="bg-[#fff] rounded-3xl border border-dashed border-black/[0.08] p-8 md:p-16 text-center">
               <Layers size={40} className="mx-auto text-slate-200 mb-4" />
               <p className="text-[#6E6E73] font-bold mb-6 text-sm md:text-base leading-relaxed">

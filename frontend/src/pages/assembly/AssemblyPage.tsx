@@ -41,11 +41,13 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
   };
 
   // ✨ [신규] 팀 공유 자료의 계획서(3월/9월) 작성 — 개인용 plan-editor와 동일한 패턴
-  const [teamPlanEditorState, setTeamPlanEditorState] = useState<{ submission: any; team: any } | null>(null);
-  const handleOpenTeamPlanEditor = (submission: any, team: any) => {
-    setTeamPlanEditorState({ submission, team });
+  const [teamPlanEditorState, setTeamPlanEditorState] = useState<{ submission: any; team: any; from: string } | null>(null);
+  const handleOpenTeamPlanEditor = (submission: any, team: any, from: string = "team") => {
+    setTeamPlanEditorState({ submission, team, from });
     setActiveTab("team-plan-editor");
   };
+  // ✨ [2026-10-09] 마이페이지에서 보고 있던 프로젝트(개인 / 팀) — 계획서를 열었다 돌아와도 그대로
+  const [myPageView, setMyPageView] = useState<string | null>(null);
 
   const userMenus = [
     ...(userStatus === "ATTENDING" ? [{ id: "mypage", name: "마이 페이지", icon: <UserCircle size={18} /> }] : []),
@@ -97,7 +99,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
       {/* 📱 모바일 전용: 알약 모양 상단 탭 (Sticky) */}
       <div className="lg:hidden sticky top-16 z-40 bg-[#F5F5F7]/85 backdrop-blur-xl border-b border-black/[0.06] px-4 py-2.5 overflow-x-auto no-scrollbar flex gap-1.5">
         {allMenus.map((menu) => {
-          const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor") || (menu.id === "team" && activeTab === "team-plan-editor");
+          const isActive = activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor") || (menu.id === (teamPlanEditorState?.from ?? "team") && activeTab === "team-plan-editor");
           return (
             <button
               key={menu.id}
@@ -129,7 +131,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
           {userMenus.map((menu) => (
             <SidebarLink
               key={menu.id}
-              active={activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor") || (menu.id === "team" && activeTab === "team-plan-editor")}
+              active={activeTab === menu.id || (menu.id === memberDetailOrigin && activeTab === "member-detail") || (menu.id === "mypage" && activeTab === "plan-editor") || (menu.id === (teamPlanEditorState?.from ?? "team") && activeTab === "team-plan-editor")}
               onClick={() => handleTabChange(menu.id)}
               icon={menu.icon}
               name={menu.name}
@@ -151,7 +153,17 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
       <main ref={mainRef} className="flex-1 min-w-0 px-4 py-6 md:px-10 md:py-10 overflow-y-auto">
         <div className="mx-auto w-full max-w-5xl">
         <AnimatePresence mode="wait">
-          {activeTab === "mypage" && <MyPageTab key="mypage" loginId={loginId} onOpenPlanEditor={handleOpenPlanEditor} />}
+          {activeTab === "mypage" && (
+            <MyPageTab
+              key="mypage"
+              loginId={loginId}
+              onOpenPlanEditor={handleOpenPlanEditor}
+              onOpenTeamPlanEditor={(submission, team) => handleOpenTeamPlanEditor(submission, team, "mypage")}
+              onShowMemberDetail={(id) => handleShowMemberDetail(id)}
+              view={myPageView}
+              onViewChange={setMyPageView}
+            />
+          )}
 
           {activeTab === "plan-editor" && planEditorReport && (
             <AssemblyPlanPage
@@ -185,7 +197,7 @@ export const AssemblyPage = ({ isAdmin, userStatus, loginId, onNavigate }: {
               teamId={teamPlanEditorState.team.teamId}
               team={teamPlanEditorState.team}
               submission={teamPlanEditorState.submission}
-              onBack={() => setActiveTab("team")}
+              onBack={() => setActiveTab(teamPlanEditorState.from)}
             />
           )}
 

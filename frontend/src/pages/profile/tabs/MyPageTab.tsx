@@ -2,8 +2,9 @@ import { api } from "../../../api/axios";
 import { useState, useMemo, useEffect, useRef, type ChangeEvent } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import {
-  FileText, X, Download, Presentation, MessageCircle, Upload, FileArchive, Loader2, Lock
+  FileText, X, Download, Presentation, MessageCircle, Upload, FileArchive, Loader2, Lock, User, Users
 } from "lucide-react";
+import { TeamTab } from "./TeamTab";
 import { FileDropZone } from "../../../components/ui/FileDropZone";
 import { CARD, MonthCard, PageHeader, SectionTitle, TermSelect, reportKind, submitStateOf } from "../../assembly/assemblyUi";
 import { MyProjectsPicker } from "../../assembly/components/MyProjectsPicker";
@@ -13,7 +14,19 @@ import { PlanSummaryCard } from "../../assembly/components/PlanSummary";
 // 3월/9월 = 계획서 달. 이 달만 파일 업로드 대신 별도 페이지(AssemblyPlanPage)에서 웹으로 작성.
 const isPlanMonth = (month: number) => month === 3 || month === 9;
 
-export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOpenPlanEditor?: (report: any) => void }) => {
+// ✨ [2026-10-09] 마이페이지에서 개인 프로젝트와 내가 속한 팀 프로젝트를 골라 본다. 팀 프로젝트가 있으면 팀이 먼저 열린다.
+type MyProjectItem = { key: string; type: "PERSONAL" | "TEAM"; title: string; teamName?: string | null };
+
+export const MyPageTab = ({
+  loginId, onOpenPlanEditor, onOpenTeamPlanEditor, onShowMemberDetail, view, onViewChange,
+}: {
+  loginId: string;
+  onOpenPlanEditor?: (report: any) => void;
+  onOpenTeamPlanEditor?: (submission: any, team: any) => void;
+  onShowMemberDetail?: (loginId: string) => void;
+  view?: string | null;
+  onViewChange?: (view: string) => void;
+}) => {
   const [selectedReport, setSelectedReport] = useState<any>(null);
   const [submissionMemo, setSubmissionMemo] = useState("");
   const [isLoading, setIsLoading] = useState(false);
@@ -65,6 +78,27 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
   }, [currentYear, currentSemester]);
 
   const [selectedTerm, setSelectedTerm] = useState(semesterOptions[0]);
+
+  // 이번 학기 내 프로젝트(개인 + 팀) — 어느 쪽을 볼지 고르는 줄에 쓴다
+  const [myProjects, setMyProjects] = useState<MyProjectItem[]>([]);
+  const [projectsLoaded, setProjectsLoaded] = useState(false);
+  const [localView, setLocalView] = useState<string | null>(view ?? null);
+  useEffect(() => {
+    if (!loginId || loginId === "undefined") return;
+    let cancelled = false;
+    api.get("/assembly/my-projects", { params: { loginId, year: selectedTerm.year, semester: selectedTerm.semester } })
+      .then((res) => { if (!cancelled) setMyProjects(res.data?.projects || []); })
+      .catch(() => { if (!cancelled) setMyProjects([]); })
+      .finally(() => { if (!cancelled) setProjectsLoaded(true); });
+    return () => { cancelled = true; };
+  }, [loginId, selectedTerm, projectsRefreshKey]);
+  const teamProjects = myProjects.filter((p) => p.type === "TEAM");
+  // 고른 게 없거나(처음) 그 학기에 없는 팀이면 — 팀 프로젝트가 있으면 첫 팀, 없으면 개인
+  const currentView = localView === "PERSONAL" || teamProjects.some((t) => t.key === localView)
+    ? (localView as string)
+    : (teamProjects[0]?.key ?? "PERSONAL");
+  const changeView = (v: string) => { setLocalView(v); onViewChange?.(v); };
+  const viewingTeamId = currentView.startsWith("TEAM:") ? Number(currentView.slice(5)) : null;
 
   const fetchSubmissions = async () => {
     if (!loginId || loginId === "undefined") return;
@@ -312,6 +346,53 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
         }
       />
 
+      {/* 개인 / 팀 프로젝트 고르기 — 팀 프로젝트가 있을 때만 보인다 */}
+      {teamProjects.length > 0 && (
+        <div className="max-w-full overflow-x-auto no-scrollbar mb-6 md:mb-8 -mx-1 px-1">
+          <div className="inline-flex w-max gap-0.5 p-1 rounded-full bg-black/[0.05] shadow-[inset_0_1px_2px_rgb(0_0_0/0.05)]">
+            {[{ key: "PERSONAL", label: "개인 프로젝트", sub: "", icon: User }, ...teamProjects.map((t) => ({ key: t.key, label: t.teamName || "팀", sub: t.title, icon: Users }))].map((opt) => {
+              const active = currentView === opt.key;
+              const Icon = opt.icon;
+              return (
+                <button
+                  key={opt.key}
+                  type="button"
+                  onClick={() => changeView(opt.key)}
+                  title={opt.sub || undefined}
+                  className={`relative h-10 px-4 md:px-5 rounded-full text-[14px] font-semibold whitespace-nowrap transition-colors ${active ? "text-[#1D1D1F]" : "text-[#1D1D1F]/55 hover:text-[#1D1D1F]"}`}
+                >
+                  {active && (
+                    <motion.span
+                      layoutId="myPageProjectPill"
+                      className="absolute inset-0 rounded-full bg-[#fff] shadow-[inset_0_1px_0_rgb(255_255_255),0_0_0_0.5px_rgb(0_0_0/0.06),0_2px_6px_rgb(0_0_0/0.08)]"
+                      transition={{ type: "spring", bounce: 0.15, duration: 0.4 }}
+                    />
+                  )}
+                  <span className="relative inline-flex items-center gap-1.5">
+                    <Icon size={15} className={active ? "text-[#0071E3]" : ""} />
+                    {opt.key === "PERSONAL" ? opt.label : <>팀 · {opt.label}</>}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!projectsLoaded ? (
+        <div className="flex justify-center py-24"><Loader2 className="animate-spin text-[#0071E3]" size={28} /></div>
+      ) : viewingTeamId != null ? (
+        <TeamTab
+          key={`team-${viewingTeamId}-${selectedTerm.year}-${selectedTerm.semester}`}
+          embedded
+          loginId={loginId}
+          teamId={viewingTeamId}
+          term={selectedTerm}
+          onOpenTeamPlanEditor={onOpenTeamPlanEditor}
+          onNavigate={(_page, identifier) => { if (identifier) onShowMemberDetail?.(String(identifier)); }}
+        />
+      ) : (
+        <>
       {/* 요약 카드 — 프로젝트 명(계획서에서 입력) + 제출 진행 */}
       <div className={`${CARD} rounded-3xl p-5 md:p-7 mb-8 md:mb-10`}>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-5">
@@ -385,6 +466,8 @@ export const MyPageTab = ({ loginId, onOpenPlanEditor }: { loginId: string; onOp
             emptyText={`아직 계획서를 작성하지 않았어요. 위의 ${planReport.month}월 계획서 카드를 눌러 작성해 보세요.`}
           />
         </div>
+      )}
+        </>
       )}
 
       <AnimatePresence>

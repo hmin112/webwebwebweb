@@ -168,7 +168,9 @@ public class AssemblyService {
                                                   List<AssemblyReport> reports, String personalTitle) {
         List<MyProjectItem> items = new ArrayList<>();
         boolean hasMaterials = reports.stream().anyMatch(r -> "SUBMITTED".equals(r.getStatus()));
-        if (StringUtils.hasText(personalTitle) || hasMaterials) {
+        // ✨ [2026-10-09] 제출 완료가 아니어도(계획서를 쓰다 말았거나 활동 요약만 적은 경우) 작성한 게 있으면 대표로 고를 수 있게
+        boolean hasWritten = reports.stream().anyMatch(this::hasPersonalContent);
+        if (StringUtils.hasText(personalTitle) || hasMaterials || hasWritten) {
             items.add(new MyProjectItem("PERSONAL", "PERSONAL", personalTitle, null, 1, hasMaterials));
         }
         teamMemberRepository.findByLoginIdAndTeam_YearAndTeam_Semester(loginId, year, semester).stream()
@@ -182,6 +184,16 @@ public class AssemblyService {
                             team.getTeamName(), count, false));
                 });
         return items;
+    }
+
+    private boolean hasPersonalContent(AssemblyReport r) {
+        return StringUtils.hasText(r.getMemo())
+                || StringUtils.hasText(r.getPlanOverview())
+                || StringUtils.hasText(r.getPlanNotes())
+                || (r.getPlanGoals() != null && !r.getPlanGoals().isEmpty())
+                || (r.getPlanRoadmapItems() != null && !r.getPlanRoadmapItems().isEmpty())
+                || (r.getPlanRoles() != null && !r.getPlanRoles().isEmpty())
+                || hasAnyExistingFile(r);
     }
 
     // 직접 고른 대표가 아직 유효하면 그것, 아니면 자동 — 팀 프로젝트가 있으면 첫 팀, 없으면 자료를 올린 개인 프로젝트
